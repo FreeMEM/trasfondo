@@ -73,4 +73,10 @@ el menú no llegó a usarse), otras ventanas encima del panel, cambio de prefere
    gancho), salir limpio.
 5. Commodity, paquete para Aminet.
 
-Lo que haga falta en Dash (ganchos con registros, por ejemplo) se añade a Dash.
+Trasfondo se escribe entero en Dash, sin `@native` ni `@c`. Lo que falta se añade a Dash como builtins al
+estilo de `mui_canvas` (decidido el 2026-10-20): un lienzo de escritorio (`desktop_canvas`,
+`desktop_canvas_on_draw`, `desktop_canvas_update`) y la CPU por tarea (`cpu_start`, `cpu_sample`,
+`cpu_task_name`, `cpu_task_load`, `cpu_total`). Se añaden a Dash, con
+dos mejoras para gastar menos CPU al pintar: encolar el blitter en vez de esperarlo, y repintar solo lo que
+cambia (y medir si en una CPU rápida conviene más la CPU que el blitter). Sprites descartados. Las pruebas en C de `tests/`
+son su referencia: `prueba_fondo.dash` está medida; `prueba_cpu.dash` no se ha compilado nunca.

@@ -1,0 +1,302 @@
+# Prueba de la fase 2: CPU exacta por tarea.
+#
+# Exec (2.04+) llama a tc_Launch cuando una tarea con TF_LAUNCH entra en la CPU y a tc_Switch cuando
+# una con TF_SWITCH sale (como hace PM de Michael Sinz para una tarea). Ponemos los dos ganchos en todas
+# las tareas que no los usen ya: al entrar se apunta la hora (EClock) y al salir se suma lo que estuvo
+# a la cuenta de esa tarea. Cada segundo se recorren las listas de tareas para enganchar las nuevas.
+#
+# Para comprobarlo corren dos tareas de carga conocida que miden ellas mismas cuánto trabajan:
+#   tf_lleno   prioridad -1, trabaja todo el rato (se lleva lo que sobre)
+#   tf_medio   prioridad 1, trabaja 10 ms y espera al siguiente tick (algo más de la mitad)
+
+@header "#include <devices/timer.h>"
+@header "#include <proto/timer.h>"
+@header "#include <exec/execbase.h>"
+@header "#include <dos/dosextens.h>"
+
+@c
+"""
+struct Device *TimerBase = NULL;
+static struct timerequest _tf_treq;
+static ULONG _tf_efreq;
+extern struct ExecBase *SysBase;
+
+typedef unsigned long long _tf_u64;
+
+static _tf_u64 _tf_ahora(void)
+{
+    struct EClockVal e;
+    ReadEClock(&e);
+    return (_tf_u64)e.ev_hi << 32 | e.ev_lo;
+}
+
+/* cuentas por tarea: tabla abierta por la dirección de la tarea */
+#define TF_HUECOS 128
+struct _tf_cuenta {
+    struct Task *t;
+    _tf_u64 tiempo;              /* EClock en la CPU desde que se enganchó */
+    _tf_u64 antes;               /* lo que llevaba en la muestra anterior */
+    LONG viva;                   /* vista en el último recorrido */
+    char nombre[32];
+};
+static struct _tf_cuenta _tf_c[TF_HUECOS];
+static struct Task *volatile _tf_dentro;     /* la tarea que entró la última, si es nuestra */
+static _tf_u64 _tf_desde;
+static volatile ULONG _tf_perdidas;          /* salidas sin cuenta (tabla llena) */
+
+static struct _tf_cuenta *_tf_hueco(struct Task *t, LONG crear)
+{
+    ULONG i = ((ULONG)t >> 4) % TF_HUECOS, n;
+    for (n = 0; n < TF_HUECOS; n++, i = (i + 1) % TF_HUECOS) {
+        if (_tf_c[i].t == t) return &_tf_c[i];
+        if (!_tf_c[i].t) {
+            if (!crear) return NULL;
+            _tf_c[i].t = t; _tf_c[i].tiempo = 0; _tf_c[i].antes = 0; _tf_c[i].nombre[0] = 0;
+            return &_tf_c[i];
+        }
+    }
+    return NULL;
+}
+
+/* los ganchos: exec los llama al despachar, con las interrupciones cortadas */
+void _tf_entra_c(void)
+{
+    _tf_dentro = SysBase->ThisTask;
+    _tf_desde = _tf_ahora();
+}
+
+void _tf_sale_c(void)
+{
+    struct Task *t = SysBase->ThisTask;
+    if (_tf_dentro == t) {
+        struct _tf_cuenta *c = _tf_hueco(t, 0);
+        if (c) c->tiempo += _tf_ahora() - _tf_desde;
+        else _tf_perdidas++;
+    }
+    _tf_dentro = NULL;
+}
+
+/* exec espera que el gancho no cambie ningún registro */
+__asm__(
+    "    .text\\n"
+    "    .even\\n"
+    "__tf_entra:\\n"
+    "    movem.l d0-d1/a0-a1/a6,-(sp)\\n"
+    "    jsr __tf_entra_c\\n"
+    "    movem.l (sp)+,d0-d1/a0-a1/a6\\n"
+    "    rts\\n"
+    "    .even\\n"
+    "__tf_sale:\\n"
+    "    movem.l d0-d1/a0-a1/a6,-(sp)\\n"
+    "    jsr __tf_sale_c\\n"
+    "    movem.l (sp)+,d0-d1/a0-a1/a6\\n"
+    "    rts\\n");
+void _tf_entra(void);
+void _tf_sale(void);
+
+static void _tf_nombre(struct Task *t, char *d)
+{
+    const char *s = t->tc_Node.ln_Name ? t->tc_Node.ln_Name : "?";
+    LONG i = 0;
+    if (t->tc_Node.ln_Type == NT_PROCESS) {      /* un proceso de Shell: el nombre de su orden */
+        struct CommandLineInterface *cli = BADDR(((struct Process *)t)->pr_CLI);
+        if (cli && cli->cli_Module) {
+            UBYTE *b = BADDR(cli->cli_CommandName);
+            if (b && b[0]) {
+                LONG n = b[0] > 30 ? 30 : b[0];
+                for (i = 0; i < n; i++) d[i] = b[i + 1];
+                d[i] = 0;
+                return;
+            }
+        }
+    }
+    for (i = 0; i < 31 && s[i]; i++) d[i] = s[i];
+    d[i] = 0;
+}
+
+static LONG _tf_enganchar(struct Task *t)
+{
+    struct _tf_cuenta *c;
+    if (t->tc_Flags & (TF_SWITCH | TF_LAUNCH)) {
+        if (t->tc_Switch != (APTR)_tf_sale) return 0;   /* de otro programa: no se toca */
+    } else {
+        c = _tf_hueco(t, 1);
+        if (!c) return 0;
+        t->tc_Switch = (APTR)_tf_sale;
+        t->tc_Launch = (APTR)_tf_entra;
+        t->tc_Flags |= TF_SWITCH | TF_LAUNCH;
+    }
+    c = _tf_hueco(t, 0);
+    if (c) { c->viva = 1; _tf_nombre(t, c->nombre); }
+    return 1;
+}
+
+/* engancha las tareas nuevas, olvida las que ya no están; dentro de Disable */
+static void _tf_recorrer(void)
+{
+    struct Node *n;
+    LONG i;
+    for (i = 0; i < TF_HUECOS; i++) _tf_c[i].viva = 0;
+    for (n = SysBase->TaskReady.lh_Head; n->ln_Succ; n = n->ln_Succ) _tf_enganchar((struct Task *)n);
+    for (n = SysBase->TaskWait.lh_Head; n->ln_Succ; n = n->ln_Succ) _tf_enganchar((struct Task *)n);
+    _tf_enganchar(SysBase->ThisTask);
+    for (i = 0; i < TF_HUECOS; i++)
+        if (_tf_c[i].t && !_tf_c[i].viva) {
+            /* hueco libre: hay que rehacer las cadenas de la tabla, así que se vacía y se vuelve a llenar */
+            _tf_c[i].t = NULL;
+        }
+}
+
+static void _tf_quitar(struct Task *t)
+{
+    if ((t->tc_Flags & TF_SWITCH) && t->tc_Switch == (APTR)_tf_sale) {
+        t->tc_Flags &= ~(TF_SWITCH | TF_LAUNCH);
+        t->tc_Switch = NULL;
+        t->tc_Launch = NULL;
+    }
+}
+
+/* las dos tareas de carga: cada una mide cuánto trabaja (EClock) */
+static volatile _tf_u64 _tf_trabajo[2], _tf_total[2];
+static volatile LONG _tf_parar;
+
+static void _tf_carga(LONG cual, ULONG ms_trabajo)
+{
+    _tf_u64 t0 = _tf_ahora(), a, b, lim;
+    FindTask(NULL)->tc_Node.ln_Name = (char *)(cual ? "tf_medio" : "tf_lleno");
+    lim = (_tf_u64)_tf_efreq * ms_trabajo / 1000;
+    while (!_tf_parar) {
+        a = _tf_ahora();
+        do b = _tf_ahora(); while (!_tf_parar && (ms_trabajo == 0 || b - a < lim));
+        _tf_trabajo[cual] += b - a;
+        if (ms_trabajo) Delay(1);
+    }
+    _tf_total[cual] = _tf_ahora() - t0;
+}
+"""
+end
+
+@native func tf_lleno(x: Int) -> Int
+"""
+    _tf_carga(0, 0);
+    return 0;
+"""
+end
+
+@native func tf_medio(x: Int) -> Int
+"""
+    _tf_carga(1, 10);
+    return 0;
+"""
+end
+
+@native func tf_abrir() -> Int
+"""
+    struct EClockVal e;
+    if (OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_ECLOCK, (struct IORequest *)&_tf_treq, 0)) return -1;
+    TimerBase = _tf_treq.tr_node.io_Device;
+    _tf_efreq = ReadEClock(&e);
+    Disable();
+    _tf_recorrer();
+    Enable();
+    Printf((CONST_STRPTR)"EClock %ld Hz\\n", _tf_efreq);
+    return 0;
+"""
+end
+
+# una muestra: el % de cada tarea desde la anterior (las que pasen del 0,5 %) y el total
+@native func tf_muestra(ms: Int) -> Int
+"""
+    static struct { char nombre[32]; _tf_u64 d; } v[TF_HUECOS];
+    static _tf_u64 t_antes;
+    _tf_u64 ahora, dt, suma = 0;
+    LONG i, n = 0, j;
+    Disable();
+    ahora = _tf_ahora();
+    for (i = 0; i < TF_HUECOS; i++)
+        if (_tf_c[i].t) {
+            v[n].d = _tf_c[i].tiempo - _tf_c[i].antes;
+            _tf_c[i].antes = _tf_c[i].tiempo;
+            memcpy(v[n].nombre, _tf_c[i].nombre, 32);
+            n++;
+        }
+    _tf_recorrer();
+    Enable();
+    dt = t_antes ? ahora - t_antes : 1;
+    t_antes = ahora;
+    for (i = 0; i < n; i++) suma += v[i].d;
+    for (i = 1; i < n; i++)          /* de más a menos */
+        for (j = i; j > 0 && v[j].d > v[j - 1].d; j--) {
+            char tn[32]; _tf_u64 td = v[j].d;
+            memcpy(tn, v[j].nombre, 32); memcpy(v[j].nombre, v[j - 1].nombre, 32); memcpy(v[j - 1].nombre, tn, 32);
+            v[j].d = v[j - 1].d; v[j - 1].d = td;
+        }
+    if (ms) {
+        Printf((CONST_STRPTR)"total %ld.%ld %%  (%ld tareas)\\n", (LONG)(suma * 1000 / dt / 10), (LONG)(suma * 1000 / dt % 10), n);
+        for (i = 0; i < n && v[i].d * 200 > dt; i++)
+            Printf((CONST_STRPTR)"  %5ld.%ld %%  %s\\n", (LONG)(v[i].d * 1000 / dt / 10), (LONG)(v[i].d * 1000 / dt % 10), (ULONG)v[i].nombre);
+    }
+    return (LONG)(suma * 1000 / dt);
+"""
+end
+
+# lo que cada tarea de carga dice que trabajó contra lo que se le contó
+@native func tf_comprobar() -> Int
+"""
+    LONG i, k;
+    for (k = 0; k < 2; k++) {
+        const char *nm = k ? "tf_medio" : "tf_lleno";
+        _tf_u64 contado = 0;
+        for (i = 0; i < TF_HUECOS; i++)
+            if (_tf_c[i].t && !strcmp(_tf_c[i].nombre, nm)) contado = _tf_c[i].tiempo;
+        Printf((CONST_STRPTR)"%s: dice %ld ms trabajando de %ld ms; contado %ld ms\\n", (ULONG)nm,
+               (LONG)(_tf_trabajo[k] * 1000 / _tf_efreq), (LONG)(_tf_total[k] * 1000 / _tf_efreq),
+               (LONG)(contado * 1000 / _tf_efreq));
+    }
+    return 0;
+"""
+end
+
+@native func tf_parar() -> Int
+"""
+    _tf_parar = 1;
+    return 0;
+"""
+end
+
+@native func tf_cerrar() -> Int
+"""
+    struct Node *n;
+    Disable();
+    for (n = SysBase->TaskReady.lh_Head; n->ln_Succ; n = n->ln_Succ) _tf_quitar((struct Task *)n);
+    for (n = SysBase->TaskWait.lh_Head; n->ln_Succ; n = n->ln_Succ) _tf_quitar((struct Task *)n);
+    _tf_quitar(SysBase->ThisTask);
+    Enable();
+    if (TimerBase) CloseDevice((struct IORequest *)&_tf_treq);
+    return (LONG)_tf_perdidas;
+"""
+end
+
+Main
+    if tf_abrir() == 0
+        tf_muestra(0)
+        time_delay(50)
+        Print "--- en reposo"
+        tf_muestra(1)
+        a = task_start_with(tf_lleno, 0, 0, -1)
+        b = task_start_with(tf_medio, 0, 0, 1)
+        for i in (1..4)
+            time_delay(50)
+            Print "--- con carga, segundo #{i}"
+            tf_muestra(1)
+        end
+        tf_parar()
+        task_free(a)
+        task_free(b)
+        time_delay(10)
+        tf_muestra(0)
+        tf_comprobar()
+        p = tf_cerrar()
+        Print "salidas sin cuenta: #{p}"
+    end
+end
