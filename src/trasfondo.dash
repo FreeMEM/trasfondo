@@ -1,0 +1,123 @@
+# Trasfondo: un "top" gráfico en el fondo del Workbench, detrás de los iconos y sin clics.
+#
+# Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
+# y las tareas que más CPU toman. Se actualiza cada segundo.
+
+const ANCHO = 260
+const HISTORIA = 60          # segundos de historia de la CPU
+const TAREAS = 6             # tareas que se enseñan
+const ALTO_GRAFICA = 32
+
+var historia: [Int] = []     # CPU total de cada segundo, en tantos por mil (la más nueva al final)
+var n_tareas: Int = 0
+var linea: Int = 10          # alto de una línea de texto
+var c_texto: Int = 1
+var c_suave: Int = 1
+var c_cpu: Int = 3
+var colores: Bool = false
+
+func por_ciento(milesimas: Int) -> String
+    return "#{milesimas / 10},#{milesimas % 10} %"
+end
+
+func kb(bytes: Int) -> String
+    k = bytes / 1024
+    if k >= 10240
+        return "#{k / 1024} MB"
+    end
+    return "#{k} KB"
+end
+
+func alto_panel() -> Int
+    return 6 + linea + 4 + ALTO_GRAFICA + 6 + linea * 2 + 6 + linea * TAREAS + 6
+end
+
+func pintar(x, y, w, h)
+    if not colores                       # las plumas, de la pantalla en la que se pinta
+        c_texto = color_pen(240, 240, 240)
+        c_suave = color_pen(200, 210, 220)
+        c_cpu = color_pen(80, 200, 255)
+        colores = true
+    end
+    gfx_blend_rect(0, 0, w - 1, h - 1, 0x101820, 150)       # velo oscuro: el fondo se ve a través
+    font_style(2)
+    gfx_pen(c_texto)
+    yy = 6
+    gfx_text_at(6, yy + font_baseline(), "Trasfondo")
+    total = 0
+    if historia.length > 0
+        total = historia[historia.length - 1]
+    end
+    t = "CPU " + por_ciento(total)
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+    font_style(0)
+    yy = yy + linea + 4
+    # la historia: una barra por segundo, de abajo arriba
+    gfx_blend_rect(6, yy, w - 7, yy + ALTO_GRAFICA - 1, 0x000000, 90)
+    paso = (w - 12) / HISTORIA
+    x0 = w - 6 - paso * historia.length
+    gfx_pen(c_cpu)
+    for i in (0..historia.length - 1)
+        alto = historia[i] * ALTO_GRAFICA / 1000
+        if alto > 0
+            gfx_rect(x0 + i * paso, yy + ALTO_GRAFICA - alto, x0 + i * paso + paso - 2, yy + ALTO_GRAFICA - 1)
+        end
+    end
+    yy = yy + ALTO_GRAFICA + 6
+    gfx_pen(c_texto)
+    gfx_text_at(6, yy + font_baseline(), "Chip libre")
+    t = kb(mem_chip_free())
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+    yy = yy + linea
+    gfx_text_at(6, yy + font_baseline(), "Fast libre")
+    t = kb(mem_fast_free())
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+    yy = yy + linea + 6
+    # las tareas que más toman: nombre, % y una barra detrás
+    n = n_tareas
+    if n > TAREAS
+        n = TAREAS
+    end
+    for i in (0..n - 1)
+        carga = cpu_task_load(i)
+        largo = (w - 12) * carga / 1000
+        if largo > 0
+            gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110)
+        end
+        gfx_pen(c_suave)
+        nombre = cpu_task_name(i)
+        if nombre.length > 24
+            nombre = nombre[0:24]
+        end
+        gfx_text_at(8, yy + font_baseline(), nombre)
+        t = por_ciento(carga)
+        gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        yy = yy + linea
+    end
+end
+
+Main
+    c = 0
+    if cpu_start()
+        linea = font_height() + 1
+        c = desktop_canvas(-4, 4, ANCHO, alto_panel())
+        if c == 0
+            Print "Trasfondo: no puedo pintar en el fondo del Workbench"
+        end
+    else
+        Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
+    end
+    if c != 0
+        desktop_canvas_on_draw(c, pintar)
+        n_tareas = cpu_sample()
+        while true
+            time_delay(50)
+            n_tareas = cpu_sample()
+            historia.push(cpu_total())
+            if historia.length > HISTORIA
+                historia.remove(0)
+            end
+            desktop_canvas_update(c)
+        end
+    end
+end
