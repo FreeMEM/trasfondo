@@ -1,7 +1,7 @@
 # Trasfondo: un "top" gráfico en el fondo del Workbench, detrás de los iconos y sin clics.
 #
 # Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
-# y las tareas que más CPU toman. Se actualiza cada segundo.
+# y las tareas que más CPU toman. Se actualiza cada segundo. Se para lanzándolo otra vez, o con Ctrl-C.
 
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
@@ -97,27 +97,32 @@ func pintar(x, y, w, h)
 end
 
 Main
-    c = 0
-    if cpu_start()
-        linea = font_height() + 1
-        c = desktop_canvas(-4, 4, ANCHO, alto_panel())
-        if c == 0
-            Print "Trasfondo: no puedo pintar en el fondo del Workbench"
-        end
+    # lanzarlo otra vez lo para (y Ctrl-C, o Break desde la Shell)
+    if not single_instance("Trasfondo")
+        Print "Trasfondo ya estaba en marcha: se para"
     else
-        Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
-    end
-    if c != 0
-        desktop_canvas_on_draw(c, pintar)
-        n_tareas = cpu_sample()
-        while true
-            time_delay(50)
-            n_tareas = cpu_sample()
-            historia.push(cpu_total())
-            if historia.length > HISTORIA
-                historia.remove(0)
+        c = 0
+        if cpu_start()
+            linea = font_height() + 1
+            c = desktop_canvas(-4, 4, ANCHO, alto_panel())
+            if c == 0
+                Print "Trasfondo: no puedo pintar en el fondo del Workbench"
             end
-            desktop_canvas_update(c)
+        else
+            Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
+        end
+        if c != 0
+            desktop_canvas_on_draw(c, pintar)
+            n_tareas = cpu_sample()
+            while not break_check()
+                time_delay(50)
+                n_tareas = cpu_sample()
+                historia.push(cpu_total())
+                if historia.length > HISTORIA
+                    historia.remove(0)
+                end
+                desktop_canvas_update(c)
+            end
         end
     end
 end
