@@ -1,0 +1,407 @@
+# Prueba de la fase 1: pintar en el fondo del Workbench, detrás de sus iconos.
+#
+# Pone el Workbench en modo backdrop y cambia el gancho de relleno de la capa de su ventana de fondo
+# por uno propio (el anterior + un panel). Actualiza el panel cada segundo de dos maneras y mide cada una:
+#   ventana: abrir y cerrar una ventana de fondo sin relleno encima. Intuition repinta la zona con el
+#            gancho (los iconos se borran) y el Workbench vuelve a pintarlos: parpadean.
+#   máscara: con la capa bloqueada, leer la pantalla, marcar como icono lo que no es el panel de antes
+#            y copiar el panel nuevo solo fuera de esa marca. Los iconos no se tocan.
+# Al terminar deja el gancho de antes.
+
+@header "#include <graphics/layers.h>"
+@header "#include <graphics/gfxbase.h>"
+@header "#include <utility/hooks.h>"
+@header "#include <proto/graphics.h>"
+@header "#include <proto/layers.h>"
+@header "#include <proto/utility.h>"
+@header "#include <devices/timer.h>"
+@header "#include <proto/timer.h>"
+
+@c
+"""
+struct Library *LayersBase = NULL;
+struct Library *UtilityBase = NULL;
+struct Device *TimerBase = NULL;
+static struct timerequest _tf_treq;
+static ULONG _tf_efreq;
+
+static ULONG _tf_us(void)                /* microsegundos (EClock), vale para restar */
+{
+    struct EClockVal e;
+    ReadEClock(&e);
+    return (ULONG)(((unsigned long long)e.ev_hi << 32 | e.ev_lo) * 1000000ULL / _tf_efreq);
+}
+
+/* lo que layers.library pasa al gancho de relleno (autodoc de InstallLayerHook) */
+struct _tf_fillmsg {
+    struct Layer *layer;
+    struct Rectangle bounds;     /* en el mapa de bits del RastPort */
+    LONG offx, offy;             /* la esquina de bounds en coordenadas de la capa */
+};
+
+static struct Screen *_tf_scr;
+static struct Window *_tf_wb;
+static struct Hook _tf_hook;
+static struct Hook *_tf_viejo;
+static struct BitMap *_tf_bm[2], *_tf_tmp, *_tf_mask;
+static volatile ULONG _tf_t_gancho;     /* cuándo pintó el gancho la zona del panel por última vez */
+static volatile LONG _tf_frente = -1;   /* el mapa de bits que copia el gancho, -1 ninguno */
+static LONG _tf_x, _tf_y, _tf_w, _tf_h; /* el panel, en coordenadas de la capa */
+static volatile LONG _tf_llamadas;
+
+static void _tf_relleno_viejo(struct RastPort *rp, struct _tf_fillmsg *m)
+{
+    if (_tf_viejo == LAYERS_NOBACKFILL) return;
+    if (_tf_viejo == LAYERS_BACKFILL) {
+        struct RastPort r = *rp;
+        r.Layer = NULL;
+        SetAPen(&r, 0);
+        SetDrMd(&r, JAM1);
+        RectFill(&r, m->bounds.MinX, m->bounds.MinY, m->bounds.MaxX, m->bounds.MaxY);
+        return;
+    }
+    CallHookPkt(_tf_viejo, rp, m);
+}
+
+static ULONG _tf_gancho(struct Hook *h __asm("a0"), struct RastPort *rp __asm("a2"),
+                        struct _tf_fillmsg *m __asm("a1"))
+{
+    LONG lx0, ly0, lx1, ly1, ix0, iy0, ix1, iy1, f;
+    _tf_relleno_viejo(rp, m);
+    _tf_llamadas++;
+    f = _tf_frente;
+    if (f < 0) return 0;
+    lx0 = m->offx; ly0 = m->offy;
+    lx1 = lx0 + (m->bounds.MaxX - m->bounds.MinX);
+    ly1 = ly0 + (m->bounds.MaxY - m->bounds.MinY);
+    ix0 = lx0 > _tf_x ? lx0 : _tf_x;
+    iy0 = ly0 > _tf_y ? ly0 : _tf_y;
+    ix1 = lx1 < _tf_x + _tf_w - 1 ? lx1 : _tf_x + _tf_w - 1;
+    iy1 = ly1 < _tf_y + _tf_h - 1 ? ly1 : _tf_y + _tf_h - 1;
+    if (ix0 > ix1 || iy0 > iy1) return 0;
+    _tf_t_gancho = _tf_us();
+    BltBitMap(_tf_bm[f], ix0 - _tf_x, iy0 - _tf_y, rp->BitMap,
+              m->bounds.MinX + (ix0 - lx0), m->bounds.MinY + (iy0 - ly0),
+              ix1 - ix0 + 1, iy1 - iy0 + 1, 0xC0, 0xFF, NULL);
+    return 0;
+}
+
+static struct Window *_tf_buscar_fondo(void)
+{
+    struct Window *w;
+    ULONG il = LockIBase(0);
+    for (w = _tf_scr->FirstWindow; w; w = w->NextWindow)
+        if ((w->Flags & WFLG_WBENCHWINDOW) && (w->Flags & WFLG_BACKDROP)) break;
+    UnlockIBase(il);
+    return w;
+}
+
+static struct Window *_tf_buscar_raiz(void)
+{
+    struct Window *w;
+    ULONG il = LockIBase(0);
+    for (w = _tf_scr->FirstWindow; w; w = w->NextWindow)
+        if ((w->Flags & WFLG_WBENCHWINDOW) && w->MenuStrip) break;
+    UnlockIBase(il);
+    return w;
+}
+
+/* elige Workbench > Backdrop en el menú del Workbench mandándole un MENUPICK */
+static LONG _tf_pedir_backdrop(struct Window *w)
+{
+    struct MenuItem *it;
+    struct MsgPort *pt;
+    struct IntuiMessage im;
+    LONG n = 0;
+    for (it = w->MenuStrip->FirstItem; it; it = it->NextItem, n++) {
+        if ((it->Flags & ITEMTEXT) && it->ItemFill) {
+            STRPTR t = ((struct IntuiText *)it->ItemFill)->IText;
+            if (t && t[0] == 'B' && t[1] == 'a' && t[2] == 'c' && t[3] == 'k') break;
+        }
+    }
+    if (!it) return -1;
+    pt = CreateMsgPort();
+    if (!pt) return -2;
+    memset(&im, 0, sizeof im);
+    im.ExecMessage.mn_ReplyPort = pt;
+    im.ExecMessage.mn_Length = sizeof im;
+    im.Class = IDCMP_MENUPICK;
+    im.Code = FULLMENUNUM(0, n, NOSUB);
+    im.IDCMPWindow = w;
+    PutMsg(w->UserPort, (struct Message *)&im);
+    WaitPort(pt);
+    GetMsg(pt);
+    DeleteMsgPort(pt);
+    return n;
+}
+
+/* píxeles de iconos dentro del panel: los que en pantalla no son los del panel */
+static LONG _tf_px[64], _tf_py[64], _tf_pv[64], _tf_np;
+
+static LONG _tf_iconos_fuera(void)
+{
+    LONG i, n = 0, ox = _tf_wb->LeftEdge + _tf_x, oy = _tf_wb->TopEdge + _tf_y;
+    for (i = 0; i < _tf_np; i++)
+        if (ReadPixel(&_tf_scr->RastPort, ox + _tf_px[i], oy + _tf_py[i]) != _tf_pv[i]) n++;
+    return n;
+}
+
+static LONG _tf_muestrear(void)
+{
+    struct RastPort r;
+    LONG x, y, total = 0, k = 0, paso, ox = _tf_wb->LeftEdge + _tf_x, oy = _tf_wb->TopEdge + _tf_y;
+    if (_tf_frente < 0) return 0;
+    InitRastPort(&r);
+    r.BitMap = _tf_bm[_tf_frente];
+    for (y = 0; y < _tf_h; y++)
+        for (x = 0; x < _tf_w; x++)
+            if (ReadPixel(&_tf_scr->RastPort, ox + x, oy + y) != ReadPixel(&r, x, y)) total++;
+    paso = total / 64 + 1;
+    _tf_np = 0;
+    for (y = 0; y < _tf_h && _tf_np < 64; y++)
+        for (x = 0; x < _tf_w && _tf_np < 64; x++) {
+            LONG v = ReadPixel(&_tf_scr->RastPort, ox + x, oy + y);
+            if (v != ReadPixel(&r, x, y) && k++ % paso == 0) {
+                _tf_px[_tf_np] = x; _tf_py[_tf_np] = y; _tf_pv[_tf_np] = v; _tf_np++;
+            }
+        }
+    return total;
+}
+
+/* píxeles del panel que en pantalla no son los del panel de delante (los iconos y lo que falle) */
+static LONG _tf_distintos(void)
+{
+    struct RastPort r;
+    LONG x, y, n = 0, ox = _tf_wb->LeftEdge + _tf_x, oy = _tf_wb->TopEdge + _tf_y;
+    InitRastPort(&r);
+    r.BitMap = _tf_bm[_tf_frente];
+    for (y = 0; y < _tf_h; y++)
+        for (x = 0; x < _tf_w; x++)
+            if (ReadPixel(&_tf_scr->RastPort, ox + x, oy + y) != ReadPixel(&r, x, y)) n++;
+    return n;
+}
+
+/* tras cerrar la ventana: cuántos píxeles de icono faltan al momento y cuántos cuadros tardan en volver */
+static LONG _tf_falta0, _tf_cuadros;
+
+static void _tf_repintar(void)
+{
+    struct Window *v = OpenWindowTags(NULL,
+        WA_CustomScreen, (ULONG)_tf_scr,
+        WA_Left, _tf_wb->LeftEdge + _tf_x, WA_Top, _tf_wb->TopEdge + _tf_y,
+        WA_Width, _tf_w, WA_Height, _tf_h,
+        WA_Borderless, TRUE, WA_Backdrop, TRUE, WA_SimpleRefresh, TRUE,
+        WA_Activate, FALSE, WA_RMBTrap, TRUE, WA_IDCMP, 0,
+        WA_BackFill, (ULONG)LAYERS_NOBACKFILL, TAG_DONE);
+    if (v) CloseWindow(v);
+    _tf_falta0 = _tf_iconos_fuera();
+    for (_tf_cuadros = 0; _tf_cuadros < 100 && _tf_iconos_fuera(); _tf_cuadros++) WaitTOF();
+}
+
+/* un plano de un mapa de bits como mapa de bits de un plano */
+static void _tf_plano(struct BitMap *uno, struct BitMap *bm, LONG p)
+{
+    InitBitMap(uno, 1, _tf_w, _tf_h);
+    uno->BytesPerRow = bm->BytesPerRow;
+    uno->Planes[0] = bm->Planes[p];
+}
+
+/* pasa el panel de atrás a la pantalla sin tocar los iconos que haya encima */
+static void _tf_mascara(LONG atras)
+{
+    struct RastPort r = *_tf_wb->RPort, rt;
+    struct BitMap uno, m1;
+    LONG p, prof = _tf_tmp->Depth;
+    InitRastPort(&rt);
+    rt.BitMap = _tf_tmp;
+    _tf_plano(&m1, _tf_mask, 0);
+    LockLayer(0, _tf_wb->WLayer);
+    /* tmp = lo que hay en pantalla (lo tapado por otras ventanas se queda como el panel de antes) */
+    BltBitMap(_tf_bm[_tf_frente], 0, 0, _tf_tmp, 0, 0, _tf_w, _tf_h, 0xC0, 0xFF, NULL);
+    ClipBlit(&r, _tf_x, _tf_y, &rt, 0, 0, _tf_w, _tf_h, 0xC0);
+    /* tmp = pantalla XOR panel de antes; máscara = OR de sus planos = dónde hay icono */
+    BltBitMap(_tf_bm[_tf_frente], 0, 0, _tf_tmp, 0, 0, _tf_w, _tf_h, 0x60, 0xFF, NULL);
+    for (p = 0; p < prof; p++) {
+        _tf_plano(&uno, _tf_tmp, p);
+        BltBitMap(&uno, 0, 0, &m1, 0, 0, _tf_w, _tf_h, p ? 0xE0 : 0xC0, 0x01, NULL);
+    }
+    BltBitMap(&m1, 0, 0, &m1, 0, 0, _tf_w, _tf_h, 0x30, 0x01, NULL);   /* al revés: dónde pintar */
+    WaitBlit();
+    BltMaskBitMapRastPort(_tf_bm[atras], 0, 0, &r, _tf_x, _tf_y, _tf_w, _tf_h, 0xE0, _tf_mask->Planes[0]);
+    _tf_frente = atras;
+    UnlockLayer(_tf_wb->WLayer);
+}
+"""
+end
+
+@native func tf_abrir() -> Int
+"""
+    LONG i;
+    LayersBase = OpenLibrary((CONST_STRPTR)"layers.library", 39);
+    UtilityBase = OpenLibrary((CONST_STRPTR)"utility.library", 39);
+    if (!LayersBase || !UtilityBase) return -1;
+    if (OpenDevice((CONST_STRPTR)TIMERNAME, UNIT_ECLOCK, (struct IORequest *)&_tf_treq, 0)) return -1;
+    TimerBase = _tf_treq.tr_node.io_Device;
+    { struct EClockVal e; _tf_efreq = ReadEClock(&e); }
+    for (i = 0; i < 100 && !_tf_scr; i++) {
+        _tf_scr = LockPubScreen((CONST_STRPTR)"Workbench");
+        if (!_tf_scr) Delay(5);
+    }
+    if (!_tf_scr) return -2;
+    for (i = 0; i < 200; i++) {          /* hasta 4 s a que el Workbench abra su ventana */
+        if (_tf_buscar_fondo() || _tf_buscar_raiz()) break;
+        Delay(1);
+    }
+    _tf_wb = _tf_buscar_fondo();
+    if (!_tf_wb) {
+        struct Window *r = _tf_buscar_raiz();
+        if (!r) return -3;
+        Printf((CONST_STRPTR)"sin backdrop: elijo el elemento %ld del menu\n", _tf_pedir_backdrop(r));
+        for (i = 0; i < 200 && !_tf_wb; i++) {
+            Delay(1);
+            _tf_wb = _tf_buscar_fondo();
+        }
+    }
+    if (!_tf_wb) return -4;
+    Printf((CONST_STRPTR)"ventana de fondo %ldx%ld en %ld,%ld, flags %08lx (simple %ld), profundidad %ld\n",
+           (LONG)_tf_wb->Width, (LONG)_tf_wb->Height, (LONG)_tf_wb->LeftEdge, (LONG)_tf_wb->TopEdge,
+           _tf_wb->Flags, (LONG)((_tf_wb->Flags & WFLG_REFRESHBITS) == WFLG_SIMPLE_REFRESH),
+           (LONG)GetBitMapAttr(_tf_scr->RastPort.BitMap, BMA_DEPTH));
+    /* el panel: arriba a la izquierda, encima de donde el Workbench pone los iconos de los discos */
+    _tf_x = 4; _tf_y = 4; _tf_w = 300; _tf_h = 90;
+    if (_tf_w > _tf_wb->Width - 8) _tf_w = _tf_wb->Width - 8;
+    for (i = 0; i < 2; i++) {
+        _tf_bm[i] = AllocBitMap(_tf_w, _tf_h, GetBitMapAttr(_tf_scr->RastPort.BitMap, BMA_DEPTH),
+                                BMF_CLEAR, NULL);
+        if (!_tf_bm[i]) return -5;
+    }
+    _tf_tmp = AllocBitMap(_tf_w, _tf_h, _tf_bm[0]->Depth, BMF_CLEAR, NULL);
+    _tf_mask = AllocBitMap(_tf_w, _tf_h, 1, BMF_CLEAR, NULL);
+    if (!_tf_tmp || !_tf_mask) return -5;
+    if (_tf_mask->BytesPerRow != _tf_bm[0]->BytesPerRow) return -6;   /* la máscara va fila a fila con el panel */
+    return 0;
+"""
+end
+
+# dibuja el panel en el mapa de bits de atrás (el fondo de antes y encima barras y texto) y lo pasa delante
+@native func tf_dibujar(paso: Int) -> Int
+"""
+    struct RastPort r;
+    struct _tf_fillmsg m;
+    char t[64];
+    LONG b = _tf_frente == 0 ? 1 : 0, chip, fast, tchip, tfast, ancho, len;
+    InitRastPort(&r);
+    r.BitMap = _tf_bm[b];
+    m.layer = _tf_wb->WLayer;
+    m.bounds.MinX = 0; m.bounds.MinY = 0; m.bounds.MaxX = _tf_w - 1; m.bounds.MaxY = _tf_h - 1;
+    m.offx = _tf_x; m.offy = _tf_y;
+    _tf_relleno_viejo(&r, &m);           /* el fondo de pantalla que queda debajo del panel */
+    SetFont(&r, _tf_scr->RastPort.Font);
+    SetDrMd(&r, JAM1);
+    chip = AvailMem(MEMF_CHIP); tchip = AvailMem(MEMF_CHIP | MEMF_TOTAL);
+    fast = AvailMem(MEMF_FAST); tfast = AvailMem(MEMF_FAST | MEMF_TOTAL);
+    SetAPen(&r, 2);
+    len = sprintf(t, "Trasfondo  paso %ld  ganchos %ld", paso, (LONG)_tf_llamadas);
+    Move(&r, 6, 4 + r.TxBaseline); Text(&r, (CONST_STRPTR)t, len);
+    SetAPen(&r, 1);
+    len = sprintf(t, "Chip libre %ld KB de %ld", chip >> 10, tchip >> 10);
+    Move(&r, 6, 20 + r.TxBaseline); Text(&r, (CONST_STRPTR)t, len);
+    len = sprintf(t, "Fast libre %ld KB de %ld", fast >> 10, tfast >> 10);
+    Move(&r, 6, 48 + r.TxBaseline); Text(&r, (CONST_STRPTR)t, len);
+    ancho = _tf_w - 12;
+    SetAPen(&r, 1); RectFill(&r, 6, 32, 6 + ancho, 40);
+    SetAPen(&r, 3); RectFill(&r, 6, 32, 6 + (tchip ? (ancho * ((tchip - chip) >> 10)) / (tchip >> 10) : 0), 40);
+    SetAPen(&r, 1); RectFill(&r, 6, 60, 6 + ancho, 68);
+    SetAPen(&r, 3); RectFill(&r, 6, 60, 6 + (tfast ? (ancho * ((tfast - fast) >> 10)) / (tfast >> 10) : 0), 68);
+    SetAPen(&r, 2); RectFill(&r, 6 + (paso * 7) % ancho, 76, 6 + (paso * 7) % ancho + 20, 84);
+    return b;
+"""
+end
+
+@native func tf_poner_gancho() -> Int
+"""
+    _tf_hook.h_Entry = (HOOKFUNC)_tf_gancho;
+    _tf_hook.h_SubEntry = NULL;
+    _tf_hook.h_Data = NULL;
+    _tf_viejo = InstallLayerHook(_tf_wb->WLayer, &_tf_hook);
+    Printf((CONST_STRPTR)"gancho anterior %08lx\n", (ULONG)_tf_viejo);
+    return 0;
+"""
+end
+
+# modo 0: ventana; modo 1: máscara. Devuelve los microsegundos que tardó.
+@native func tf_pasar(atras: Int, modo: Int) -> Int
+"""
+    ULONG t0 = _tf_us(), t1;
+    struct Window *w = _tf_buscar_fondo();
+    if (w != _tf_wb) {
+        Printf((CONST_STRPTR)"  la ventana de fondo ha cambiado (%08lx -> %08lx)\n", (ULONG)_tf_wb, (ULONG)w);
+        return -1;
+    }
+    if (_tf_wb->WLayer->BackFill != &_tf_hook)
+        Printf((CONST_STRPTR)"  el gancho de la capa ya no es el nuestro: %08lx\n", (ULONG)_tf_wb->WLayer->BackFill);
+    if (modo == 0 || _tf_frente < 0) {
+        _tf_frente = atras;
+        _tf_repintar();
+        t1 = _tf_us();
+        Printf((CONST_STRPTR)"  ventana: %ld us; del gancho al final %ld us; iconos que faltaban al volver %ld de %ld\n",
+               t1 - t0, t1 - _tf_t_gancho, _tf_falta0, _tf_np);
+    } else {
+        _tf_mascara(atras);
+        t1 = _tf_us();
+        Printf((CONST_STRPTR)"  mascara: %ld us; iconos tocados %ld de %ld; pixeles distintos del panel %ld\n",
+               t1 - t0, _tf_iconos_fuera(), _tf_np, _tf_distintos());
+    }
+    return (LONG)(t1 - t0);
+"""
+end
+
+@native func tf_muestrear() -> Int
+"""
+    LONG t = _tf_muestrear();
+    Printf((CONST_STRPTR)"pixeles de iconos en el panel: %ld (vigilo %ld)\n", t, _tf_np);
+    return t;
+"""
+end
+
+@native func tf_cerrar() -> Int
+"""
+    LONG i;
+    if (_tf_tmp) { WaitBlit(); FreeBitMap(_tf_tmp); }
+    if (_tf_mask) { WaitBlit(); FreeBitMap(_tf_mask); }
+    if (_tf_wb && _tf_hook.h_Entry) {
+        struct Hook *h = InstallLayerHook(_tf_wb->WLayer, _tf_viejo);
+        if (h != &_tf_hook) Printf((CONST_STRPTR)"aviso: el gancho ya no era el nuestro (%08lx)\n", (ULONG)h);
+        _tf_frente = -1;
+        _tf_repintar();
+    }
+    for (i = 0; i < 2; i++) if (_tf_bm[i]) { WaitBlit(); FreeBitMap(_tf_bm[i]); _tf_bm[i] = NULL; }
+    if (_tf_scr) UnlockPubScreen(NULL, _tf_scr);
+    if (TimerBase) CloseDevice((struct IORequest *)&_tf_treq);
+    if (UtilityBase) CloseLibrary(UtilityBase);
+    if (LayersBase) CloseLibrary(LayersBase);
+    return (LONG)_tf_llamadas;
+"""
+end
+
+Main
+    r = tf_abrir()
+    Print "abrir: #{r}"
+    if r == 0
+        tf_poner_gancho()
+        tf_pasar(tf_dibujar(0), 0)
+        time_delay(50)
+        tf_muestrear()
+        for paso in (1..12)
+            time_delay(50)
+            modo = 0
+            if paso > 6
+                modo = 1
+            end
+            tf_pasar(tf_dibujar(paso), modo)
+        end
+    end
+    n = tf_cerrar()
+    Print "llamadas al gancho: #{n}"
+    time_delay(400)
+end
