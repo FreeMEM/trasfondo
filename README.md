@@ -11,7 +11,11 @@ Arriba a la derecha del escritorio enseña:
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
 
-![Trasfondo en el Workbench de AmigaOS 3.2](docs/captura.png)
+![Trasfondo en el Workbench de AmigaOS 3.2, pantalla AGA de 640x256](docs/captura-aga.png)
+
+En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de la pantalla):
+
+![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
 
 ## Escrito en Dash
 
@@ -42,6 +46,7 @@ Dónde se ha probado:
 | Sistema | Máquina | Pantalla |
 |---|---|---|
 | AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68020 | AGA, 640x256, 4 colores |
+| AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32 bits |
 | Coffin R65 | Amiberry, 68040 | RTG, 1024x768, fondo con imagen |
 
 Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workbench sin ventana de fondo
