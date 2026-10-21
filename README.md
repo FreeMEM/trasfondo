@@ -11,6 +11,10 @@ Arriba a la derecha del escritorio enseña:
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
 
+![Trasfondo en Coffin R65, sobre un fondo de pantalla con imagen](docs/captura-coffin.png)
+
+En AmigaOS 3.2.3, pantalla AGA de 640x256:
+
 ![Trasfondo en el Workbench de AmigaOS 3.2, pantalla AGA de 640x256](docs/captura-aga.png)
 
 En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de la pantalla):
