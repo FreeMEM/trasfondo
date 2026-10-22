@@ -32,7 +32,8 @@ Falta:
    (posición y colores por tooltypes).
 2. **Broker de commodity.** Darse de alta en `commodities.library` con nombre, título y descripción (lo que
    enseña Exchange), con la prioridad de `CX_PRIORITY`. Que salga una sola vez en Exchange aunque se lance
-   dos veces (de eso ya se encarga `single_instance`, que va antes).
+   dos veces (de eso ya se encarga `single_instance`, que va antes). Debe declarar que admite mostrar y
+   ocultar (`COF_SHOW_HIDE`); si no, Exchange deja esos dos botones en gris.
 3. **Tecla rápida.** Poner una tecla rápida a partir de su descripción (`"ctrl alt t"`). Si la descripción
    no vale, decirlo (para avisar en la salida) en vez de fallar.
 4. **Recibir las órdenes.** Una función que diga qué orden llegó: ninguna, ocultar, mostrar, desactivar,
