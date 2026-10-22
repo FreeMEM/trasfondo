@@ -8,6 +8,10 @@
 # Es una commodity: desde Exchange se oculta y se muestra (sigue midiendo), se desactiva (deja de medir)
 # y se elimina. Tooltypes: CX_PRIORITY, CX_POPKEY (tecla para ocultar y mostrar), CX_POPUP=NO (arranca oculto).
 
+# desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
+# con WAIT, se quedaría abierta)
+@workbench_output "NIL:"
+
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
 const TAREAS = 6             # tareas que se enseñan

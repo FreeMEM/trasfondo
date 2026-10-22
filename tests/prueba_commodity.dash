@@ -191,16 +191,24 @@ Main
     esperar(60)
     estado("tecla del icono")
 
-    lanzar("DH0:trasfondo")
+    lanzar("DH0:trasfondo >NIL:")          # sin salida, abriría una consola encima del panel
     esperar(100)
     estado("lanzado otra vez")
     Print "en Exchange: #{orden(CXCMD_APPEAR)}"
     Print "memoria libre al final: #{(libre() - antes) / 1024} KB más"
 
-    # pendiente de Dash: tras pararlo lanzando otra copia desde la misma consola, la siguiente no pinta
+    # y vuelve a arrancar bien después de pararlo así
     lanzar("Run >NIL: DH0:trasfondo CX_POPUP=YES")
     esperar(200)
     estado("otra copia después")
+    lanzar_icono("DH0:trasfondo")          # doble clic: la para (sin ventana de consola)
+    esperar(150)
+    estado("doble clic para")
+    lanzar_icono("DH0:trasfondo")
+    esperar(200)
+    tecla()                                # el icono dice CX_POPUP=NO
+    esperar(60)
+    estado("doble clic arranca")
     orden(CXCMD_KILL)
     esperar(60)
 end

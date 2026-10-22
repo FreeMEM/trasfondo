@@ -113,9 +113,6 @@ estimación: es el tiempo real que cada tarea pasa en la CPU.
 - La posición, los colores y lo que se enseña aún no se pueden cambiar (vendrán por tooltypes).
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.
-- Después de pararlo lanzándolo otra vez, la siguiente vez que se arranca no enseña el panel. Pasa
-  también en la 0.1. Es un fallo de Dash, ya avisado. Mientras, páralo desde Exchange (Eliminar) o con
-  Ctrl-C: así sí vuelve a salir.
 
 ## Compilar
 
