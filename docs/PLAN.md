@@ -71,7 +71,7 @@ el menú no llegó a usarse), otras ventanas encima del panel, cambio de prefere
 3. Paneles: CPU, memoria, tareas, volúmenes. Colores y posición por tooltypes.
 4. Fondos de pantalla de WBPattern, cambios de preferencias (el Workbench puede volver a poner su
    gancho), salir limpio.
-5. Commodity, paquete para Aminet.
+5. Commodity (ver [COMMODITY.md](COMMODITY.md)), paquete para Aminet.
 
 Trasfondo se escribe entero en Dash, sin `@native` ni `@c`. Lo que falta se añade a Dash como builtins al
 estilo de `mui_canvas` (decidido el 2026-10-20): un lienzo de escritorio (`desktop_canvas`,
