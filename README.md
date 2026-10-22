@@ -120,6 +120,9 @@ estimación: es el tiempo real que cada tarea pasa en la CPU.
 
 ## Límites conocidos
 
+- En pantallas de 256 colores o menos (AGA, ECS, RTG de 8 bits) el panel lleva un fondo oscuro sólido: el
+  velo semitransparente solo se puede imitar con una trama de puntos, que sobre un fondo claro no se lee.
+  La transparencia queda para RTG de 15 bits o más.
 - La posición, los colores y lo que se enseña aún no se pueden cambiar (vendrán por tooltypes).
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.

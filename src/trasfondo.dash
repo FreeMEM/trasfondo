@@ -34,6 +34,8 @@ var c_texto: Int = 1
 var c_suave: Int = 1
 var c_cpu: Int = 3
 var colores: Bool = false
+var c_fondo: Int = 1
+var paleta: Bool = false      # pantalla de 256 colores o menos: el velo sería una trama de puntos
 var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
 var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
 var activo: Bool = true      # midiendo la CPU
@@ -235,9 +237,16 @@ func pintar(x, y, w, h)
         c_texto = color_pen(240, 240, 240)
         c_suave = color_pen(200, 210, 220)
         c_cpu = color_pen(80, 200, 255)
+        c_fondo = color_pen(16, 24, 32)
+        paleta = rtg_get_depth() <= 8   # la del panel, que es la de la pantalla
         colores = true
     end
-    gfx_blend_rect(0, 0, w - 1, h - 1, 0x101820, 150)       # velo oscuro: el fondo se ve a través
+    if paleta                            # sin color real, el velo sería un moteado ilegible sobre un fondo claro
+        gfx_pen(c_fondo)
+        gfx_rect(0, 0, w - 1, h - 1)
+    else
+        gfx_blend_rect(0, 0, w - 1, h - 1, 0x101820, 150)   # velo oscuro: el fondo se ve a través
+    end
     font_style(2)
     gfx_pen(c_texto)
     yy = 6
