@@ -2,11 +2,21 @@
 #
 # Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
 # y las tareas que más CPU toman. Se actualiza cada segundo. Se para lanzándolo otra vez, o con Ctrl-C.
+#
+# Es una commodity: desde Exchange se oculta y se muestra (sigue midiendo), se desactiva (deja de medir)
+# y se elimina. Tooltypes: CX_PRIORITY, CX_POPKEY (tecla para ocultar y mostrar), CX_POPUP=NO (arranca oculto).
 
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
 const TAREAS = 6             # tareas que se enseñan
 const ALTO_GRAFICA = 32
+
+const CX_OCULTAR = 1         # las órdenes de cx_wait
+const CX_MOSTRAR = 2
+const CX_DESACTIVAR = 3
+const CX_ACTIVAR = 4
+const CX_ELIMINAR = 5
+const CX_TECLA = 6
 
 var historia: [Int] = []     # CPU total de cada segundo, en tantos por mil (la más nueva al final)
 var n_tareas: Int = 0
@@ -15,6 +25,9 @@ var c_texto: Int = 1
 var c_suave: Int = 1
 var c_cpu: Int = 3
 var colores: Bool = false
+var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
+var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
+var activo: Bool = true      # midiendo la CPU
 
 func por_ciento(milesimas: Int) -> String
     return "#{milesimas / 10},#{milesimas % 10} %"
@@ -96,32 +109,90 @@ func pintar(x, y, w, h)
     end
 end
 
+func mostrar()
+    if lienzo == 0
+        lienzo = desktop_canvas(-4, 4, ANCHO, alto_panel())
+        if lienzo == 0
+            Print "Trasfondo: no puedo pintar en el fondo del Workbench"
+        else
+            desktop_canvas_on_draw(lienzo, pintar)
+        end
+    end
+end
+
+func ocultar()
+    if lienzo != 0
+        desktop_canvas_free(lienzo)
+        lienzo = 0
+    end
+end
+
+# una orden de Exchange (o la tecla rápida)
+func obedecer(orden: Int)
+    if orden == CX_OCULTAR
+        visible = false
+        ocultar()
+    elif orden == CX_MOSTRAR
+        visible = true
+    elif orden == CX_TECLA
+        visible = not visible
+    elif orden == CX_DESACTIVAR and activo
+        ocultar()
+        cpu_stop()
+        historia = []
+        activo = false
+    elif orden == CX_ACTIVAR and not activo
+        activo = cpu_start()
+        if activo
+            n_tareas = cpu_sample()
+        end
+    end
+    if not visible
+        ocultar()
+    elif activo
+        mostrar()
+        if lienzo != 0
+            desktop_canvas_update(lienzo)        # al momento, sin esperar al segundo siguiente
+        end
+    end
+end
+
 Main
-    # lanzarlo otra vez lo para (y Ctrl-C, o Break desde la Shell)
+    # lanzarlo otra vez lo para (y Ctrl-C, o Break desde la Shell, o Eliminar en Exchange)
     if not single_instance("Trasfondo")
         Print "Trasfondo ya estaba en marcha: se para"
+    elif not cpu_start()
+        Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
     else
-        c = 0
-        if cpu_start()
-            linea = font_height() + 1
-            c = desktop_canvas(-4, 4, ANCHO, alto_panel())
-            if c == 0
-                Print "Trasfondo: no puedo pintar en el fondo del Workbench"
+        linea = font_height() + 1
+        if cx_broker("Trasfondo", "Trasfondo 0.2", "Monitor de recursos en el fondo", Int(tooltype("CX_PRIORITY", "0")))
+            tecla = tooltype("CX_POPKEY", "")
+            if tecla != "" and not cx_hotkey(tecla)
+                Print "Trasfondo: la tecla rápida no vale: " + tecla
             end
-        else
-            Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
         end
-        if c != 0
-            desktop_canvas_on_draw(c, pintar)
-            n_tareas = cpu_sample()
-            while not break_check()
-                time_delay(50)
-                n_tareas = cpu_sample()
-                historia.push(cpu_total())
-                if historia.length > HISTORIA
-                    historia.remove(0)
+        visible = str_upper(tooltype("CX_POPUP", "YES")) != "NO"
+        n_tareas = cpu_sample()
+        if visible
+            mostrar()
+        end
+        if not visible or lienzo != 0
+            while true
+                orden = cx_wait(1000)
+                if orden == -1 or orden == CX_ELIMINAR
+                    break
+                elif orden > 0
+                    obedecer(orden)
+                elif activo                  # pasó el segundo
+                    n_tareas = cpu_sample()
+                    historia.push(cpu_total())
+                    if historia.length > HISTORIA
+                        historia.remove(0)
+                    end
+                    if lienzo != 0
+                        desktop_canvas_update(lienzo)
+                    end
                 end
-                desktop_canvas_update(c)
             end
         end
     end

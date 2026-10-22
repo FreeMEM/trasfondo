@@ -1,0 +1,206 @@
+# Trasfondo como commodity, de punta a punta: este programa hace de Exchange. Lanza DH0:trasfondo, le manda
+# las órdenes por su nombre (BrokerCommand de commodities.library, como Exchange), pulsa su tecla rápida por
+# input.device y mira, después de cada cosa, si el panel está en la pantalla (píxeles distintos del fondo
+# arriba a la derecha) y cuántas tareas tienen el gancho de cambio de tarea (TF_SWITCH) de la medida de CPU.
+#
+#     python3 tests/prueba_commodity.py      (copia build/trasfondo al disco del emulador y la lanza)
+
+@header "#include <devices/input.h>"
+@header "#include <libraries/commodities.h>"
+@header "#include <proto/commodities.h>"
+@header "#include <proto/wb.h>"
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, 0);
+"""
+end
+
+# como un doble clic en su icono: el programa recibe los tooltypes del icono
+@native func lanzar_icono(nombre: String) -> Bool
+"""
+    struct Library *WorkbenchBase = OpenLibrary((CONST_STRPTR)"workbench.library", 44);
+    BOOL r = FALSE;
+    if (WorkbenchBase) {
+        r = OpenWorkbenchObjectA((STRPTR)nombre, NULL);
+        CloseLibrary(WorkbenchBase);
+    }
+    return r;
+"""
+end
+
+# BrokerCommand(nombre, orden) de commodities.library (privada, LVO -198: la que usa Exchange). 0 bien, -1 no hay
+@native func orden(cmd: Int) -> Int
+"""
+    struct Library *cx = OpenLibrary((CONST_STRPTR)"commodities.library", 37);
+    LONG r = 99;
+    if (cx) {
+        register LONG d0 __asm("d0") = cmd;
+        register STRPTR a0 __asm("a0") = (STRPTR)"Trasfondo";
+        register struct Library *a6 __asm("a6") = cx;
+        __asm volatile ("jsr a6@(-198:W)" : "+r"(d0), "+r"(a0) : "r"(a6) : "d1", "a1", "cc", "memory");
+        r = d0;
+        CloseLibrary(cx);
+    }
+    return r;
+"""
+end
+
+# ctrl alt t, pulsada y soltada
+@native func tecla()
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    LONG k;
+    if (io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        for (k = 0; k < 2; k++) {
+            memset(&ie, 0, sizeof(ie));
+            ie.ie_Class = IECLASS_RAWKEY;
+            ie.ie_Code = k ? (0x14 | IECODE_UP_PREFIX) : 0x14;
+            ie.ie_Qualifier = IEQUALIFIER_CONTROL | IEQUALIFIER_LALT;
+            io->io_Command = IND_WRITEEVENT;
+            io->io_Data = &ie;
+            io->io_Length = sizeof(ie);
+            DoIO((struct IORequest *)io);
+            Delay(5);
+        }
+        CloseDevice((struct IORequest *)io);
+    }
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# píxeles distintos del color del fondo (pluma 0) en la zona del panel, uno de cada cuatro
+@native func panel() -> Int
+"""
+    struct Screen *s = LockPubScreen(NULL);
+    LONG x, y, n = 0;
+    if (!s) return -1;
+    for (y = 30; y < 110; y += 2)
+        for (x = s->Width - 250; x < s->Width - 20; x += 2)
+            if (ReadPixel(&s->RastPort, x, y) != 0) n++;
+    UnlockPubScreen(NULL, s);
+    return n;
+"""
+end
+
+# tareas con el gancho de cambio de tarea puesto (la medida de CPU)
+@native func ganchos() -> Int
+"""
+    struct Node *n;
+    LONG k = 0;
+    Forbid();
+    for (n = SysBase->TaskReady.lh_Head; n->ln_Succ; n = n->ln_Succ)
+        if (((struct Task *)n)->tc_Flags & TF_SWITCH) k++;
+    for (n = SysBase->TaskWait.lh_Head; n->ln_Succ; n = n->ln_Succ)
+        if (((struct Task *)n)->tc_Flags & TF_SWITCH) k++;
+    if (FindTask(NULL)->tc_Flags & TF_SWITCH) k++;
+    Permit();
+    return k;
+"""
+end
+
+@native func libre() -> Int
+"""
+    return AvailMem(MEMF_ANY);
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+const CXCMD_DISABLE = 15      # libraries/commodities.h
+const CXCMD_ENABLE = 17
+const CXCMD_APPEAR = 19
+const CXCMD_DISAPPEAR = 21
+const CXCMD_KILL = 23
+
+func si(b: Bool) -> String
+    if b
+        return "sí"
+    end
+    return "no"
+end
+
+func estado(que: String)
+    p = panel()
+    Print que + ": panel " + si(p > 200) + " (#{p}), ganchos " + si(ganchos() > 0)
+end
+
+Main
+    # el icono de DH0:trasfondo lleva CX_POPUP=NO y CX_POPKEY=ctrl alt t; desde el Shell mandan los argumentos
+    lanzar("Run >NIL: DH0:trasfondo CX_POPUP=YES")
+    esperar(200)
+    estado("arranca")
+
+    antes = libre()
+    bien = 0
+    for i in (1..10)
+        orden(CXCMD_DISAPPEAR)
+        esperar(25)
+        oculto = panel() < 50
+        orden(CXCMD_APPEAR)
+        esperar(60)
+        if oculto and panel() > 200
+            bien = bien + 1
+        end
+    end
+    Print "ocultar y mostrar 10 veces: #{bien} bien; memoria libre #{(libre() - antes) / 1024} KB más"
+
+    tecla()
+    esperar(25)
+    estado("tecla")
+    tecla()
+    esperar(60)
+    estado("tecla otra vez")
+
+    orden(CXCMD_DISABLE)
+    esperar(60)
+    estado("desactivar")
+    tecla()
+    esperar(60)
+    estado("tecla desactivado")
+    orden(CXCMD_ENABLE)
+    esperar(60)
+    estado("activar")
+
+    r = orden(CXCMD_KILL)
+    esperar(60)
+    estado("eliminar (#{r})")
+    Print "en Exchange: #{orden(CXCMD_APPEAR)}"
+
+    lanzar("Run >NIL: DH0:trasfondo CX_POPUP=NO CX_POPKEY=")
+    esperar(200)
+    estado("CX_POPUP=NO")
+    r = orden(CXCMD_APPEAR)
+    esperar(60)
+    estado("mostrar (#{r})")
+    orden(CXCMD_KILL)
+    esperar(60)
+
+    abierto = lanzar_icono("DH0:trasfondo")
+    Print "icono: #{abierto}"
+    esperar(200)
+    estado("desde el icono")
+    tecla()
+    esperar(60)
+    estado("tecla del icono")
+
+    lanzar("DH0:trasfondo")
+    esperar(100)
+    estado("lanzado otra vez")
+    Print "en Exchange: #{orden(CXCMD_APPEAR)}"
+    Print "memoria libre al final: #{(libre() - antes) / 1024} KB más"
+
+    # pendiente de Dash: tras pararlo lanzando otra copia desde la misma consola, la siguiente no pinta
+    lanzar("Run >NIL: DH0:trasfondo CX_POPUP=YES")
+    esperar(200)
+    estado("otra copia después")
+    orden(CXCMD_KILL)
+    esperar(60)
+end

@@ -1,5 +1,8 @@
 # Trasfondo como commodity
 
+Hecho en Trasfondo 0.2 con los builtins `tooltype`, `cx_broker`, `cx_hotkey`, `cx_command` y `cx_wait` de
+Dash (PR #16). Prueba: `tests/prueba_commodity.py`.
+
 Trasfondo 0.2 se controla desde Exchange, como cualquier commodity de AmigaOS. Sigue escrito solo en Dash:
 lo que falta se añade a Dash como builtins, igual que `desktop_canvas*` y `cpu_*`.
 
@@ -10,7 +13,7 @@ lo que falta se añade a Dash como builtins, igual que `desktop_canvas*` y `cpu_
 | Ocultar (Hide) | Quita el panel del fondo. Sigue midiendo la CPU: al mostrarlo, la historia del último minuto está completa. |
 | Mostrar (Show) | Vuelve a poner el panel. |
 | Desactivar (Disable) | Quita el panel y deja de medir la CPU (`cpu_stop`). No gasta nada mientras tanto. |
-| Activar (Enable) | Vuelve a medir (`cpu_start`) y pone el panel, con la historia vacía. |
+| Activar (Enable) | Vuelve a medir (`cpu_start`), con la historia vacía, y pone el panel si no estaba oculto. |
 | Eliminar (Kill) | Se acaba y deja el fondo como estaba. |
 | Tecla rápida | Muestra u oculta el panel. Se elige con el tooltype `CX_POPKEY` (por omisión, ninguna). |
 

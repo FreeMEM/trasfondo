@@ -66,6 +66,29 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 Para que arranque solo con el Workbench, copia `trasfondo` y `trasfondo.info` a `SYS:WBStartup` (sin
 probar todavía).
 
+### Desde Exchange
+
+Trasfondo es una commodity: sale en Exchange (`SYS:Tools/Commodities/Exchange`).
+
+| Botón | Qué hace |
+|---|---|
+| Ocultar | Quita el panel. Sigue midiendo: al mostrarlo, la historia de la CPU está completa. |
+| Mostrar | Vuelve a poner el panel. |
+| Desactivar | Quita el panel y deja de medir. No gasta nada mientras tanto. |
+| Activar | Vuelve a medir, con la historia vacía. |
+| Eliminar | Lo cierra y deja el fondo como estaba. |
+
+### Tooltypes
+
+Se cambian en el icono (Información, en el menú Iconos) o se dan como argumentos en el Shell
+(`run trasfondo CX_POPKEY="ctrl alt t"`).
+
+| Tooltype | Qué hace |
+|---|---|
+| `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
+| `CX_POPUP=NO` | Arranca oculto. |
+| `CX_PRIORITY=0` | Prioridad de la commodity. |
+
 ## Cómo funciona
 
 El Workbench rellena su fondo con una función propia (un "gancho" de la capa). Trasfondo pone la suya:
@@ -83,7 +106,9 @@ estimación: es el tiempo real que cada tarea pasa en la CPU.
 - La posición, los colores y lo que se enseña aún no se pueden cambiar (vendrán por tooltypes).
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.
-- No es una commodity todavía: no sale en Exchange.
+- Después de pararlo lanzándolo otra vez, la siguiente vez que se arranca no enseña el panel. Pasa
+  también en la 0.1. Es un fallo de Dash, ya avisado. Mientras, páralo desde Exchange (Eliminar) o con
+  Ctrl-C: así sí vuelve a salir.
 
 ## Compilar
 
@@ -98,7 +123,7 @@ El icono se genera con `tools/icono.py`, que usa el generador de iconos de dashw
 
 ## Plan
 
-Lo que viene (tooltypes, más paneles, commodity, paquete para Aminet) está en [docs/PLAN.md](docs/PLAN.md).
+Lo que viene (más paneles, posición y colores por tooltypes, paquete para Aminet) está en [docs/PLAN.md](docs/PLAN.md).
 
 ## Licencia
 
