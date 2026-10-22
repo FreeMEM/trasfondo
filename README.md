@@ -8,6 +8,8 @@ Arriba a la derecha del escritorio enseña:
 - La CPU en uso y su historia del último minuto.
 - La memoria Chip y Fast libre.
 - Las seis tareas que más CPU toman.
+- Los discos montados: cuánto está lleno cada uno y su tamaño.
+- La red: lo que entra y sale por segundo en cada interfaz, y la señal de la WiFi si la tarjeta la da.
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
 
@@ -43,7 +45,9 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 34 KB.
+- **Memoria**: el ejecutable ocupa 52 KB.
+- **Red y WiFi: Roadshow.** Con otra pila TCP/IP (AmiTCP, Miami), esa parte del panel no sale. La señal
+  de la WiFi la tiene que dar el driver de la tarjeta (`prism2.device` y otros de Neil Cafferkey la dan).
 
 Dónde se ha probado:
 
@@ -52,6 +56,9 @@ Dónde se ha probado:
 | AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68020 | AGA, 640x256, 4 colores |
 | AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32 bits |
 | Coffin R65 | Amiberry, 68040 | RTG, 1024x768, fondo con imagen |
+
+La parte de red y WiFi no se ha probado aún con Roadshow ni con una tarjeta WiFi de verdad: el emulador
+no las tiene.
 
 Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workbench sin ventana de fondo
 (backdrop).

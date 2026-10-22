@@ -1,5 +1,8 @@
 # Discos, red y WiFi
 
+Hecho en Trasfondo 0.2 con los builtins `disks_*`, `net_if*` y `wifi_*` de Dash (PR #17). Discos probado en el
+emulador; red y WiFi, sin probar con Roadshow ni con WiFi de verdad.
+
 Tres paneles nuevos para Trasfondo, pedidos por usuarios que vienen de NewMeter:
 
 - **Discos**: cada volumen montado, con su capacidad y cuánto está lleno.

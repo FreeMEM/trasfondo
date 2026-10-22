@@ -1,7 +1,9 @@
 # Trasfondo: un "top" gráfico en el fondo del Workbench, detrás de los iconos y sin clics.
 #
 # Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
-# y las tareas que más CPU toman. Se actualiza cada segundo. Se para lanzándolo otra vez, o con Ctrl-C.
+# y las tareas que más CPU toman; debajo, los discos (lo ocupado de cada volumen) y la red (lo que entra y
+# sale por segundo, con Roadshow, y la señal de la WiFi si el driver la da). Se actualiza cada segundo.
+# Se para lanzándolo otra vez, o con Ctrl-C.
 #
 # Es una commodity: desde Exchange se oculta y se muestra (sigue midiendo), se desactiva (deja de medir)
 # y se elimina. Tooltypes: CX_PRIORITY, CX_POPKEY (tecla para ocultar y mostrar), CX_POPUP=NO (arranca oculto).
@@ -10,6 +12,8 @@ const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
 const TAREAS = 6             # tareas que se enseñan
 const ALTO_GRAFICA = 32
+const DISCOS = 8             # volúmenes que se enseñan, como mucho
+const REDES = 3              # interfaces de red, como mucho
 
 const CX_OCULTAR = 1         # las órdenes de cx_wait
 const CX_MOSTRAR = 2
@@ -28,6 +32,21 @@ var colores: Bool = false
 var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
 var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
 var activo: Bool = true      # midiendo la CPU
+var alto_lienzo: Int = 0     # el alto con que se creó el panel: si cambia lo que hay que enseñar, se crea otro
+
+var d_nombre: [String] = []  # los volúmenes, sin RAM Disk
+var d_kb: [Int] = []         # tamaño en KB; -1 si no contestó
+var d_libre: [Int] = []
+
+var r_nombre: [String] = []  # los interfaces de red de Roadshow, sin lo0 (ninguno sin Roadshow)
+var r_arriba: [Int] = []     # 1 conectado
+var r_bytes_in: [Int] = []   # los contadores de la lectura anterior, para la velocidad
+var r_bytes_out: [Int] = []
+var r_entra: [Int] = []      # bytes por segundo
+var r_sale: [Int] = []
+var r_wifi: [Int] = []       # lo que dio wifi_read: 0 leída, 1 sin respuesta, 2 no es WiFi, 4 desconectada
+var r_senal: [Int] = []      # dBm
+var r_ms: Int = 0            # cuándo fue la lectura anterior
 
 func por_ciento(milesimas: Int) -> String
     return "#{milesimas / 10},#{milesimas % 10} %"
@@ -41,8 +60,134 @@ func kb(bytes: Int) -> String
     return "#{k} KB"
 end
 
+# un tamaño en KB, como lo diría Info
+func tam(k: Int) -> String
+    if k >= 1048576
+        g = k / 104858                   # décimas de GB
+        return "#{g / 10},#{g % 10} GB"
+    end
+    if k >= 10240
+        return "#{k / 1024} MB"
+    end
+    return "#{k} KB"
+end
+
+func velocidad(b: Int) -> String
+    if b >= 1048576
+        m = b / 104858
+        return "#{m / 10},#{m % 10} MB/s"
+    end
+    if b >= 1024
+        k = b * 10 / 1024
+        return "#{k / 10},#{k % 10} KB/s"
+    end
+    return "#{b} B/s"
+end
+
+func calidad(dbm: Int) -> String
+    if dbm >= -50
+        return "excelente"
+    elif dbm >= -60
+        return "buena"
+    elif dbm >= -70
+        return "regular"
+    end
+    return "mala"
+end
+
+# la línea de la WiFi de un interfaz: solo si es WiFi
+func con_wifi(i: Int) -> Bool
+    return r_wifi[i] == 0 or r_wifi[i] == 1 or r_wifi[i] == 4
+end
+
 func alto_panel() -> Int
-    return 6 + linea + 4 + ALTO_GRAFICA + 6 + linea * 2 + 6 + linea * TAREAS + 6
+    alto = 6 + linea + 4 + ALTO_GRAFICA + 6 + linea * 2 + 6 + linea * TAREAS
+    if d_nombre.length > 0
+        alto = alto + 6 + linea * d_nombre.length
+    end
+    if r_nombre.length > 0
+        alto = alto + 6 + linea
+        for i in (0..r_nombre.length - 1)
+            alto = alto + linea
+            if con_wifi(i)
+                alto = alto + linea
+            end
+        end
+    end
+    return alto + 6
+end
+
+func leer_discos()
+    d_nombre = []
+    d_kb = []
+    d_libre = []
+    n = disks_read(500)
+    for i in (0..n - 1)
+        nombre = disk_name(i)
+        if nombre != "RAM Disk" and d_nombre.length < DISCOS
+            d_nombre.push(nombre)
+            d_kb.push(disk_kb(i))
+            d_libre.push(disk_free_kb(i))
+        end
+    end
+end
+
+func leer_red()
+    ahora = time_ms()
+    decimas = (ahora - r_ms) / 100      # décimas de segundo desde la lectura anterior
+    if decimas < 1
+        decimas = 1
+    end
+    var nombre: [String] = []
+    var arriba: [Int] = []
+    var b_in: [Int] = []
+    var b_out: [Int] = []
+    var entra: [Int] = []
+    var sale: [Int] = []
+    var wifi: [Int] = []
+    var senal: [Int] = []
+    m = net_ifs_read()
+    for i in (0..m - 1)
+        n = net_if_name(i)
+        if n != "lo0" and nombre.length < REDES
+            nombre.push(n)
+            if net_if_up(i)
+                arriba.push(1)
+            else
+                arriba.push(0)
+            end
+            bi = net_if_bytes_in(i)
+            bo = net_if_bytes_out(i)
+            b_in.push(bi)
+            b_out.push(bo)
+            e = 0
+            s = 0
+            for j in (0..r_nombre.length - 1)
+                if r_nombre[j] == n
+                    e = (bi - r_bytes_in[j]) * 10 / decimas
+                    s = (bo - r_bytes_out[j]) * 10 / decimas
+                end
+            end
+            entra.push(e)
+            sale.push(s)
+            w = wifi_read(n, 300)
+            wifi.push(w)
+            if w == 0
+                senal.push(wifi_signal())
+            else
+                senal.push(0)
+            end
+        end
+    end
+    r_nombre = nombre
+    r_arriba = arriba
+    r_bytes_in = b_in
+    r_bytes_out = b_out
+    r_entra = entra
+    r_sale = sale
+    r_wifi = wifi
+    r_senal = senal
+    r_ms = ahora
 end
 
 func pintar(x, y, w, h)
@@ -107,11 +252,87 @@ func pintar(x, y, w, h)
         gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         yy = yy + linea
     end
+    # los discos: el nombre, lo ocupado (barra y %) y el tamaño
+    if d_nombre.length > 0
+        yy = yy + 6
+        for i in (0..d_nombre.length - 1)
+            if d_kb[i] > 0
+                usado = (d_kb[i] - d_libre[i]) / (d_kb[i] / 1000 + 1)      # tantos por mil, sin desbordar
+                largo = (w - 12) * usado / 1000
+                if largo > 0
+                    gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90)
+                end
+                t = "#{usado / 10} % de " + tam(d_kb[i])
+            elif d_kb[i] == 0
+                t = "vacío"
+            else
+                t = "sin respuesta"
+            end
+            gfx_pen(c_suave)
+            nombre = d_nombre[i]
+            if nombre.length > 14
+                nombre = nombre[0:14]
+            end
+            gfx_text_at(8, yy + font_baseline(), nombre)
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            yy = yy + linea
+        end
+    end
+    # la red: lo que entra y sale por segundo, y la señal de la WiFi
+    if r_nombre.length > 0
+        yy = yy + 6
+        col = font_text_width("999,9 KB/s") + 10        # ancho de la columna de lo que sale
+        gfx_pen(c_texto)
+        gfx_text_at(6, yy + font_baseline(), "Red")
+        gfx_text_at(w - 8 - col - font_text_width("entra"), yy + font_baseline(), "entra")
+        gfx_text_at(w - 8 - font_text_width("sale"), yy + font_baseline(), "sale")
+        yy = yy + linea
+        for i in (0..r_nombre.length - 1)
+            gfx_pen(c_suave)
+            gfx_text_at(8, yy + font_baseline(), r_nombre[i])
+            if r_arriba[i] == 1
+                t = velocidad(r_entra[i])
+                gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
+                t = velocidad(r_sale[i])
+                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            else
+                t = "desconectado"
+                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            end
+            yy = yy + linea
+            if con_wifi(i)
+                if r_wifi[i] == 0
+                    fuerza = (r_senal[i] + 90) * 1000 / 60              # -90 dBm nada, -30 todo
+                    if fuerza > 1000
+                        fuerza = 1000
+                    end
+                    if fuerza > 0
+                        gfx_blend_rect(6, yy, 6 + (w - 12) * fuerza / 1000, yy + linea - 2, 0x40C0FF, 90)
+                    end
+                    t = "#{r_senal[i]} dBm, " + calidad(r_senal[i])
+                elif r_wifi[i] == 1
+                    t = "sin respuesta"
+                else
+                    t = "desconectada"
+                end
+                gfx_text_at(16, yy + font_baseline(), "WiFi")
+                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+                yy = yy + linea
+            end
+        end
+    end
+end
+
+# los discos y la red, que deciden el alto del panel: solo con el panel a la vista
+func medir_paneles()
+    leer_discos()
+    leer_red()
 end
 
 func mostrar()
     if lienzo == 0
-        lienzo = desktop_canvas(-4, 4, ANCHO, alto_panel())
+        alto_lienzo = alto_panel()
+        lienzo = desktop_canvas(-4, 4, ANCHO, alto_lienzo)
         if lienzo == 0
             Print "Trasfondo: no puedo pintar en el fondo del Workbench"
         else
@@ -149,7 +370,8 @@ func obedecer(orden: Int)
     end
     if not visible
         ocultar()
-    elif activo
+    elif activo and lienzo == 0
+        medir_paneles()
         mostrar()
         if lienzo != 0
             desktop_canvas_update(lienzo)        # al momento, sin esperar al segundo siguiente
@@ -174,20 +396,39 @@ Main
         visible = str_upper(tooltype("CX_POPUP", "YES")) != "NO"
         n_tareas = cpu_sample()
         if visible
+            medir_paneles()
             mostrar()
         end
         if not visible or lienzo != 0
+            proximo = time_ms() + 1000       # cada segundo justo, aunque lleguen órdenes entre medias
             while true
-                orden = cx_wait(1000)
+                espera = proximo - time_ms()
+                if espera < 1
+                    espera = 1
+                end
+                orden = cx_wait(espera)
                 if orden == -1 or orden == CX_ELIMINAR
                     break
                 elif orden > 0
                     obedecer(orden)
-                elif activo                  # pasó el segundo
-                    n_tareas = cpu_sample()
-                    historia.push(cpu_total())
-                    if historia.length > HISTORIA
-                        historia.remove(0)
+                else                         # pasó el segundo
+                    proximo = proximo + 1000
+                    if proximo < time_ms()
+                        proximo = time_ms() + 1000
+                    end
+                    if activo
+                        n_tareas = cpu_sample()
+                        historia.push(cpu_total())
+                        if historia.length > HISTORIA
+                            historia.remove(0)
+                        end
+                    end
+                    if lienzo != 0
+                        medir_paneles()
+                        if alto_panel() != alto_lienzo      # otro disco, otra red: un panel de otro alto
+                            ocultar()
+                            mostrar()
+                        end
                     end
                     if lienzo != 0
                         desktop_canvas_update(lienzo)
