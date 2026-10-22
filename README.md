@@ -9,7 +9,8 @@ Arriba a la derecha del escritorio enseña:
 - La memoria Chip y Fast libre.
 - Las seis tareas que más CPU toman.
 - Los discos montados: cuánto está lleno cada uno y su tamaño.
-- La red: lo que entra y sale por segundo en cada interfaz, y la señal de la WiFi si la tarjeta la da.
+- La red: lo que entra y sale por segundo, y la señal de la WiFi si la tarjeta la da. Con cualquier pila
+  TCP/IP (Roadshow, MiamiDx, AmiTCP...).
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
 
@@ -27,13 +28,17 @@ En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de
 
 Trasfondo está escrito entero en [Dash](https://github.com/FreeMEM/dash), un lenguaje de alto nivel para
 Amiga que se traduce a C y se compila a un ejecutable nativo de 68k. No lleva C a mano: todo el programa
-son unas 130 líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash).
+son unas 500 líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash).
 
 Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (builtins):
 
 - `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`: pintar en el fondo del Workbench.
 - `cpu_start`, `cpu_sample`, `cpu_total`, `cpu_task_name`, `cpu_task_load`: la CPU total y la de cada tarea.
 - `single_instance` y `break_check`: una sola copia en marcha, y pararla con Ctrl-C.
+- `tooltype`, `cx_broker`, `cx_hotkey`, `cx_wait`: una commodity con sus tooltypes.
+- `disks_read`, `disk_kb`, `disk_free_kb`: los discos, sin esperar a uno lento.
+- `net_ifs_read`, `net_if_bytes_in`, `net_drivers_read`, `net_driver_read`, `wifi_read`, `wifi_read_device`: la red
+  y la WiFi, con un tiempo máximo para cada pregunta.
 
 Así, cualquier otro programa en Dash puede usarlas también.
 
@@ -46,8 +51,11 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
 - **Memoria**: el ejecutable ocupa 52 KB.
-- **Red y WiFi: Roadshow.** Con otra pila TCP/IP (AmiTCP, Miami), esa parte del panel no sale. La señal
-  de la WiFi la tiene que dar el driver de la tarjeta (`prism2.device` y otros de Neil Cafferkey la dan).
+- **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
+  interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
+  `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
+  WiFi la tiene que dar el driver (`wifipi.device` de Emu68, `prism2.device` y otros de Neil Cafferkey la dan).
+  Ninguna pregunta espera más de un tercio de segundo: un driver que no contesta no cuelga el sistema.
 
 Dónde se ha probado:
 
@@ -57,21 +65,22 @@ Dónde se ha probado:
 | AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32 bits |
 | Coffin R65 | Amiberry, 68040 | RTG, 1024x768, fondo con imagen |
 
-La parte de red y WiFi no se ha probado aún con Roadshow ni con una tarjeta WiFi de verdad: el emulador
-no las tiene.
+La parte de red y WiFi se ha probado en el emulador con un driver de red falso (señal y paquetes); no aún
+con Roadshow, MiamiDx ni una tarjeta WiFi de verdad.
 
 Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workbench sin ventana de fondo
 (backdrop).
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.1.lha` (de la página de
+1. Descomprime `trasfondo-0.2.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón.
 2. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
 3. Para pararlo, lánzalo otra vez, o pulsa Ctrl-C en su Shell. El fondo queda como estaba.
 
-Para que arranque solo con el Workbench, copia `trasfondo` y `trasfondo.info` a `SYS:WBStartup` (sin
-probar todavía).
+Para que arranque solo con el Workbench, copia `trasfondo` y `trasfondo.info` a `SYS:WBStartup`. El icono
+lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que acabe (si falta, pregunta
+"El programa no ha terminado aún. ¿Espero un poco más?").
 
 ### Desde Exchange
 
@@ -95,6 +104,7 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |
+| `DONOTWAIT` | En `WBStartup`, el Workbench no espera a que acabe. |
 
 ## Cómo funciona
 

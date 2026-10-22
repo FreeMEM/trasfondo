@@ -2,7 +2,8 @@
 #
 # Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
 # y las tareas que más CPU toman; debajo, los discos (lo ocupado de cada volumen) y la red (lo que entra y
-# sale por segundo, con Roadshow, y la señal de la WiFi si el driver la da). Se actualiza cada segundo.
+# sale por segundo y la señal de la WiFi si el driver la da). Con Roadshow, bytes de cada interfaz; con otra
+# pila (MiamiDx, AmiTCP), paquetes, preguntados al driver de red. Se actualiza cada segundo.
 # Se para lanzándolo otra vez, o con Ctrl-C.
 #
 # Es una commodity: desde Exchange se oculta y se muestra (sigue midiendo), se desactiva (deja de medir)
@@ -42,11 +43,12 @@ var d_nombre: [String] = []  # los volúmenes, sin RAM Disk
 var d_kb: [Int] = []         # tamaño en KB; -1 si no contestó
 var d_libre: [Int] = []
 
-var r_nombre: [String] = []  # los interfaces de red de Roadshow, sin lo0 (ninguno sin Roadshow)
+var r_nombre: [String] = []  # los interfaces de red de Roadshow, sin lo0; sin Roadshow, los drivers de red
+var r_paquetes: Bool = false # los contadores son paquetes (sin Roadshow), no bytes
 var r_arriba: [Int] = []     # 1 conectado
 var r_bytes_in: [Int] = []   # los contadores de la lectura anterior, para la velocidad
 var r_bytes_out: [Int] = []
-var r_entra: [Int] = []      # bytes por segundo
+var r_entra: [Int] = []      # bytes (o paquetes) por segundo; -1 si el driver no los da
 var r_sale: [Int] = []
 var r_wifi: [Int] = []       # lo que dio wifi_read: 0 leída, 1 sin respuesta, 2 no es WiFi, 4 desconectada
 var r_senal: [Int] = []      # dBm
@@ -86,6 +88,10 @@ func velocidad(b: Int) -> String
         return "#{k / 10},#{k % 10} KB/s"
     end
     return "#{b} B/s"
+end
+
+func paquetes(p: Int) -> String
+    return "#{p} paq/s"
 end
 
 func calidad(dbm: Int) -> String
@@ -151,30 +157,60 @@ func leer_red()
     var wifi: [Int] = []
     var senal: [Int] = []
     m = net_ifs_read()
+    r_paquetes = m < 0
+    if m < 0                             # sin Roadshow: los drivers de red en uso, con cualquier pila
+        m = net_drivers_read()
+    end
     for i in (0..m - 1)
-        n = net_if_name(i)
+        n = ""
+        if r_paquetes
+            n = net_driver_name(i)
+        else
+            n = net_if_name(i)
+        end
         if n != "lo0" and nombre.length < REDES
             nombre.push(n)
-            if net_if_up(i)
-                arriba.push(1)
+            w = 0
+            d = 0
+            bi = 0
+            bo = 0
+            if r_paquetes
+                w = wifi_read_device(n, 0, 300)
+                d = net_driver_read(n, 0, 300)
+                bi = net_driver_packets_in()
+                bo = net_driver_packets_out()
+                if w == 4
+                    arriba.push(0)
+                else
+                    arriba.push(1)
+                end
             else
-                arriba.push(0)
+                w = wifi_read(n, 300)
+                d = 0
+                bi = net_if_bytes_in(i)
+                bo = net_if_bytes_out(i)
+                if net_if_up(i)
+                    arriba.push(1)
+                else
+                    arriba.push(0)
+                end
             end
-            bi = net_if_bytes_in(i)
-            bo = net_if_bytes_out(i)
             b_in.push(bi)
             b_out.push(bo)
             e = 0
             s = 0
+            if d != 0
+                e = -1
+                s = -1
+            end
             for j in (0..r_nombre.length - 1)
-                if r_nombre[j] == n
+                if r_nombre[j] == n and d == 0 and r_entra[j] >= 0
                     e = (bi - r_bytes_in[j]) * 10 / decimas
                     s = (bo - r_bytes_out[j]) * 10 / decimas
                 end
             end
             entra.push(e)
             sale.push(s)
-            w = wifi_read(n, 300)
             wifi.push(w)
             if w == 0
                 senal.push(wifi_signal())
@@ -293,11 +329,26 @@ func pintar(x, y, w, h)
         yy = yy + linea
         for i in (0..r_nombre.length - 1)
             gfx_pen(c_suave)
-            gfx_text_at(8, yy + font_baseline(), r_nombre[i])
-            if r_arriba[i] == 1
-                t = velocidad(r_entra[i])
+            nombre = r_nombre[i]
+            if nombre.length > 7 and nombre[nombre.length - 7:] == ".device"
+                nombre = nombre[0:nombre.length - 7]          # "wifipi.device": "wifipi"
+            end
+            gfx_text_at(8, yy + font_baseline(), nombre)
+            if r_arriba[i] == 1 and r_entra[i] < 0
+                t = "sin datos"
+                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            elif r_arriba[i] == 1
+                if r_paquetes
+                    t = paquetes(r_entra[i])
+                else
+                    t = velocidad(r_entra[i])
+                end
                 gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
-                t = velocidad(r_sale[i])
+                if r_paquetes
+                    t = paquetes(r_sale[i])
+                else
+                    t = velocidad(r_sale[i])
+                end
                 gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
             else
                 t = "desconectado"

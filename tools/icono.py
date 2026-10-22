@@ -26,6 +26,7 @@ def icono():
 
 
 if __name__ == "__main__":
-    # los tooltypes de commodity; la tecla rápida, entre paréntesis: apagada hasta que se le quiten
+    # DONOTWAIT: en WBStartup, el Workbench no espera a que acabe; los tooltypes de commodity; la tecla
+    # rápida, entre paréntesis: apagada hasta que se le quiten
     Path(sys.argv[1]).write_bytes(info(icono(), WBTOOL,
-                                       tooltypes=["CX_PRIORITY=0", "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]))
+                                       tooltypes=["DONOTWAIT", "CX_PRIORITY=0", "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]))
