@@ -68,7 +68,8 @@ el menú no llegó a usarse), otras ventanas encima del panel, cambio de prefere
    backdrop, un panel que se actualiza cada segundo, y comprobar en capturas que los iconos siguen
    encima y cuánto parpadean.
 2. CPU exacta, total y por tarea.
-3. Paneles: CPU, memoria, tareas, volúmenes. Colores y posición por tooltypes.
+3. Paneles: CPU, memoria, tareas, discos, red y WiFi (ver [DISCOS_Y_RED.md](DISCOS_Y_RED.md)). Colores y
+   posición por tooltypes.
 4. Fondos de pantalla de WBPattern, cambios de preferencias (el Workbench puede volver a poner su
    gancho), salir limpio.
 5. Commodity (ver [COMMODITY.md](COMMODITY.md)), paquete para Aminet.
