@@ -63,23 +63,27 @@ Main
     end
     var antes: [String] = secciones_de(conf("MOSTRAR", SECCIONES))
 
-    f = font_height()
+    # medido con la fuente de la pantalla, la que usan los gadgets (en Coffin, más grande que la Topaz 8)
+    f = screen_font_height()
     fila = f + 8
     if fila < 16
         fila = 16
     end
-    ancho_etq = font_text_width("Cuántas tareas") + 40      # los campos, con su texto a la izquierda
-    ancho = 20 + 26 + 8 + font_text_width("Ver la gráfica de la CPU") + 30   # las casillas, con el texto a la derecha
-    if ancho < ancho_etq + 200
-        ancho = ancho_etq + 200
+    m = 12                                   # el margen, por dentro de los bordes
+    x_campo = m + screen_font_text_width("Cuántas tareas") + 10   # los campos, con su texto a la izquierda
+    ancho = m + 26 + 8 + screen_font_text_width("Ver la gráfica de la CPU") + m   # las casillas, con el texto a la derecha
+    if ancho < x_campo + 200
+        ancho = x_campo + 200
     end
-    alto = f + 10 + fila * 5 + 4 + (fila + 2) * 2 + fila + 8 + f + 8 + f + 12
-    if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 0) == 0
+    alto_boton = f + 6
+    alto = m + fila * 5 + 4 + (fila + 2) * 2 + fila + 8 + alto_boton + m
+    # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
+    if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 8) == 0
         Print "TrasfondoPrefs: no puedo abrir la ventana"
     else
         gt_init()
-        y = f + 10                           # debajo de la barra del título
-        x = 20
+        y = m
+        x = m
         var claves: [String] = ["cpu", "memoria", "tareas", "discos", "red"]
         var etiquetas: [String] = ["Ver la gráfica de la CPU", "Ver la memoria libre", "Ver las tareas", "Ver los discos", "Ver la red y la WiFi"]
         var casillas: [Int] = []
@@ -88,16 +92,17 @@ Main
             y = y + fila
         end
         y = y + 4
-        tareas = gt_integer(ancho_etq, y, 60, f + 6, "Cuántas tareas", Int(conf("TAREAS", "6")))
+        ancho_n = screen_font_text_width("000") + 24
+        tareas = gt_integer(x_campo, y, ancho_n, f + 6, "Cuántas tareas", Int(conf("TAREAS", "6")))
         y = y + fila + 2
-        tecla = gt_string(ancho_etq, y, ancho - ancho_etq - 20, f + 6, "Tecla rápida", conf("CX_POPKEY", ""), 40)
+        tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, "Tecla rápida", conf("CX_POPKEY", ""), 40)
         y = y + fila + 2
         oculto = gt_checkbox(x, y, 26, f + 3, "Arrancar oculto", str_upper(conf("CX_POPUP", "YES")) == "NO")
         y = y + fila + 8
-        boton = (ancho - 40 - 20) / 3
-        guardar = gt_button(20, y, boton, f + 8, "Guardar")
-        usar = gt_button(30 + boton, y, boton, f + 8, "Usar")
-        cancelar = gt_button(40 + boton * 2, y, boton, f + 8, "Cancelar")
+        boton = (ancho - m * 2 - 16) / 3
+        guardar = gt_button(x, y, boton, alto_boton, "Guardar")
+        usar = gt_button(x + boton + 8, y, boton, alto_boton, "Usar")
+        cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, "Cancelar")
         gt_attach()
 
         while true
