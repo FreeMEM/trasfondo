@@ -57,7 +57,7 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 62 KB.
+- **Memoria**: el ejecutable ocupa 110 KB (la mitad es lo de ponerse al día: la red y el TLS).
 - **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
   interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
   `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
