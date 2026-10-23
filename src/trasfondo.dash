@@ -598,7 +598,7 @@ Main
         linea = font_height() + 1
         leer_prefs()
         leer_secciones()
-        if cx_broker("Trasfondo", "Trasfondo 0.4", "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
+        if cx_broker("Trasfondo", "Trasfondo 0.5", "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
             poner_tecla()
         end
         visible = str_upper(conf("CX_POPUP", "YES")) != "NO"

@@ -79,7 +79,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.4.lha` (de la página de
+1. Descomprime `trasfondo-0.5.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
