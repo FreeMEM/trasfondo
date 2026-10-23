@@ -4,8 +4,9 @@
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
+@version "TrasfondoPrefs 0.7"
 
-const SECCIONES = "cpu,memoria,tareas,discos,red"
+const SECCIONES = "fecha,cpu,memoria,tareas,discos,red"
 
 var prefs: String = ""
 
@@ -36,8 +37,10 @@ func secciones_de(texto: String) -> [String]
             s = "discos"
         elif s == "net" or s == "network" or s == "wifi"
             s = "red"
+        elif s == "date" or s == "time" or s == "clock" or s == "hora" or s == "reloj"
+            s = "fecha"
         end
-        if s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red"
+        if s == "fecha" or s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red"
             r.push(s)
         end
     end
@@ -62,6 +65,14 @@ Main
         prefs = ""
     end
     var antes: [String] = secciones_de(conf("MOSTRAR", SECCIONES))
+    # unas de antes de la 0.7 (sin PREFS=) no conocían la fecha: sale marcada, arriba, como en Trasfondo
+    if conf("MOSTRAR", "") != "" and conf("PREFS", "") == "" and not esta(antes, "fecha")
+        var con_fecha: [String] = ["fecha"]
+        for i in (0..antes.length - 1)
+            con_fecha.push(antes[i])
+        end
+        antes = con_fecha
+    end
 
     # medido con la fuente de la pantalla, la que usan los gadgets (en Coffin, más grande que la Topaz 8)
     f = screen_font_height()
@@ -76,7 +87,7 @@ Main
         ancho = x_campo + 200
     end
     alto_boton = f + 6
-    alto = m + fila * 5 + 4 + (fila + 2) * 2 + fila + 8 + alto_boton + m
+    alto = m + fila * 6 + 4 + (fila + 2) * 2 + fila + 8 + alto_boton + m
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
     if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 8) == 0
         Print "TrasfondoPrefs: no puedo abrir la ventana"
@@ -84,10 +95,10 @@ Main
         gt_init()
         y = m
         x = m
-        var claves: [String] = ["cpu", "memoria", "tareas", "discos", "red"]
-        var etiquetas: [String] = ["Ver la gráfica de la CPU", "Ver la memoria libre", "Ver las tareas", "Ver los discos", "Ver la red y la WiFi"]
+        var claves: [String] = ["fecha", "cpu", "memoria", "tareas", "discos", "red"]
+        var etiquetas: [String] = ["Ver la fecha y la hora", "Ver la gráfica de la CPU", "Ver la memoria libre", "Ver las tareas", "Ver los discos", "Ver la red y la WiFi"]
         var casillas: [Int] = []
-        for i in (0..4)
+        for i in (0..5)
             casillas.push(gt_checkbox(x, y, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
             y = y + fila
         end
@@ -113,13 +124,13 @@ Main
                 # las marcadas, en el orden que tenían; las nuevas, detrás
                 var mostrar: [String] = []
                 for i in (0..antes.length - 1)
-                    for j in (0..4)
+                    for j in (0..5)
                         if claves[j] == antes[i] and gt_get_value(casillas[j]) != 0
                             mostrar.push(antes[i])
                         end
                     end
                 end
-                for j in (0..4)
+                for j in (0..5)
                     if gt_get_value(casillas[j]) != 0 and not esta(mostrar, claves[j])
                         mostrar.push(claves[j])
                     end
@@ -130,7 +141,7 @@ Main
                 elif n > 20
                     n = 20
                 end
-                texto = "MOSTRAR="
+                texto = "PREFS=2\nMOSTRAR="     # PREFS=2: escritas sabiendo de la fecha
                 for i in (0..mostrar.length - 1)
                     if i > 0
                         texto = texto + ","

@@ -12,14 +12,16 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
+@version "Trasfondo 0.7"
 
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
 const TAREAS = 6             # tareas que se enseñan, si el tooltype TAREAS no dice otra cosa
-const SECCIONES = "CPU,MEMORIA,TAREAS,DISCOS,RED"
+const SECCIONES = "FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED"
 const ALTO_GRAFICA = 32
 const DISCOS = 8             # volúmenes que se enseñan, como mucho
 const REDES = 3              # interfaces de red, como mucho
+const CADA_DISCOS = 10       # segundos entre dos lecturas de los discos: cambian despacio, y cada una pregunta a todos
 
 const CX_OCULTAR = 1         # las órdenes de cx_wait
 const CX_MOSTRAR = 2
@@ -28,7 +30,7 @@ const CX_ACTIVAR = 4
 const CX_ELIMINAR = 5
 const CX_TECLA = 6
 
-var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTRAR): cpu, memoria, tareas, discos, red
+var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTRAR): fecha, cpu, memoria, tareas, discos, red
 var tareas_max: Int = TAREAS
 var prefs: String = ""       # ENV:Trasfondo.prefs (lo escribe TrasfondoPrefs): manda sobre los tooltypes
 var tecla_puesta: String = ""
@@ -60,6 +62,8 @@ var r_sale: [Int] = []
 var r_wifi: [Int] = []       # lo que dio wifi_read: 0 leída, 1 sin respuesta, 2 no es WiFi, 4 desconectada
 var r_senal: [Int] = []      # dBm
 var r_ms: Int = 0            # cuándo fue la lectura anterior
+var faltan_discos: Int = 0   # segundos para volver a leer los discos (0: en la próxima medida)
+var discos_leidos: Bool = false   # los discos se leyeron en esta vuelta: hay que repintar su sección
 
 func por_ciento(milesimas: Int) -> String
     return "#{milesimas / 10},#{milesimas % 10} %"
@@ -155,7 +159,7 @@ func poner_tecla()
     end
 end
 
-# MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
+# MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
 func leer_secciones()
     texto = conf("MOSTRAR", tooltype("SHOW", SECCIONES))
     secciones = []
@@ -170,13 +174,23 @@ func leer_secciones()
             s = "discos"
         elif s == "net" or s == "network" or s == "wifi"
             s = "red"
+        elif s == "date" or s == "time" or s == "clock" or s == "hora" or s == "reloj"
+            s = "fecha"
         end
-        if (s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red") and not hay(s)
+        if (s == "fecha" or s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red") and not hay(s)
             secciones.push(s)
         end
     end
     if secciones.length == 0
-        secciones = ["cpu", "memoria", "tareas", "discos", "red"]
+        secciones = ["fecha", "cpu", "memoria", "tareas", "discos", "red"]
+    end
+    # unas preferencias de antes de la 0.7 (sin PREFS=) no conocían la fecha: no es que la quitaran, sale arriba
+    if conf("MOSTRAR", "") != "" and conf("PREFS", "") == "" and not hay("fecha")
+        var con_fecha: [String] = ["fecha"]
+        for i in (0..secciones.length - 1)
+            con_fecha.push(secciones[i])
+        end
+        secciones = con_fecha
     end
     tareas_max = Int(conf("TAREAS", tooltype("TASKS", "#{TAREAS}")))
     if tareas_max < 1
@@ -196,7 +210,9 @@ func hay(s: String) -> Bool
 end
 
 func alto_seccion(s: String) -> Int
-    if s == "cpu"
+    if s == "fecha"
+        return linea
+    elif s == "cpu"
         return ALTO_GRAFICA
     elif s == "memoria"
         return linea * 2
@@ -351,6 +367,14 @@ func pintar_cpu(w: Int, yy: Int)
             gfx_rect(x0 + i * paso, yy + ALTO_GRAFICA - alto, x0 + i * paso + paso - 2, yy + ALTO_GRAFICA - 1)
         end
     end
+end
+
+# la fecha a la izquierda y la hora a la derecha, en el idioma del sistema (locale.library)
+func pintar_fecha(w: Int, yy: Int)
+    gfx_pen(c_texto)
+    gfx_text_at(6, yy + font_baseline(), date_text("%A %d-%b-%y"))
+    t = date_text("%H:%M")              # sin segundos: no obliga a nada que no se repinte ya
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
 end
 
 func pintar_memoria(w: Int, yy: Int)
@@ -512,7 +536,9 @@ func pintar(x, y, w, h)
                 yy = yy + 6
             end
             primero = false
-            if s == "cpu"
+            if s == "fecha"
+                pintar_fecha(w, yy)
+            elif s == "cpu"
                 pintar_cpu(w, yy)
             elif s == "memoria"
                 pintar_memoria(w, yy)
@@ -528,13 +554,59 @@ func pintar(x, y, w, h)
     end
 end
 
-# los discos y la red, que deciden el alto del panel: solo con el panel a la vista
+# los discos y la red, que deciden el alto del panel: solo con el panel a la vista. Los discos, cada
+# CADA_DISCOS segundos (cada lectura manda un ACTION_DISK_INFO a cada volumen)
 func medir_paneles()
+    discos_leidos = false
     if hay("discos")
-        leer_discos()
+        if faltan_discos <= 0
+            leer_discos()
+            discos_leidos = true
+            faltan_discos = CADA_DISCOS
+        end
+        faltan_discos = faltan_discos - 1
     end
     if hay("red")
         leer_red()
+    end
+end
+
+# dónde empieza una sección en el panel (-1 si no sale), con las mismas cuentas que pintar
+func y_seccion(nombre: String) -> Int
+    yy = 6 + linea
+    primero = true
+    for i in (0..secciones.length - 1)
+        a = alto_seccion(secciones[i])
+        if a > 0
+            if primero
+                yy = yy + 4
+            else
+                yy = yy + 6
+            end
+            primero = false
+            if secciones[i] == nombre
+                return yy
+            end
+            yy = yy + a
+        end
+    end
+    return -1
+end
+
+# lo de cada segundo: todo menos los discos, que solo se repintan cuando se han vuelto a leer
+func repintar()
+    y = -1
+    if not discos_leidos
+        y = y_seccion("discos")
+    end
+    if y < 0
+        desktop_canvas_update(lienzo)
+    else
+        a = alto_seccion("discos")
+        desktop_canvas_update_area(lienzo, 0, 0, ANCHO, y)
+        if y + a < alto_lienzo
+            desktop_canvas_update_area(lienzo, 0, y + a, ANCHO, alto_lienzo - y - a)
+        end
     end
 end
 
@@ -598,7 +670,7 @@ Main
         linea = font_height() + 1
         leer_prefs()
         leer_secciones()
-        if cx_broker("Trasfondo", "Trasfondo 0.6", "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
+        if cx_broker("Trasfondo", program_version(), "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
             poner_tecla()
         end
         visible = str_upper(conf("CX_POPUP", "YES")) != "NO"
@@ -634,6 +706,7 @@ Main
                     if leer_prefs()          # TrasfondoPrefs cambió los ajustes
                         leer_secciones()
                         poner_tecla()
+                        faltan_discos = 0
                     end
                     if lienzo != 0
                         medir_paneles()
@@ -643,7 +716,7 @@ Main
                         end
                     end
                     if lienzo != 0
-                        desktop_canvas_update(lienzo)
+                        repintar()
                     end
                 end
             end
