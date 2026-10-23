@@ -12,7 +12,9 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.7"
+@version "Trasfondo 0.8"
+
+import "actualizar.dash"
 
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
@@ -22,6 +24,7 @@ const ALTO_GRAFICA = 32
 const DISCOS = 8             # volúmenes que se enseñan, como mucho
 const REDES = 3              # interfaces de red, como mucho
 const CADA_DISCOS = 10       # segundos entre dos lecturas de los discos: cambian despacio, y cada una pregunta a todos
+const CADA_SENAL = 10        # y de la señal de la WiFi: preguntarla manda órdenes al chip (wifipi.device despierta su receptor)
 
 const CX_OCULTAR = 1         # las órdenes de cx_wait
 const CX_MOSTRAR = 2
@@ -29,6 +32,7 @@ const CX_DESACTIVAR = 3
 const CX_ACTIVAR = 4
 const CX_ELIMINAR = 5
 const CX_TECLA = 6
+const CX_FICHERO = 7          # cambió un fichero vigilado (file_notify)
 
 var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTRAR): fecha, cpu, memoria, tareas, discos, red
 var tareas_max: Int = TAREAS
@@ -42,6 +46,7 @@ var c_suave: Int = 1
 var c_cpu: Int = 3
 var colores: Bool = false
 var c_fondo: Int = 1
+var c_verde: Int = 1
 var paleta: Bool = false      # pantalla de 256 colores o menos: el velo sería una trama de puntos
 var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
 var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
@@ -53,7 +58,8 @@ var d_kb: [Int] = []         # tamaño en KB; -1 si no contestó
 var d_libre: [Int] = []
 
 var r_nombre: [String] = []  # los interfaces de red de Roadshow, sin lo0; sin Roadshow, los drivers de red
-var r_paquetes: Bool = false # los contadores son paquetes (sin Roadshow), no bytes
+var r_paquetes: Bool = false # sin Roadshow: los contadores vienen de los drivers
+var r_en_paquetes: [Int] = []  # 1 si los contadores de esa red son paquetes (un driver que no cuenta bytes)
 var r_arriba: [Int] = []     # 1 conectado
 var r_bytes_in: [Int] = []   # los contadores de la lectura anterior, para la velocidad
 var r_bytes_out: [Int] = []
@@ -64,6 +70,7 @@ var r_senal: [Int] = []      # dBm
 var r_ms: Int = 0            # cuándo fue la lectura anterior
 var faltan_discos: Int = 0   # segundos para volver a leer los discos (0: en la próxima medida)
 var discos_leidos: Bool = false   # los discos se leyeron en esta vuelta: hay que repintar su sección
+var faltan_senal: Int = 0    # segundos para volver a preguntar la señal de la WiFi
 
 func por_ciento(milesimas: Int) -> String
     return "#{milesimas / 10},#{milesimas % 10} %"
@@ -281,6 +288,12 @@ func leer_red()
     var sale: [Int] = []
     var wifi: [Int] = []
     var senal: [Int] = []
+    var en_paquetes: [Int] = []
+    toca_senal = faltan_senal <= 0
+    if toca_senal
+        faltan_senal = CADA_SENAL
+    end
+    faltan_senal = faltan_senal - 1
     m = net_ifs_read()
     r_paquetes = m < 0
     if m < 0                             # sin Roadshow: los drivers de red en uso, con cualquier pila
@@ -299,18 +312,40 @@ func leer_red()
             d = 0
             bi = 0
             bo = 0
+            pq = 0
+            previo = -1                          # la misma red en la lectura anterior: su señal vale aún
+            for j in (0..r_nombre.length - 1)
+                if r_nombre[j] == n
+                    previo = j
+                end
+            end
+            nueva_senal = toca_senal or previo < 0
             if r_paquetes
-                w = wifi_read_device(n, 0, 300)
+                if nueva_senal
+                    w = wifi_read_device(n, 0, 300)
+                else
+                    w = r_wifi[previo]
+                end
                 d = net_driver_read(n, 0, 300)
-                bi = net_driver_packets_in()
-                bo = net_driver_packets_out()
+                if d == 0 and net_driver_has_bytes()     # los drivers que cuentan bytes (por tipo de paquete)
+                    bi = net_driver_bytes_in()
+                    bo = net_driver_bytes_out()
+                else
+                    bi = net_driver_packets_in()
+                    bo = net_driver_packets_out()
+                    pq = 1
+                end
                 if w == 4
                     arriba.push(0)
                 else
                     arriba.push(1)
                 end
             else
-                w = wifi_read(n, 300)
+                if nueva_senal
+                    w = wifi_read(n, 300)
+                else
+                    w = r_wifi[previo]
+                end
                 d = 0
                 bi = net_if_bytes_in(i)
                 bo = net_if_bytes_out(i)
@@ -322,6 +357,7 @@ func leer_red()
             end
             b_in.push(bi)
             b_out.push(bo)
+            en_paquetes.push(pq)
             e = 0
             s = 0
             if d != 0
@@ -329,7 +365,10 @@ func leer_red()
                 s = -1
             end
             for j in (0..r_nombre.length - 1)
-                if r_nombre[j] == n and d == 0 and r_entra[j] >= 0
+                if r_nombre[j] == n and d == 0 and r_en_paquetes[j] != pq
+                    e = -1                        # pasó de paquetes a bytes: la resta no vale esta vez
+                    s = -1
+                elif r_nombre[j] == n and d == 0 and r_entra[j] >= 0
                     e = (bi - r_bytes_in[j]) * 10 / decimas
                     s = (bo - r_bytes_out[j]) * 10 / decimas
                 end
@@ -337,8 +376,10 @@ func leer_red()
             entra.push(e)
             sale.push(s)
             wifi.push(w)
-            if w == 0
+            if w == 0 and nueva_senal
                 senal.push(wifi_signal())
+            elif w == 0
+                senal.push(r_senal[previo])
             else
                 senal.push(0)
             end
@@ -352,6 +393,7 @@ func leer_red()
     r_sale = sale
     r_wifi = wifi
     r_senal = senal
+    r_en_paquetes = en_paquetes
     r_ms = ahora
 end
 
@@ -459,13 +501,13 @@ func pintar_red(w: Int, yy: Int)
             t = "sin datos"
             gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         elif r_arriba[i] == 1
-            if r_paquetes
+            if r_en_paquetes[i] == 1
                 t = paquetes(r_entra[i])
             else
                 t = velocidad(r_entra[i])
             end
             gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
-            if r_paquetes
+            if r_en_paquetes[i] == 1
                 t = paquetes(r_sale[i])
             else
                 t = velocidad(r_sale[i])
@@ -504,6 +546,7 @@ func pintar(x, y, w, h)
         c_suave = color_pen(200, 210, 220)
         c_cpu = color_pen(80, 200, 255)
         c_fondo = color_pen(16, 24, 32)
+        c_verde = color_pen(96, 220, 120)
         paleta = rtg_get_depth() <= 8   # la del panel, que es la de la pantalla
         colores = true
     end
@@ -517,6 +560,17 @@ func pintar(x, y, w, h)
     gfx_pen(c_texto)
     yy = 6
     gfx_text_at(6, yy + font_baseline(), "Trasfondo")
+    nueva = act_nueva()
+    if nueva != ""                       # hay una versión nueva: un piloto verde y su número (se instala desde TrasfondoPrefs)
+        x = 6 + font_text_width("Trasfondo") + 8
+        r = linea / 3
+        gfx_pen(c_verde)
+        gfx_circle_fill(x + r, yy + linea / 2, r)
+        font_style(0)
+        gfx_text_at(x + r * 2 + 4, yy + font_baseline(), nueva)
+        font_style(2)
+        gfx_pen(c_texto)
+    end
     total = 0
     if historia.length > 0
         total = historia[historia.length - 1]
@@ -610,6 +664,21 @@ func repintar()
     end
 end
 
+# TrasfondoPrefs cambió los ajustes
+func cambiaron_prefs()
+    leer_secciones()
+    poner_tecla()
+    faltan_discos = 0
+    act_buscar(str_upper(conf("BUSCAR", "SI")) != "NO")
+    if lienzo != 0 and alto_panel() != alto_lienzo
+        ocultar()
+        mostrar()
+    end
+    if lienzo != 0
+        desktop_canvas_update(lienzo)
+    end
+end
+
 func mostrar()
     if lienzo == 0
         alto_lienzo = alto_panel()
@@ -670,6 +739,9 @@ Main
         linea = font_height() + 1
         leer_prefs()
         leer_secciones()
+        act_iniciar(str_replace(program_version(), "Trasfondo ", ""), str_upper(conf("BUSCAR", "SI")) != "NO")
+        aviso_prefs = file_notify("ENV:Trasfondo.prefs")   # 0 si no se puede vigilar: entonces se lee cada segundo
+        aviso_orden = file_notify("ENV:Trasfondo.orden")   # lo que pide TrasfondoPrefs (actualizar)
         if cx_broker("Trasfondo", program_version(), "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
             poner_tecla()
         end
@@ -683,12 +755,31 @@ Main
             proximo = time_ms() + 1000       # cada segundo justo, aunque lleguen órdenes entre medias
             while true
                 espera = proximo - time_ms()
+                if act_activo() and espera > 100       # bajando o consultando: vuelve pronto
+                    espera = 100
+                end
                 if espera < 1
                     espera = 1
                 end
                 orden = cx_wait(espera)
+                act_paso()
+                if act_listo()                          # instalada la versión nueva: arranca otra vez con ella
+                    program_relaunch()
+                    break
+                end
                 if orden == -1 or orden == CX_ELIMINAR
                     break
+                elif orden == CX_FICHERO
+                    if aviso_prefs != 0 and file_changed(aviso_prefs) and leer_prefs()
+                        cambiaron_prefs()
+                    end
+                    if aviso_orden != 0 and file_changed(aviso_orden)
+                        pedido = file_read_text("ENV:Trasfondo.orden")
+                        if pedido != nil and str_trim(pedido) == "actualizar"
+                            file_delete("ENV:Trasfondo.orden")
+                            act_actualizar()
+                        end
+                    end
                 elif orden > 0
                     obedecer(orden)
                 else                         # pasó el segundo
@@ -703,10 +794,8 @@ Main
                             historia.remove(0)
                         end
                     end
-                    if leer_prefs()          # TrasfondoPrefs cambió los ajustes
-                        leer_secciones()
-                        poner_tecla()
-                        faltan_discos = 0
+                    if aviso_prefs == 0 and leer_prefs()      # sin aviso del sistema: mirarlo cada segundo
+                        cambiaron_prefs()
                     end
                     if lienzo != 0
                         medir_paneles()

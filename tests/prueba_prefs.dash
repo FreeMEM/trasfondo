@@ -72,23 +72,24 @@ end
 end
 
 # el centro (en la pantalla) del gadget con ese texto en la ventana de ese título: x * 10000 + y; -1 si no está.
-# Los botones de GadTools no guardan su texto en el gadget: "Guardar", "Usar" y "Cancelar" son los tres que
-# van detrás de "Arrancar oculto", en ese orden.
+# Los botones de GadTools no guardan su texto en el gadget: detrás de "Buscar versiones nuevas en GitHub" van
+# la línea de la versión, "Actualizar", "Guardar", "Usar" y "Cancelar", en ese orden.
 @native func centro(titulo: String, texto: String) -> Int
 """
     ULONG lock = LockIBase(0);
     struct Window *w;
     struct Gadget *g;
     LONG r = -1, boton = -1, k = -1;
-    if (!strcmp((char *)texto, "Guardar")) boton = 1;
-    else if (!strcmp((char *)texto, "Usar")) boton = 2;
-    else if (!strcmp((char *)texto, "Cancelar")) boton = 3;
+    if (!strcmp((char *)texto, "Actualizar")) boton = 2;
+    else if (!strcmp((char *)texto, "Guardar")) boton = 3;
+    else if (!strcmp((char *)texto, "Usar")) boton = 4;
+    else if (!strcmp((char *)texto, "Cancelar")) boton = 5;
     for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
         if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
     if (w)
         for (g = w->FirstGadget; g; g = g->NextGadget) {
             if (k >= 0) k++;
-            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Arrancar oculto")) k = 0;
+            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Buscar versiones nuevas en GitHub")) k = 0;
             if (boton > 0 ? k == boton : g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, (char *)texto)) {
                 /* la ventana es GimmeZeroZero: los gadgets cuentan desde dentro del borde */
                 LONG bx = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderLeft : 0;

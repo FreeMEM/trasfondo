@@ -1,0 +1,496 @@
+# Trasfondo se pone al día solo. Mira en GitHub cuál es la última versión (un minuto después de arrancar y
+# luego cada seis horas) y, si se lo pide TrasfondoPrefs (botón Actualizar, que deja "actualizar" en
+# ENV:Trasfondo.orden), baja los dos ejecutables sueltos de esa release, los comprueba (tamaño, que sean
+# ejecutables y que lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old.
+# Todo va paso a paso desde el bucle del panel, sin esperar nunca: act_paso() avanza lo que se pueda.
+# Lo que va pasando, en ENV:Trasfondo.estado; la versión nueva que hay, en ENV:Trasfondo.nueva.
+
+const API_HOST = "api.github.com"
+const API_RUTA = "/repos/FreeMEM/trasfondo/releases/latest"
+const PRIMERA = 60000              # ms desde que arranca hasta la primera consulta
+const CADA = 21600000              # y luego, cada seis horas
+const ESPERA_RED = 30000           # lo más que se espera a cada paso de la red
+const TOPE_API = 131072            # la respuesta de la API cabe de sobra
+const MUESTRA = 8192               # lo que se recibe de una vez
+
+var a_version: String = ""         # la de este ejecutable ("0.8")
+var a_buscar: Bool = true          # BUSCAR=NO en las preferencias: no pregunta a GitHub
+var a_proxima: Int = 0             # time_ms de la próxima consulta
+var a_nueva: String = ""           # la versión nueva que hay ("" si ninguna)
+var a_url: [String] = ["", ""]     # trasfondo y TrasfondoPrefs: de dónde se bajan
+var a_tam: [Int] = [0, 0]          # y cuánto miden
+var a_fase: Int = 0                # 0 nada, 1 consultando, 2 bajando
+var a_cual: Int = 0                # el fichero que se baja (0 trasfondo, 1 TrasfondoPrefs)
+var a_quiere: Bool = false         # se pidió actualizar
+var a_listo: Bool = false          # instalada: hay que relanzarse
+var a_cuerpo: [Int] = [0, 0]       # los dos ejecutables bajados y comprobados (búferes)
+var a_estado: String = ""
+
+# la conexión en curso: HTTPS, HTTP/1.0 (sin trozos), siguiendo las redirecciones
+var h_host: String = ""
+var h_sock: Int = -1
+var h_tls: Int = -1
+var h_paso: Int = 0                # 0 nada, 1 conectando, 2 TLS, 3 recibiendo, 4 hecho, 5 error
+var h_buf: Int = 0
+var h_tope: Int = 0
+var h_n: Int = 0
+var h_tmp: Int = 0
+var h_desde: Int = 0
+var h_saltos: Int = 0
+var h_error: String = ""
+var h_peticion: String = ""
+
+func act_estado(texto: String)
+    if texto != a_estado
+        a_estado = texto
+        file_write_text("ENV:Trasfondo.estado", texto + "\n")
+    end
+end
+
+# "0.10" es más nueva que "0.9": número a número
+func act_mas_nueva(a: String, b: String) -> Bool
+    var pa: [String] = str_split(a, ".")
+    var pb: [String] = str_split(b, ".")
+    i = 0
+    while i < pa.length or i < pb.length
+        x = 0
+        y = 0
+        if i < pa.length
+            x = Int(pa[i])
+        end
+        if i < pb.length
+            y = Int(pb[i])
+        end
+        if x != y
+            return x > y
+        end
+        i = i + 1
+    end
+    return false
+end
+
+func act_iniciar(version: String, buscar: Bool)
+    a_version = version
+    a_buscar = buscar
+    a_proxima = time_ms() + PRIMERA
+    file_delete("ENV:Trasfondo.orden")
+    vieja = file_read_text("ENV:Trasfondo.nueva")
+    if vieja != nil
+        if act_mas_nueva(str_trim(vieja), version)
+            a_nueva = str_trim(vieja)          # lo que se vio antes (se confirma en la consulta)
+        else
+            file_delete("ENV:Trasfondo.nueva")
+        end
+    end
+end
+
+func act_nueva() -> String
+    return a_nueva
+end
+
+func act_listo() -> Bool
+    return a_listo
+end
+
+# hay algo de red en marcha: el bucle tiene que volver pronto
+func act_activo() -> Bool
+    return a_fase != 0
+end
+
+func act_buscar(si: Bool)
+    a_buscar = si
+end
+
+# --- HTTPS paso a paso ---
+
+func http_cerrar()
+    if h_tls != -1
+        tls_close(h_tls)
+        h_tls = -1
+    end
+    if h_sock >= 0
+        net_close(h_sock)
+        h_sock = -1
+    end
+end
+
+func http_fallo(texto: String)
+    http_cerrar()
+    h_error = texto
+    h_paso = 5
+end
+
+func http_empezar(host: String, ruta: String, tope: Int)
+    http_cerrar()
+    if h_buf != 0
+        buffer_free(h_buf)
+        h_buf = 0
+    end
+    if h_tmp == 0
+        h_tmp = buffer_alloc(MUESTRA)
+    end
+    h_host = host
+    h_tope = tope
+    h_n = 0
+    h_buf = buffer_alloc(tope)
+    if h_buf == 0 or h_tmp == 0
+        http_fallo("no hay memoria")
+        return
+    end
+    h_sock = net_connect_start(host, 443, ESPERA_RED)
+    if h_sock < 0
+        http_fallo("no hay red")
+        return
+    end
+    h_paso = 1
+    h_desde = time_ms()
+    h_peticion = "GET " + ruta + " HTTP/1.0\r\nHost: " + host + "\r\nUser-Agent: Trasfondo/" + a_version + "\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+end
+
+func http_paso()
+    if h_paso == 1
+        r = net_connect_poll(h_sock)
+        if r == 1
+            h_tls = tls_connect_start(h_sock, h_host, ESPERA_RED)
+            if h_tls == -1
+                http_fallo("sin TLS (AmiSSL)")
+            else
+                h_paso = 2
+            end
+        elif r < 0
+            h_sock = -1                        # ya está cerrado
+            http_fallo("no se puede conectar con " + h_host)
+        end
+    elif h_paso == 2
+        r = tls_connect_poll(h_tls)
+        if r == 1
+            if tls_send(h_tls, h_peticion) < 0
+                http_fallo("no se puede pedir")
+            else
+                h_paso = 3
+                h_desde = time_ms()
+            end
+        elif r < 0
+            h_tls = -1                         # ya está liberada
+            http_fallo("el certificado de " + h_host + " no vale")
+        end
+    elif h_paso == 3
+        vueltas = 0                            # lo que haya ya, sin esperar (y sin quedarse toda la tarde)
+        while vueltas < 16 and h_paso == 3
+            n = tls_recv_buffer(h_tls, h_tmp, MUESTRA, 0)
+            if n > 0
+                if h_n + n > h_tope
+                    http_fallo("la respuesta es demasiado grande")
+                else
+                    buffer_copy(h_buf, h_n, h_tmp, 0, n)
+                    h_n = h_n + n
+                    h_desde = time_ms()
+                end
+            elif n < 0
+                http_cerrar()
+                h_paso = 4
+            else
+                vueltas = 16
+            end
+            vueltas = vueltas + 1
+        end
+        if h_paso == 3 and time_ms() - h_desde > ESPERA_RED
+            http_fallo(h_host + " no contesta")
+        end
+    end
+end
+
+# dónde empieza el cuerpo (después de la línea en blanco); -1 si no hay
+func http_cuerpo() -> Int
+    tope = h_n - 3
+    if tope > 16384
+        tope = 16384
+    end
+    i = 0
+    while i < tope
+        if buffer_get_byte(h_buf, i) == 13 and buffer_get_byte(h_buf, i + 1) == 10 and buffer_get_byte(h_buf, i + 2) == 13 and buffer_get_byte(h_buf, i + 3) == 10
+            return i + 4
+        end
+        i = i + 1
+    end
+    return -1
+end
+
+# la respuesta terminó: true si es la de verdad (200); si es una redirección, la sigue y devuelve false
+func http_terminada() -> Bool
+    c = http_cuerpo()
+    if c < 0
+        http_fallo("respuesta sin cabecera")
+        return false
+    end
+    cab = str_from_buffer(h_buf, 0, c)
+    codigo = 0
+    if cab.length > 12
+        codigo = Int(cab[9:12])
+    end
+    if codigo == 200
+        return true
+    end
+    if (codigo == 301 or codigo == 302 or codigo == 303 or codigo == 307) and h_saltos < 4
+        i = str_find(str_lower(cab), "\nlocation:")
+        if i >= 0
+            f = str_find_from(cab, "\r", i + 1)
+            destino = str_trim(cab[i + 10:f])
+            if str_starts(destino, "https://")
+                resto = destino[8:destino.length]
+                barra = str_find(resto, "/")
+                if barra > 0
+                    h_saltos = h_saltos + 1
+                    http_empezar(resto[0:barra], resto[barra:resto.length], h_tope)
+                    return false
+                end
+            end
+        end
+    end
+    http_fallo("GitHub contestó #{codigo}")
+    return false
+end
+
+# --- la consulta de la última versión ---
+
+func json_texto(j: String, clave: String, desde: Int) -> String
+    i = str_find_from(j, "\"" + clave + "\":\"", desde)
+    if i < 0
+        return ""
+    end
+    i = i + clave.length + 4
+    f = str_find_from(j, "\"", i)
+    if f < 0
+        return ""
+    end
+    return j[i:f]
+end
+
+func json_numero(j: String, clave: String, desde: Int) -> Int
+    i = str_find_from(j, "\"" + clave + "\":", desde)
+    if i < 0
+        return -1
+    end
+    i = i + clave.length + 3
+    f = i
+    while f < j.length and str_contains("0123456789", j[f:f + 1])
+        f = f + 1
+    end
+    if f == i
+        return -1
+    end
+    return Int(j[i:f])
+end
+
+func act_consultar()
+    a_fase = 1
+    h_saltos = 0
+    http_empezar(API_HOST, API_RUTA, TOPE_API)
+end
+
+func act_consulta_hecha()
+    c = http_cuerpo()
+    j = str_replace(str_from_buffer(h_buf, c, h_n - c), "\": ", "\":")
+    etiqueta = json_texto(j, "tag_name", 0)
+    if str_starts(etiqueta, "v")
+        etiqueta = etiqueta[1:etiqueta.length]
+    end
+    var nombres: [String] = ["trasfondo", "TrasfondoPrefs"]
+    completa = true
+    for k in (0..1)
+        i = str_find(j, "\"name\":\"" + nombres[k] + "\"")
+        if i < 0
+            completa = false
+        else
+            a_tam[k] = json_numero(j, "size", i)
+            a_url[k] = json_texto(j, "browser_download_url", i)
+            if a_tam[k] <= 0 or not str_starts(a_url[k], "https://")
+                completa = false
+            end
+        end
+    end
+    if etiqueta != "" and completa and act_mas_nueva(etiqueta, a_version)
+        a_nueva = etiqueta
+        file_write_text("ENV:Trasfondo.nueva", etiqueta + "\n")
+    else
+        a_nueva = ""
+        file_delete("ENV:Trasfondo.nueva")
+        if a_quiere
+            a_quiere = false
+            act_estado("Ya tienes la última versión (" + a_version + ")")
+        end
+    end
+end
+
+# --- bajar, comprobar e instalar ---
+
+func act_bajar(cual: Int)
+    a_fase = 2
+    a_cual = cual
+    h_saltos = 0
+    resto = a_url[cual][8:a_url[cual].length]      # sin "https://"
+    barra = str_find(resto, "/")
+    http_empezar(resto[0:barra], resto[barra:resto.length], a_tam[cual] + 16384)
+end
+
+# "" si lo bajado vale; si no, qué le pasa. El nombre de su $VER: es el del programa ("Trasfondo"), no el del fichero
+func act_comprobar(c: Int, nombre: String, programa: String) -> String
+    n = h_n - c
+    if n != a_tam[a_cual]
+        return "#{nombre}: el tamaño no cuadra (#{n} en vez de #{a_tam[a_cual]})"
+    end
+    if buffer_get_long(h_buf, c) != 0x3F3
+        return nombre + ": no es un ejecutable"
+    end
+    marca = "$VER: " + programa + " " + a_nueva
+    i = c
+    while i < h_n - marca.length
+        if buffer_get_byte(h_buf, i) == 36 and str_from_buffer(h_buf, i, marca.length) == marca
+            return ""
+        end
+        i = i + 1
+    end
+    return nombre + ": no es la versión " + a_nueva
+end
+
+# escribe el nuevo al lado, guarda el de ahora como .old y pone el nuevo en su sitio
+func act_poner(destino: String, b: Int, n: Int) -> Bool
+    nuevo = destino + ".nuevo"
+    h = file_open(nuevo, 1006)
+    if h == 0
+        return false
+    end
+    escrito = file_write(h, b, n)
+    file_close(h)
+    if escrito != n
+        file_delete(nuevo)
+        return false
+    end
+    viejo = destino + ".old"
+    file_delete(viejo)
+    if file_exists(destino) and not file_rename(destino, viejo)
+        file_delete(nuevo)
+        return false
+    end
+    if not file_rename(nuevo, destino)
+        file_rename(viejo, destino)
+        return false
+    end
+    return true
+end
+
+func act_instalar()
+    if not act_poner("PROGDIR:trasfondo", a_cuerpo[0], a_tam[0])
+        act_estado("Error: no se puede escribir PROGDIR:trasfondo")
+        return
+    end
+    prefs_en = ""                                 # TrasfondoPrefs, donde esté (el instalador lo pone en SYS:Prefs)
+    if file_exists("SYS:Prefs/TrasfondoPrefs")
+        prefs_en = "SYS:Prefs/TrasfondoPrefs"
+    elif file_exists("PROGDIR:TrasfondoPrefs")
+        prefs_en = "PROGDIR:TrasfondoPrefs"
+    end
+    if prefs_en != "" and not act_poner(prefs_en, a_cuerpo[1], a_tam[1])
+        act_estado("Error: no se puede escribir " + prefs_en + " (Trasfondo sí está al día)")
+    else
+        act_estado("Instalada la " + a_nueva + ": Trasfondo vuelve a arrancar")
+    end
+    file_delete("ENV:Trasfondo.nueva")
+    a_listo = true
+end
+
+func act_soltar_cuerpos()
+    for k in (0..1)
+        if a_cuerpo[k] != 0
+            buffer_free(a_cuerpo[k])
+            a_cuerpo[k] = 0
+        end
+    end
+end
+
+# TrasfondoPrefs pidió actualizar
+func act_actualizar()
+    if a_fase != 0 or a_listo
+        return
+    end
+    a_quiere = true
+    if a_nueva == "" or a_url[0] == ""
+        act_estado("Buscando la última versión...")
+        act_consultar()                           # y, si hay una nueva, la baja después
+    else
+        act_estado("Bajando trasfondo...")
+        act_bajar(0)
+    end
+end
+
+# lo que toque ahora: llamarla en cada vuelta del bucle
+func act_paso()
+    if a_fase == 0
+        if a_buscar and time_ms() >= a_proxima and not a_listo
+            a_proxima = time_ms() + CADA
+            act_consultar()
+        end
+        return
+    end
+    http_paso()
+    if h_paso == 4 and http_terminada()
+        if a_fase == 1
+            a_fase = 0
+            act_consulta_hecha()
+            if a_quiere and a_nueva != ""
+                act_estado("Bajando trasfondo...")
+                act_bajar(0)
+            end
+        else
+            c = http_cuerpo()
+            nombre = "trasfondo"
+            programa = "Trasfondo"
+            if a_cual == 1
+                nombre = "TrasfondoPrefs"
+                programa = "TrasfondoPrefs"
+            end
+            fallo = act_comprobar(c, nombre, programa)
+            if fallo != ""
+                a_fase = 0
+                a_quiere = false
+                act_soltar_cuerpos()
+                act_estado("Error: " + fallo)
+            else
+                b = buffer_alloc(a_tam[a_cual])
+                if b == 0
+                    a_fase = 0
+                    act_estado("Error: no hay memoria")
+                else
+                    buffer_copy(b, 0, h_buf, c, a_tam[a_cual])
+                    a_cuerpo[a_cual] = b
+                    if a_cual == 0
+                        act_estado("Bajando TrasfondoPrefs...")
+                        act_bajar(1)
+                    else
+                        a_fase = 0
+                        a_quiere = false
+                        act_instalar()
+                        act_soltar_cuerpos()
+                    end
+                end
+            end
+        end
+    elif h_paso == 5
+        if a_quiere
+            act_estado("Error: " + h_error)
+        end
+        a_fase = 0
+        a_quiere = false
+        act_soltar_cuerpos()
+    elif a_fase == 2 and h_paso == 3 and a_tam[a_cual] > 0
+        nombre = "trasfondo"
+        if a_cual == 1
+            nombre = "TrasfondoPrefs"
+        end
+        por = h_n * 100 / (a_tam[a_cual] + 400)     # (las cabeceras van en lo recibido)
+        if por > 99
+            por = 99
+        end
+        act_estado("Bajando #{nombre}: #{por} %")
+    end
+end

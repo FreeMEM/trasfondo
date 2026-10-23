@@ -4,7 +4,7 @@
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.7"
+@version "TrasfondoPrefs 0.8"
 
 const SECCIONES = "fecha,cpu,memoria,tareas,discos,red"
 
@@ -82,12 +82,20 @@ Main
     end
     m = 12                                   # el margen, por dentro de los bordes
     x_campo = m + screen_font_text_width("Cuántas tareas") + 10   # los campos, con su texto a la izquierda
-    ancho = m + 26 + 8 + screen_font_text_width("Ver la gráfica de la CPU") + m   # las casillas, con el texto a la derecha
+    ancho = m + 26 + 8 + screen_font_text_width("Buscar versiones nuevas en GitHub") + m   # las casillas, con el texto a la derecha
     if ancho < x_campo + 200
         ancho = x_campo + 200
     end
     alto_boton = f + 6
-    alto = m + fila * 6 + 4 + (fila + 2) * 2 + fila + 8 + alto_boton + m
+    alto = m + fila * 6 + 4 + (fila + 2) * 2 + fila * 2 + 8 + (alto_boton + 8) + 8 + alto_boton + m
+
+    # la versión: la que hay, o la nueva que encontró Trasfondo (ENV:Trasfondo.nueva)
+    yo = str_replace(program_version(), "TrasfondoPrefs ", "")
+    hay_nueva = file_read_text("ENV:Trasfondo.nueva")
+    linea_version = "Tienes la " + yo
+    if hay_nueva != nil and str_trim(hay_nueva) != ""
+        linea_version = "Hay una versión nueva: " + str_trim(hay_nueva)
+    end
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
     if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 8) == 0
         Print "TrasfondoPrefs: no puedo abrir la ventana"
@@ -109,16 +117,43 @@ Main
         tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, "Tecla rápida", conf("CX_POPKEY", ""), 40)
         y = y + fila + 2
         oculto = gt_checkbox(x, y, 26, f + 3, "Arrancar oculto", str_upper(conf("CX_POPUP", "YES")) == "NO")
+        y = y + fila
+        buscar = gt_checkbox(x, y, 26, f + 3, "Buscar versiones nuevas en GitHub", str_upper(conf("BUSCAR", "SI")) != "NO")
         y = y + fila + 8
+        ancho_act = screen_font_text_width("Actualizar") + 24
+        estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
+        actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, "Actualizar")
+        y = y + alto_boton + 16
         boton = (ancho - m * 2 - 16) / 3
         guardar = gt_button(x, y, boton, alto_boton, "Guardar")
         usar = gt_button(x + boton + 8, y, boton, alto_boton, "Usar")
         cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, "Cancelar")
         gt_attach()
 
+        ultimo = ""
+        pedido = 0                           # time_ms de cuando se pidió actualizar (0: no se ha pedido)
         while true
-            e = gt_wait_event()
-            if e == -2 or e == cancelar
+            e = gt_event()
+            if e == -1                       # nada: mira cómo va lo que se pidió a Trasfondo
+                time_delay(10)
+                if pedido != 0
+                    est = file_read_text("ENV:Trasfondo.estado")
+                    if est != nil and str_trim(est) != "" and str_trim(est) != ultimo
+                        ultimo = str_trim(est)
+                        gt_set_text(estado, ultimo)
+                        pedido = time_ms()
+                    elif ultimo == "" and time_ms() - pedido > 8000
+                        ultimo = "Trasfondo no está en marcha: arráncalo y vuelve a probar"
+                        gt_set_text(estado, ultimo)
+                    end
+                end
+            elif e == actualizar
+                file_delete("ENV:Trasfondo.estado")
+                file_write_text("ENV:Trasfondo.orden", "actualizar\n")
+                gt_set_text(estado, "Pedido a Trasfondo...")
+                ultimo = ""
+                pedido = time_ms()
+            elif e == -2 or e == cancelar
                 break
             elif e == guardar or e == usar
                 # las marcadas, en el orden que tenían; las nuevas, detrás
@@ -152,7 +187,11 @@ Main
                 if gt_get_value(oculto) != 0
                     popup = "NO"
                 end
-                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\n"
+                busca = "SI"
+                if gt_get_value(buscar) == 0
+                    busca = "NO"
+                end
+                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\nBUSCAR=" + busca + "\n"
                 file_write_text("ENV:Trasfondo.prefs", texto)
                 if e == guardar
                     file_write_text("ENVARC:Trasfondo.prefs", texto)

@@ -10,7 +10,7 @@ Arriba a la derecha del escritorio enseña:
 - La memoria Chip y Fast libre.
 - Las seis tareas que más CPU toman.
 - Los discos montados: cuánto está lleno cada uno y su tamaño.
-- La red: lo que entra y sale por segundo, y la señal de la WiFi si la tarjeta la da. Con cualquier pila
+- La red: lo que entra y sale por segundo (en KB/s si la pila o el driver dan los bytes; si no, en paquetes), y la señal de la WiFi si la tarjeta la da. Con cualquier pila
   TCP/IP (Roadshow, MiamiDx, AmiTCP...).
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
@@ -80,7 +80,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.6.lha` (de la página de
+1. Descomprime `trasfondo-0.8.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
@@ -97,8 +97,20 @@ acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco m�
 
 **TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida y si arranca oculto.
 **Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
-Trasfondo, si está en marcha, cambia en un segundo, sin reiniciarlo. Lo que pone TrasfondoPrefs manda
-sobre los tooltypes del icono.
+Trasfondo, si está en marcha, cambia al momento, sin reiniciarlo (el sistema le avisa cuando cambian). Lo
+que pone TrasfondoPrefs manda sobre los tooltypes del icono.
+
+### Ponerse al día solo
+
+Desde la 0.8, Trasfondo mira en GitHub si hay una versión nueva: un minuto después de arrancar y luego cada
+seis horas, sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
+«Trasfondo». En TrasfondoPrefs, **Actualizar** la baja (los dos ejecutables sueltos de la release),
+comprueba que llegó entera y que es la versión que dice, deja los de ahora como `.old` y Trasfondo vuelve a
+arrancar con la nueva.
+
+Necesita una pila TCP/IP y AmiSSL; sin ellas no hace nada. Solo pregunta a `api.github.com`, y la casilla
+**Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
+para llegar a la 0.8 hay que instalarla a mano una vez.
 
 ### Desde Exchange
 
