@@ -24,6 +24,9 @@ En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de
 
 ![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
 
+**Vídeo** (4:36, en castellano): [cómo se instala y cómo se usa](https://github.com/FreeMEM/trasfondo/releases/download/v0.2/trasfondo-0.2.mp4),
+grabado en Coffin R65.
+
 ## Escrito en Dash
 
 Trasfondo está escrito entero en [Dash](https://github.com/FreeMEM/dash), un lenguaje de alto nivel para
@@ -50,7 +53,7 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 52 KB.
+- **Memoria**: el ejecutable ocupa 62 KB.
 - **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
   interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
   `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
