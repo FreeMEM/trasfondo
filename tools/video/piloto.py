@@ -11,16 +11,21 @@ from PIL import Image
 import amiga
 from amiberry import orden
 
-# la imagen de SCREENSHOT: la pantalla de 640x256 empieza en (56, 38), con cada línea doble
-X0, Y0, ESCALA_Y = 56, 38, 2
+# Dos pantallas: la nativa de 640x256 (AGA), que en la imagen de SCREENSHOT empieza en (56, 38) con cada
+# línea doble, y la de una tarjeta gráfica (RTG), que es la imagen tal cual. En la de 256 líneas el ratón
+# también va a medias en vertical.
+def _rtg():
+    return amiga.rd(amiga.pantalla() + 14, 2) > 400
 
 
-def a_imagen(x, y):
-    return X0 + x, Y0 + y * ESCALA_Y
+def escala_y():
+    return 1 if _rtg() else 2
 
 
 def a_pantalla(ix, iy):
-    return ix - X0, (iy - Y0) // ESCALA_Y
+    if _rtg():
+        return ix, iy
+    return ix - 56, (iy - 38) // 2
 
 
 def captura(ruta):
@@ -33,6 +38,7 @@ def mover_a(x, y, dur=0.9, paso=0.03, botones=0):
     """Lleva el puntero a (x, y) de la pantalla en unos dur segundos, frenando al final. botones: los que
     siguen pulsados mientras (1, para arrastrar): cada movimiento lleva el estado de los botones."""
     x0, y0 = amiga.puntero()
+    ESCALA_Y = escala_y()
     n = max(2, int(dur / paso))
     hx, hy = x0, y0                       # donde debería estar ya
     for i in range(1, n + 1):

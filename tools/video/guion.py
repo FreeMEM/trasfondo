@@ -10,6 +10,7 @@ import agente
 import amiga
 import piloto as p
 from instalar import TRASPASO, icono_en, esperar_ventana, boton
+from preparar import VERSION
 from rodaje import Rodaje
 
 RAM_DISK = (27, 56)
@@ -62,7 +63,7 @@ time.sleep(1.0)
 
 # --- 1. Instalar ---
 r.capitulo("1 - Instalar", "Del .lha al fondo del Workbench")
-r.decir("Descomprime trasfondo-0.2.lha donde quieras. Aquí está en Traspaso:.")
+r.decir(f"Descomprime trasfondo-{VERSION}.lha donde quieras. Aquí está en Traspaso:.")
 time.sleep(1.5)
 p.mover_a(*TRASPASO, dur=1.2); p.clic(2)
 esperar_ventana("Traspaso"); time.sleep(1.5)

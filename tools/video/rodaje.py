@@ -22,6 +22,7 @@ class Rodaje:
         self.capitulos = []        # (t, título, subtítulo)
         self.clics = []            # (t, x, y)
         self.marcas = []           # (t, nombre, x, y, ancho, alto): recuadros que se resaltan en el montaje
+        self.zooms = []            # (t0, t1, x, y, ancho, alto): acercamientos
         self._parar = False
         self._t0 = None
         self._clic_original = piloto.clic
@@ -45,6 +46,8 @@ class Rodaje:
                 time.sleep(espera)
 
     def empezar(self):
+        s = amiga.pantalla()
+        self.pantalla = (amiga.rd(s + 12, 2), amiga.rd(s + 14, 2))    # 640x256 nativa o la de la tarjeta (RTG)
         self._t0 = time.time()
         rodaje = self
 
@@ -72,6 +75,10 @@ class Rodaje:
         """Un recuadro naranja sobre esa zona de la pantalla del Amiga, durante dur segundos."""
         self.marcas.append((self.ahora(), dur, nombre, x, y, ancho, alto))
 
+    def acercar(self, x, y, ancho, alto, dur):
+        """Un acercamiento a esa zona de la pantalla del Amiga (mejor en proporción 5:4) durante dur segundos."""
+        self.zooms.append((self.ahora(), self.ahora() + dur, x, y, ancho, alto))
+
     def esperar(self, s):
         time.sleep(s)
 
@@ -81,6 +88,7 @@ class Rodaje:
         self._hilo.join()
         piloto.clic = self._clic_original
         with open(os.path.join(self.carpeta, "toma.json"), "w") as f:
-            json.dump({"fin": self.ahora(), "cuadros": self.cuadros, "subtitulos": self.subtitulos,
-                       "capitulos": self.capitulos, "clics": self.clics, "marcas": self.marcas}, f,
+            json.dump({"fin": self.ahora(), "pantalla": self.pantalla, "cuadros": self.cuadros, "subtitulos": self.subtitulos,
+                       "capitulos": self.capitulos, "clics": self.clics, "marcas": self.marcas,
+                       "zooms": self.zooms}, f,
                       ensure_ascii=False, indent=1)

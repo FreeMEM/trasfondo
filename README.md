@@ -24,8 +24,8 @@ En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de
 
 ![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
 
-**Vídeo** (4:36, en castellano): [cómo se instala y cómo se usa](https://github.com/FreeMEM/trasfondo/releases/download/v0.2/trasfondo-0.2.mp4),
-grabado en Coffin R65.
+**Vídeo** (6 min, en castellano): [cómo se instala y cómo se usa](https://github.com/FreeMEM/trasfondo/releases/download/v0.3/trasfondo-0.3.mp4),
+grabado en Coffin R65, en AGA y con tarjeta gráfica (RTG).
 
 ## Escrito en Dash
 
@@ -76,7 +76,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.2.lha` (de la página de
+1. Descomprime `trasfondo-0.3.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en

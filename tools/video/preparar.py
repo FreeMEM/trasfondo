@@ -18,6 +18,7 @@ V = os.path.expanduser("~/.cache/video-trasfondo")
 ORIGINAL = os.path.expanduser("~/Amiberry/HardDrives/coffin_r65_32GB.img")
 PAQUETE = os.path.expanduser("~/Projects/trasfondo/build/paquete")
 TRASP = os.path.join(V, "traspaso")
+VERSION = "0.3"
 
 
 def cerrar_amiberry():
@@ -50,7 +51,7 @@ def main():
     os.makedirs(TRASP)
     shutil.copytree(os.path.join(PAQUETE, "Trasfondo"), os.path.join(TRASP, "Trasfondo"))
     shutil.copy(os.path.join(PAQUETE, "Trasfondo.info"), TRASP)
-    shutil.copy(os.path.expanduser("~/Projects/trasfondo/build/trasfondo-0.2.lha"), TRASP)
+    shutil.copy(os.path.expanduser(f"~/Projects/trasfondo/build/trasfondo-{VERSION}.lha"), TRASP)
     for f in ("agente", "agente.info"):
         shutil.copy(os.path.join(V, "agente", f), TRASP)
     env = dict(os.environ, SDL_VIDEODRIVER="offscreen", SDL_AUDIODRIVER="dummy")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """El paquete de Trasfondo para Aminet y GitHub: el cajón Trasfondo con sus iconos y el .lha.
 
-    python3 tools/paquete.py 0.2        →  build/paquete/Trasfondo/...  y  build/trasfondo-0.2.lha
+    python3 tools/paquete.py 0.3        →  build/paquete/Trasfondo/...  y  build/trasfondo-0.3.lha
 
 Necesita build/trasfondo y build/trasfondoprefs compilados, y el lha de 68k (/opt/amiga/bin/lha) para que
 el archivo guarde bien los atributos.

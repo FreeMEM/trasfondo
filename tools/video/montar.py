@@ -1,6 +1,6 @@
 """El montaje: de la toma (toma.json y sus capturas) al vídeo de 1920x1080, con aire de Amiga.
 
-    python3 montar.py <carpeta de la toma> <salida.mp4>
+    python3 montar.py <carpeta de la toma> [<otra toma>...] <salida.mp4>
 
 - Rótulos entre capítulos: azul del Workbench 1.3, letra Topaz, raya naranja y una bola Boing en la portada.
 - La pantalla del Amiga, a escala entera (640x256 → 1280x1024) con líneas de barrido suaves.
@@ -112,7 +112,15 @@ def fondo(capitulo):
 
 
 def pantalla(fichero):
-    cap = Image.open(fichero).convert("RGB").crop(RECORTE)        # 640x512: cada línea del Amiga, doble
+    cap = Image.open(fichero).convert("RGB")
+    if cap.width >= 1000:                                         # tarjeta gráfica (RTG): la imagen tal cual
+        if cap.size != (1280, 1024):
+            cap.thumbnail((1280, 1024), Image.LANCZOS)
+            fondo_rtg = Image.new("RGB", (1280, 1024), (0, 0, 0))
+            fondo_rtg.paste(cap, ((1280 - cap.width) // 2, (1024 - cap.height) // 2))
+            cap = fondo_rtg
+        return cap
+    cap = cap.crop(RECORTE)                                       # 640x512: cada línea del Amiga, doble
     cap = cap.resize((640, 256), Image.NEAREST).resize((1280, 1024), Image.NEAREST)
     d = ImageDraw.Draw(cap, "RGBA")
     for y in range(3, 1024, 4):                                   # la cuarta fila de cada línea, más oscura
@@ -120,25 +128,45 @@ def pantalla(fichero):
     return cap
 
 
-def a_video(x, y):
-    return PX + x * ESC_X + ESC_X // 2, PY + y * ESC_Y + ESC_Y // 2
+def escala(toma):
+    """Píxeles del vídeo por píxel del Amiga: 2x4 en la pantalla nativa de 256 líneas, 1x1 en RTG."""
+    w, h = toma.get("pantalla", (640, 256))
+    return (ESC_X, ESC_Y) if h < 400 else (1280 / w, 1024 / h)
+
+
+def a_video(x, y, esc=(ESC_X, ESC_Y)):
+    return PX + int(x * esc[0] + esc[0] // 2), PY + int(y * esc[1] + esc[1] // 2)
+
+
+def acercar(cap, t, toma, esc):
+    """Los acercamientos de la toma (zooms: t0, t1, x, y, ancho, alto en píxeles del Amiga, 5:4): entra y sale
+    suave en 0,8 s."""
+    for (t0, t1, x, y, an, al) in toma.get("zooms", []):
+        if t0 <= t <= t1:
+            a = max(0.0, min(1.0, (t - t0) / 0.8, (t1 - t) / 0.8))
+            a = a * a * (3 - 2 * a)
+            rx, ry, rw, rh = x * esc[0], y * esc[1], an * esc[0], al * esc[1]
+            caja = (rx * a, ry * a, 1280 + (rx + rw - 1280) * a, 1024 + (ry + rh - 1024) * a)
+            return cap.resize((1280, 1024), Image.LANCZOS, box=caja)
+    return cap
 
 
 def componer(base, cap, t, toma):
+    esc = escala(toma)
     img = base.copy()
-    img.paste(cap, (PX, PY))
+    img.paste(acercar(cap, t, toma, esc), (PX, PY))
     d = ImageDraw.Draw(img, "RGBA")
     for (tm, dur, _, x, y, an, al) in toma["marcas"]:
         if tm <= t <= tm + dur:
             a = min(1, (t - tm) / 0.3, (tm + dur - t) / 0.3)
-            x0, y0 = a_video(x, y)
-            x1, y1 = a_video(x + an, y + al)
+            x0, y0 = a_video(x, y, esc)
+            x1, y1 = a_video(x + an, y + al, esc)
             for k in range(3):
                 d.rectangle([x0 - 4 - k, y0 - 4 - k, x1 + 4 + k, y1 + 4 + k], outline=NARANJA + (int(230 * a),))
     for (tc, x, y) in toma["clics"]:
         k = (t - tc) * FPS
         if 0 <= k < 8:
-            cx, cy = a_video(x, y)
+            cx, cy = a_video(x, y, esc)
             r = 10 + k * 5
             d.ellipse([cx - r, cy - r, cx + r, cy + r], outline=NARANJA + (int(255 * (1 - k / 8)),), width=5)
     for (t0, t1, texto) in toma["subtitulos"]:
@@ -154,20 +182,20 @@ def componer(base, cap, t, toma):
     return img
 
 
-_toma, _fondos = None, {}
+_tomas, _fondos = None, {}
 
 
-def _iniciar(toma, titulos):
-    global _toma
-    _toma = toma
+def _iniciar(tomas, titulos):
+    global _tomas
+    _tomas = tomas
     for titulo in titulos:
         _fondos[titulo] = fondo(titulo)
 
 
 def _cuadro(trabajo):
-    """Un cuadro de la toma, compuesto en un proceso aparte: (título del capítulo, hora, captura)."""
-    titulo, t, fichero = trabajo
-    return componer(_fondos[titulo], pantalla(fichero), t, _toma).tobytes()
+    """Un cuadro de una toma, compuesto en un proceso aparte: (toma, título del capítulo, hora, captura)."""
+    k, titulo, t, fichero = trabajo
+    return componer(_fondos[titulo], pantalla(fichero), t, _tomas[k]).tobytes()
 
 
 def srt_tiempo(s):
@@ -176,29 +204,28 @@ def srt_tiempo(s):
 
 
 def main():
-    carpeta, salida = sys.argv[1], sys.argv[2]
-    toma = json.load(open(os.path.join(carpeta, "toma.json")))
-    cuadros = toma["cuadros"]
-    caps = toma["capitulos"]
-    cierre = toma.get("cierre", ("Trasfondo", "Libre (MIT)", ["github.com/FreeMEM/trasfondo",
-                                                              "Hecho en Dash: github.com/FreeMEM/dash"]))
-    # el guion: portada, y por cada capítulo su rótulo y su trozo de toma; al final, el cierre
+    carpetas, salida = sys.argv[1:-1], sys.argv[-1]
+    tomas = [json.load(open(os.path.join(c, "toma.json"))) for c in carpetas]
+    cierre = tomas[-1].get("cierre", ("Trasfondo", "Libre (MIT)", ["github.com/FreeMEM/trasfondo",
+                                                                   "Hecho en Dash: github.com/FreeMEM/dash"]))
+    # el guion: portada, y por cada capítulo de cada toma su rótulo y su trozo; al final, el cierre
     tramos = [("rotulo", PORTADA, rotulo("Trasfondo", "Un monitor de recursos en el fondo del Workbench",
-                                         True, ["AmigaOS 3.x  -  hecho en Dash"]), "Trasfondo")]
-    for i, (t0, titulo, sub) in enumerate(caps):
-        t1 = caps[i + 1][0] if i + 1 < len(caps) else toma["fin"]
-        tramos.append(("rotulo", RÓTULO, rotulo(titulo, sub), titulo))
-        tramos.append(("toma", (t0, t1), fondo(titulo), titulo))
-    tramos.append(("rotulo", CIERRE, rotulo(cierre[0], cierre[1], True, cierre[2]), cierre[0]))
+                                         True, ["AmigaOS 3.x  -  hecho en Dash"]), "Trasfondo", None)]
+    for k, toma in enumerate(tomas):
+        caps = toma["capitulos"]
+        for i, (t0, titulo, sub) in enumerate(caps):
+            t1 = caps[i + 1][0] if i + 1 < len(caps) else toma["fin"]
+            tramos.append(("rotulo", RÓTULO, rotulo(titulo, sub), titulo, None))
+            tramos.append(("toma", (t0, t1), None, titulo, k))
+    tramos.append(("rotulo", CIERRE, rotulo(cierre[0], cierre[1], True, cierre[2]), cierre[0], None))
 
     ff = subprocess.Popen(["ffmpeg", "-y", "-loglevel", "error", "-f", "rawvideo", "-pix_fmt", "rgb24",
                            "-s", f"{W}x{H}", "-r", str(FPS), "-i", "-", "-c:v", "libx264", "-preset", "medium",
                            "-crf", "18", "-pix_fmt", "yuv420p", salida + ".crudo.mp4"], stdin=subprocess.PIPE)
-    pool = multiprocessing.Pool(initializer=_iniciar, initargs=(toma, [c[1] for c in caps]))
+    pool = multiprocessing.Pool(initializer=_iniciar, initargs=(tomas, [tr[3] for tr in tramos if tr[0] == "toma"]))
     t_video = 0.0
     capitulos_video, srt = [], []
-    j = 0
-    for tipo, dur, img, nombre in tramos:
+    for tipo, dur, img, nombre, k in tramos:
         if tipo == "rotulo":                     # cada capítulo empieza en su rótulo
             capitulos_video.append((t_video, nombre))
         if tipo == "rotulo":
@@ -209,16 +236,19 @@ def main():
             t_video += n / FPS
             continue
         t0, t1 = dur
+        toma = tomas[k]
+        cuadros = toma["cuadros"]
+        j = 0
         for (s0, s1, texto) in toma["subtitulos"]:
             if s0 < t1 and s1 > t0:
                 srt.append((t_video + max(s0, t0) - t0, t_video + min(s1, t1) - t0, texto))
         n = int((t1 - t0) * FPS)
         trabajos = []
-        for k in range(n):
-            t = t0 + k / FPS
+        for c in range(n):
+            t = t0 + c / FPS
             while j + 1 < len(cuadros) and cuadros[j + 1][0] <= t:
                 j += 1
-            trabajos.append((nombre, t, cuadros[j][1]))
+            trabajos.append((k, nombre, t, cuadros[j][1]))
         for datos in pool.imap(_cuadro, trabajos, chunksize=16):
             ff.stdin.write(datos)
         t_video += n / FPS

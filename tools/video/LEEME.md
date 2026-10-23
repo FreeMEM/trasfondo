@@ -13,6 +13,14 @@ Cómo se graba el vídeo de instalación y uso, en Coffin R65 (Amiberry), sin to
   Amiberry, no para teclas del Amiga) y lanzar programas. Su buzón es un puerto público "agente"; se esconde
   de los medidores de CPU con un gancho de cambio de tarea vacío.
 
+- `guion_rtg.py <carpeta>`: el capítulo de RTG. Sin pantalla (`offscreen`), la tarjeta uaegfx de Amiberry solo
+  crea un modo de 320x200 y Coffin arranca en AGA; con una pantalla virtual (`Xvfb :77 -screen 0
+  1920x1080x24`, y Amiberry con `DISPLAY=:77 SDL_VIDEODRIVER=x11`) tiene sus modos y Coffin arranca en RTG a
+  1280x1024. El piloto mira el alto de la pantalla para saber si va en AGA (el ratón va a medias en
+  vertical) o en RTG (1:1).
+- El montaje admite varias tomas (`montar.py toma_aga toma_rtg salida.mp4`), cada una con su escala, y
+  acercamientos (`Rodaje.acercar`).
+
 Lo aprendido: cada lectura de memoria por el socket cuesta un cuadro (20 ms), así que las posiciones de los
 gadgets van medidas de antemano; el OCR no lee los nombres de los iconos sobre el fondo con trama, por eso
 los iconos del paquete llevan su sitio; las ventanas de Dash son GimmeZeroZero (sus gadgets cuentan desde
