@@ -1,0 +1,205 @@
+# TrasfondoPrefs de punta a punta: este programa hace de usuario. Lanza DH0:trasfondo, abre
+# DH0:trasfondoprefs, pulsa sus casillas y botones (los busca por su texto en la ventana y hace clic en su
+# centro con input.device) y mira qué escribe en ENV: y ENVARC:, y si Trasfondo cambia el alto del panel.
+#
+#     python3 tests/prueba_prefs.py      (copia build/trasfondo y build/trasfondoprefs al disco del emulador)
+
+@header "#include <devices/input.h>"
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());     /* con 0, abriría su propia consola encima de todo */
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+# un evento a input.device
+@native func evento(clase: Int, codigo: Int, cual: Int, x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    if (io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        ie.ie_Class = clase;
+        ie.ie_Code = codigo;
+        ie.ie_Qualifier = cual;
+        ie.ie_X = x;
+        ie.ie_Y = y;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# lleva el puntero a ese píxel de la pantalla del Workbench (IECLASS_NEWPOINTERPOS, IESUBCLASS_PIXEL)
+@native func puntero(x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    struct IEPointerPixel pp;
+    struct Screen *s = LockPubScreen(NULL);
+    if (s && io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        pp.iepp_Screen = s;
+        pp.iepp_Position.X = x;
+        pp.iepp_Position.Y = y;
+        ie.ie_Class = IECLASS_NEWPOINTERPOS;
+        ie.ie_SubClass = IESUBCLASS_PIXEL;
+        ie.ie_Code = IECODE_NOBUTTON;
+        ie.ie_EventAddress = &pp;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (s) UnlockPubScreen(NULL, s);
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# el centro (en la pantalla) del gadget con ese texto en la ventana de ese título: x * 10000 + y; -1 si no está.
+# Los botones de GadTools no guardan su texto en el gadget: "Guardar", "Usar" y "Cancelar" son los tres que
+# van detrás de "Arrancar oculto", en ese orden.
+@native func centro(titulo: String, texto: String) -> Int
+"""
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    struct Gadget *g;
+    LONG r = -1, boton = -1, k = -1;
+    if (!strcmp((char *)texto, "Guardar")) boton = 1;
+    else if (!strcmp((char *)texto, "Usar")) boton = 2;
+    else if (!strcmp((char *)texto, "Cancelar")) boton = 3;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
+    if (w)
+        for (g = w->FirstGadget; g; g = g->NextGadget) {
+            if (k >= 0) k++;
+            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Arrancar oculto")) k = 0;
+            if (boton > 0 ? k == boton : g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, (char *)texto)) {
+                /* la ventana es GimmeZeroZero: los gadgets cuentan desde dentro del borde */
+                LONG bx = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderLeft : 0;
+                LONG by = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderTop : 0;
+                r = (w->LeftEdge + bx + g->LeftEdge + g->Width / 2) * 10000 + w->TopEdge + by + g->TopEdge + g->Height / 2;
+                break;
+            }
+        }
+    UnlockIBase(lock);
+    return r;
+"""
+end
+
+# las casillas (1 marcada) en el orden de la ventana
+@native func estados() -> String
+"""
+    static char b[40];
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    struct Gadget *g;
+    LONG n = 0;
+    b[0] = 0;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, "Preferencias de Trasfondo")) break;
+    if (w) for (g = w->FirstGadget; g && n < 30; g = g->NextGadget)
+        if (g->GadgetText && g->GadgetText->IText && !strncmp((char *)g->GadgetText->IText, "Ver ", 4)) b[n++] = (g->Flags & GFLG_SELECTED) ? '1' : '0';
+    b[n] = 0;
+    UnlockIBase(lock);
+    return _dash_str_dup((STRPTR)b, TRUE);
+"""
+end
+
+# el alto del panel de Trasfondo: filas seguidas, desde arriba, distintas del fondo en una columna del panel
+@native func alto_panel() -> Int
+"""
+    struct Screen *s = LockPubScreen(NULL);
+    LONG y, n = 0;
+    if (!s) return -1;
+    for (y = s->BarHeight + 6; y < s->Height; y++) {
+        if (ReadPixel(&s->RastPort, s->Width - 8, y) == 0) { if (n) break; } else n++;
+    }
+    UnlockPubScreen(NULL, s);
+    return n;
+"""
+end
+
+const IECLASS_RAWMOUSE = 2
+const IECODE_LBUTTON = 0x68
+const IECODE_UP_PREFIX = 0x80
+const IEQUALIFIER_RELATIVEMOUSE = 0x8000
+
+func pulsar(texto: String) -> Bool
+    c = centro("Preferencias de Trasfondo", texto)
+    if c < 0
+        Print "no encuentro: " + texto
+        return false
+    end
+    x = c / 10000
+    y = c % 10000
+    puntero(x, y)
+    esperar(5)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON, IEQUALIFIER_RELATIVEMOUSE, 0, 0)     # sin moverse: relativo 0,0
+    esperar(3)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON + IECODE_UP_PREFIX, IEQUALIFIER_RELATIVEMOUSE, 0, 0)
+    esperar(10)
+    Print "  " + texto + " en #{c / 10000},#{c % 10000}: " + estados()
+    return true
+end
+
+func fichero(nombre: String) -> String
+    t = file_read_text(nombre)
+    if t == nil
+        return "(no está)"
+    end
+    return str_replace(t, "\n", " | ")
+end
+
+Main
+    lanzar("C:MakeDir RAM:EnvArc")           # el sistema del emulador no tiene ENVARC:
+    lanzar("C:Assign ENVARC: RAM:EnvArc")
+    lanzar("Run >NIL: DH0:trasfondo")
+    esperar(200)
+    a0 = alto_panel()
+    Print "panel al empezar: #{a0 > 100}"
+
+    lanzar("Run >NIL: DH0:trasfondoprefs")
+    esperar(100)
+    pulsar("Ver las tareas")
+    pulsar("Ver los discos")
+    pulsar("Usar")
+    esperar(150)
+    a1 = alto_panel()
+    Print "Usar sin tareas ni discos: ENV " + fichero("ENV:Trasfondo.prefs") + "; ENVARC " + fichero("ENVARC:Trasfondo.prefs")
+    Print "panel más bajo: #{a1 > 20 and a1 < a0}"
+
+    lanzar("Run >NIL: DH0:trasfondoprefs")
+    esperar(100)
+    pulsar("Ver los discos")
+    pulsar("Arrancar oculto")
+    pulsar("Guardar")
+    esperar(150)
+    a2 = alto_panel()
+    Print "Guardar con discos: ENVARC " + fichero("ENVARC:Trasfondo.prefs")
+    Print "panel entre los dos: #{a2 > a1 and a2 < a0}"
+
+    lanzar("Run >NIL: DH0:trasfondoprefs")
+    esperar(100)
+    pulsar("Ver la memoria libre")
+    pulsar("Cancelar")
+    esperar(100)
+    Print "Cancelar no cambia nada: ENV " + fichero("ENV:Trasfondo.prefs")
+    Print "ventana cerrada: #{centro(\"Preferencias de Trasfondo\", \"Usar\") < 0}"
+    lanzar("DH0:trasfondo >NIL:")              # lo para
+end

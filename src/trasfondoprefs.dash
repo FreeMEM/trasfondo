@@ -1,0 +1,149 @@
+# TrasfondoPrefs: las preferencias de Trasfondo en una ventana, como las de SYS:Prefs. Qué secciones se ven,
+# cuántas tareas, la tecla rápida y si arranca oculto. Usar las deja en ENV:Trasfondo.prefs (hasta
+# reiniciar); Guardar, también en ENVARC:. Trasfondo, si está en marcha, las nota en un segundo.
+# Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
+
+@workbench_output "NIL:"
+
+const SECCIONES = "cpu,memoria,tareas,discos,red"
+
+var prefs: String = ""
+
+# un ajuste de las preferencias (NOMBRE=valor), o el defecto
+func conf(nombre: String, defecto: String) -> String
+    var lineas: [String] = str_split(str_replace(prefs, "\r", ""), "\n")
+    for i in (0..lineas.length - 1)
+        l = str_trim(lineas[i])
+        igual = str_find(l, "=")
+        if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
+            return str_trim(l[igual + 1:l.length])
+        end
+    end
+    return defecto
+end
+
+# las secciones de MOSTRAR, en su orden y con los nombres de Trasfondo (también acepta los ingleses)
+func secciones_de(texto: String) -> [String]
+    var r: [String] = []
+    var nombres: [String] = str_split(str_replace(str_lower(texto), ",", " "), " ")
+    for i in (0..nombres.length - 1)
+        s = str_trim(nombres[i])
+        if s == "memory" or s == "mem"
+            s = "memoria"
+        elif s == "tasks"
+            s = "tareas"
+        elif s == "disks"
+            s = "discos"
+        elif s == "net" or s == "network" or s == "wifi"
+            s = "red"
+        end
+        if s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red"
+            r.push(s)
+        end
+    end
+    return r
+end
+
+func esta(lista: [String], s: String) -> Bool
+    for i in (0..lista.length - 1)
+        if lista[i] == s
+            return true
+        end
+    end
+    return false
+end
+
+Main
+    prefs = file_read_text("ENV:Trasfondo.prefs")
+    if prefs == nil
+        prefs = file_read_text("ENVARC:Trasfondo.prefs")
+    end
+    if prefs == nil
+        prefs = ""
+    end
+    var antes: [String] = secciones_de(conf("MOSTRAR", SECCIONES))
+
+    f = font_height()
+    fila = f + 8
+    if fila < 16
+        fila = 16
+    end
+    ancho_etq = font_text_width("Cuántas tareas") + 40      # los campos, con su texto a la izquierda
+    ancho = 20 + 26 + 8 + font_text_width("Ver la gráfica de la CPU") + 30   # las casillas, con el texto a la derecha
+    if ancho < ancho_etq + 200
+        ancho = ancho_etq + 200
+    end
+    alto = f + 10 + fila * 5 + 4 + (fila + 2) * 2 + fila + 8 + f + 8 + f + 12
+    if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 0) == 0
+        Print "TrasfondoPrefs: no puedo abrir la ventana"
+    else
+        gt_init()
+        y = f + 10                           # debajo de la barra del título
+        x = 20
+        var claves: [String] = ["cpu", "memoria", "tareas", "discos", "red"]
+        var etiquetas: [String] = ["Ver la gráfica de la CPU", "Ver la memoria libre", "Ver las tareas", "Ver los discos", "Ver la red y la WiFi"]
+        var casillas: [Int] = []
+        for i in (0..4)
+            casillas.push(gt_checkbox(x, y, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
+            y = y + fila
+        end
+        y = y + 4
+        tareas = gt_integer(ancho_etq, y, 60, f + 6, "Cuántas tareas", Int(conf("TAREAS", "6")))
+        y = y + fila + 2
+        tecla = gt_string(ancho_etq, y, ancho - ancho_etq - 20, f + 6, "Tecla rápida", conf("CX_POPKEY", ""), 40)
+        y = y + fila + 2
+        oculto = gt_checkbox(x, y, 26, f + 3, "Arrancar oculto", str_upper(conf("CX_POPUP", "YES")) == "NO")
+        y = y + fila + 8
+        boton = (ancho - 40 - 20) / 3
+        guardar = gt_button(20, y, boton, f + 8, "Guardar")
+        usar = gt_button(30 + boton, y, boton, f + 8, "Usar")
+        cancelar = gt_button(40 + boton * 2, y, boton, f + 8, "Cancelar")
+        gt_attach()
+
+        while true
+            e = gt_wait_event()
+            if e == -2 or e == cancelar
+                break
+            elif e == guardar or e == usar
+                # las marcadas, en el orden que tenían; las nuevas, detrás
+                var mostrar: [String] = []
+                for i in (0..antes.length - 1)
+                    for j in (0..4)
+                        if claves[j] == antes[i] and gt_get_value(casillas[j]) != 0
+                            mostrar.push(antes[i])
+                        end
+                    end
+                end
+                for j in (0..4)
+                    if gt_get_value(casillas[j]) != 0 and not esta(mostrar, claves[j])
+                        mostrar.push(claves[j])
+                    end
+                end
+                n = gt_get_value(tareas)
+                if n < 1
+                    n = 1
+                elif n > 20
+                    n = 20
+                end
+                texto = "MOSTRAR="
+                for i in (0..mostrar.length - 1)
+                    if i > 0
+                        texto = texto + ","
+                    end
+                    texto = texto + str_upper(mostrar[i])
+                end
+                popup = "YES"
+                if gt_get_value(oculto) != 0
+                    popup = "NO"
+                end
+                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\n"
+                file_write_text("ENV:Trasfondo.prefs", texto)
+                if e == guardar
+                    file_write_text("ENVARC:Trasfondo.prefs", texto)
+                end
+                break
+            end
+        end
+        gt_cleanup()
+    end
+end

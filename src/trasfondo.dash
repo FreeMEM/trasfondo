@@ -30,6 +30,8 @@ const CX_TECLA = 6
 
 var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTRAR): cpu, memoria, tareas, discos, red
 var tareas_max: Int = TAREAS
+var prefs: String = ""       # ENV:Trasfondo.prefs (lo escribe TrasfondoPrefs): manda sobre los tooltypes
+var tecla_puesta: String = ""
 var historia: [Int] = []     # CPU total de cada segundo, en tantos por mil (la más nueva al final)
 var n_tareas: Int = 0
 var linea: Int = 10          # alto de una línea de texto
@@ -115,9 +117,47 @@ func con_wifi(i: Int) -> Bool
     return r_wifi[i] == 0 or r_wifi[i] == 1 or r_wifi[i] == 4
 end
 
+# un ajuste: de ENV:Trasfondo.prefs (NOMBRE=valor, una línea cada uno) si está ahí; si no, el tooltype
+# (o el argumento del Shell)
+func conf(nombre: String, defecto: String) -> String
+    var lineas: [String] = str_split(str_replace(prefs, "\r", ""), "\n")
+    for i in (0..lineas.length - 1)
+        l = str_trim(lineas[i])
+        igual = str_find(l, "=")
+        if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
+            return str_trim(l[igual + 1:l.length])
+        end
+    end
+    return tooltype(nombre, defecto)
+end
+
+# lee ENV:Trasfondo.prefs; true si cambió desde la última vez
+func leer_prefs() -> Bool
+    texto = file_read_text("ENV:Trasfondo.prefs")
+    if texto == nil
+        texto = ""
+    end
+    if texto == prefs
+        return false
+    end
+    prefs = texto
+    return true
+end
+
+# la tecla rápida de los ajustes ("" la quita)
+func poner_tecla()
+    tecla = conf("CX_POPKEY", "")
+    if tecla != tecla_puesta
+        if not cx_hotkey(tecla) and tecla != ""
+            Print "Trasfondo: la tecla rápida no vale: " + tecla
+        end
+        tecla_puesta = tecla
+    end
+end
+
 # MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
 func leer_secciones()
-    texto = tooltype("MOSTRAR", tooltype("SHOW", SECCIONES))
+    texto = conf("MOSTRAR", tooltype("SHOW", SECCIONES))
     secciones = []
     var nombres: [String] = str_split(str_replace(str_lower(texto), ",", " "), " ")
     for i in (0..nombres.length - 1)
@@ -138,7 +178,7 @@ func leer_secciones()
     if secciones.length == 0
         secciones = ["cpu", "memoria", "tareas", "discos", "red"]
     end
-    tareas_max = Int(tooltype("TAREAS", tooltype("TASKS", "#{TAREAS}")))
+    tareas_max = Int(conf("TAREAS", tooltype("TASKS", "#{TAREAS}")))
     if tareas_max < 1
         tareas_max = 1
     elif tareas_max > 20
@@ -556,14 +596,12 @@ Main
         Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
     else
         linea = font_height() + 1
+        leer_prefs()
         leer_secciones()
-        if cx_broker("Trasfondo", "Trasfondo 0.2", "Monitor de recursos en el fondo", Int(tooltype("CX_PRIORITY", "0")))
-            tecla = tooltype("CX_POPKEY", "")
-            if tecla != "" and not cx_hotkey(tecla)
-                Print "Trasfondo: la tecla rápida no vale: " + tecla
-            end
+        if cx_broker("Trasfondo", "Trasfondo 0.2", "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
+            poner_tecla()
         end
-        visible = str_upper(tooltype("CX_POPUP", "YES")) != "NO"
+        visible = str_upper(conf("CX_POPUP", "YES")) != "NO"
         n_tareas = cpu_sample()
         if visible
             medir_paneles()
@@ -593,9 +631,13 @@ Main
                             historia.remove(0)
                         end
                     end
+                    if leer_prefs()          # TrasfondoPrefs cambió los ajustes
+                        leer_secciones()
+                        poner_tecla()
+                    end
                     if lienzo != 0
                         medir_paneles()
-                        if alto_panel() != alto_lienzo      # otro disco, otra red: un panel de otro alto
+                        if alto_panel() != alto_lienzo      # otro disco, otra red, otras secciones: otro alto
                             ocultar()
                             mostrar()
                         end
