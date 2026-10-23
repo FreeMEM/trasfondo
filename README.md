@@ -24,8 +24,11 @@ En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de
 
 ![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
 
-**Vídeo** (6 min, en castellano): [cómo se instala y cómo se usa](https://github.com/FreeMEM/trasfondo/releases/download/v0.3/trasfondo-0.3.mp4),
-grabado en Coffin R65, en AGA y con tarjeta gráfica (RTG).
+**Vídeo** (6 min, en castellano): cómo se instala y cómo se usa, en Coffin R65, en AGA y con tarjeta gráfica
+(RTG). En [YouTube](https://youtu.be/vMqksMRh4rI) o para
+[descargar](https://github.com/FreeMEM/trasfondo/releases/download/v0.3/trasfondo-0.3.mp4).
+
+[![Vídeo: Trasfondo 0.3, cómo se instala y cómo se usa](docs/video.jpg)](https://youtu.be/vMqksMRh4rI)
 
 ## Escrito en Dash
 
