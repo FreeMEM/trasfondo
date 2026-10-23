@@ -25,9 +25,22 @@ def icono():
     return l
 
 
+def icono_prefs():
+    """El de Trasfondo con tres casillas encima: sus preferencias."""
+    l = icono()
+    for i in range(3):
+        y = 4 + i * 6
+        l.rect(20, y, 24, y + 3, BLANCO)
+        l.rect(21, y + 1, 23, y + 2, NEGRO if i != 1 else BLANCO)
+        l.rect(26, y + 1, 34, y + 2, BLANCO)
+    return l
+
+
+# DONOTWAIT: en WBStartup, el Workbench no espera a que acabe; los tooltypes de commodity; la tecla
+# rápida, entre paréntesis: apagada hasta que se le quiten
+TOOLTYPES = ["DONOTWAIT", "MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED", "TAREAS=6", "CX_PRIORITY=0", "CX_POPUP=YES",
+             "(CX_POPKEY=ctrl alt t)"]
+
+
 if __name__ == "__main__":
-    # DONOTWAIT: en WBStartup, el Workbench no espera a que acabe; los tooltypes de commodity; la tecla
-    # rápida, entre paréntesis: apagada hasta que se le quiten
-    Path(sys.argv[1]).write_bytes(info(icono(), WBTOOL,
-                                       tooltypes=["DONOTWAIT", "MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED", "TAREAS=6", "CX_PRIORITY=0",
-                                                 "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]))
+    Path(sys.argv[1]).write_bytes(info(icono(), WBTOOL, tooltypes=TOOLTYPES))

@@ -74,13 +74,24 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 ## Instalación y uso
 
 1. Descomprime `trasfondo-0.2.lha` (de la página de
-   [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón.
-2. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
-3. Para pararlo, lánzalo otra vez, o pulsa Ctrl-C en su Shell. El fondo queda como estaba.
+   [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
+2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
+   a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
+   `SYS:Prefs`.
+3. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
+4. Para pararlo, lánzalo otra vez, usa Eliminar en Exchange o pulsa Ctrl-C en su Shell. El fondo queda
+   como estaba.
 
-Para que arranque solo con el Workbench, copia `trasfondo` y `trasfondo.info` a `SYS:WBStartup`. El icono
-lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que acabe (si falta, pregunta
-"El programa no ha terminado aún. ¿Espero un poco más?").
+Sin instalador también vale: copia `trasfondo` y `trasfondo.info` a donde quieras. En `SYS:WBStartup`
+arranca solo; su icono lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que
+acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco más?").
+
+### Preferencias
+
+**TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida y si arranca oculto.
+**Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
+Trasfondo, si está en marcha, cambia en un segundo, sin reiniciarlo. Lo que pone TrasfondoPrefs manda
+sobre los tooltypes del icono.
 
 ### Desde Exchange
 
