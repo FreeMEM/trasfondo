@@ -29,4 +29,5 @@ if __name__ == "__main__":
     # DONOTWAIT: en WBStartup, el Workbench no espera a que acabe; los tooltypes de commodity; la tecla
     # rápida, entre paréntesis: apagada hasta que se le quiten
     Path(sys.argv[1]).write_bytes(info(icono(), WBTOOL,
-                                       tooltypes=["DONOTWAIT", "CX_PRIORITY=0", "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]))
+                                       tooltypes=["DONOTWAIT", "MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED", "TAREAS=6", "CX_PRIORITY=0",
+                                                 "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]))

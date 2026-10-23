@@ -101,6 +101,8 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 
 | Tooltype | Qué hace |
 |---|---|
+| `MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED` | Qué secciones salen y en qué orden. Por ejemplo, `MOSTRAR=CPU,DISCOS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. |
+| `TAREAS=6` | Cuántas tareas enseña (de 1 a 20). |
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |

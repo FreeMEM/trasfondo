@@ -15,7 +15,8 @@
 
 const ANCHO = 260
 const HISTORIA = 60          # segundos de historia de la CPU
-const TAREAS = 6             # tareas que se enseñan
+const TAREAS = 6             # tareas que se enseñan, si el tooltype TAREAS no dice otra cosa
+const SECCIONES = "CPU,MEMORIA,TAREAS,DISCOS,RED"
 const ALTO_GRAFICA = 32
 const DISCOS = 8             # volúmenes que se enseñan, como mucho
 const REDES = 3              # interfaces de red, como mucho
@@ -27,6 +28,8 @@ const CX_ACTIVAR = 4
 const CX_ELIMINAR = 5
 const CX_TECLA = 6
 
+var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTRAR): cpu, memoria, tareas, discos, red
+var tareas_max: Int = TAREAS
 var historia: [Int] = []     # CPU total de cada segundo, en tantos por mil (la más nueva al final)
 var n_tareas: Int = 0
 var linea: Int = 10          # alto de una línea de texto
@@ -112,18 +115,82 @@ func con_wifi(i: Int) -> Bool
     return r_wifi[i] == 0 or r_wifi[i] == 1 or r_wifi[i] == 4
 end
 
-func alto_panel() -> Int
-    alto = 6 + linea + 4 + ALTO_GRAFICA + 6 + linea * 2 + 6 + linea * TAREAS
-    if d_nombre.length > 0
-        alto = alto + 6 + linea * d_nombre.length
+# MOSTRAR=CPU,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
+func leer_secciones()
+    texto = tooltype("MOSTRAR", tooltype("SHOW", SECCIONES))
+    secciones = []
+    var nombres: [String] = str_split(str_replace(str_lower(texto), ",", " "), " ")
+    for i in (0..nombres.length - 1)
+        s = str_trim(nombres[i])
+        if s == "memory" or s == "mem"
+            s = "memoria"
+        elif s == "tasks"
+            s = "tareas"
+        elif s == "disks"
+            s = "discos"
+        elif s == "net" or s == "network" or s == "wifi"
+            s = "red"
+        end
+        if (s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red") and not hay(s)
+            secciones.push(s)
+        end
     end
-    if r_nombre.length > 0
-        alto = alto + 6 + linea
-        for i in (0..r_nombre.length - 1)
+    if secciones.length == 0
+        secciones = ["cpu", "memoria", "tareas", "discos", "red"]
+    end
+    tareas_max = Int(tooltype("TAREAS", tooltype("TASKS", "#{TAREAS}")))
+    if tareas_max < 1
+        tareas_max = 1
+    elif tareas_max > 20
+        tareas_max = 20
+    end
+end
+
+func hay(s: String) -> Bool
+    for i in (0..secciones.length - 1)
+        if secciones[i] == s
+            return true
+        end
+    end
+    return false
+end
+
+func alto_seccion(s: String) -> Int
+    if s == "cpu"
+        return ALTO_GRAFICA
+    elif s == "memoria"
+        return linea * 2
+    elif s == "tareas"
+        return linea * tareas_max
+    elif s == "discos"
+        return linea * d_nombre.length
+    end
+    if r_nombre.length == 0              # la red
+        return 0
+    end
+    alto = linea
+    for i in (0..r_nombre.length - 1)
+        alto = alto + linea
+        if con_wifi(i)
             alto = alto + linea
-            if con_wifi(i)
-                alto = alto + linea
+        end
+    end
+    return alto
+end
+
+func alto_panel() -> Int
+    alto = 6 + linea
+    primero = true
+    for i in (0..secciones.length - 1)
+        a = alto_seccion(secciones[i])
+        if a > 0
+            if primero
+                alto = alto + 4
+            else
+                alto = alto + 6
             end
+            alto = alto + a
+            primero = false
         end
     end
     return alto + 6
@@ -232,6 +299,141 @@ func leer_red()
     r_ms = ahora
 end
 
+func pintar_cpu(w: Int, yy: Int)
+    # la historia: una barra por segundo, de abajo arriba
+    gfx_blend_rect(6, yy, w - 7, yy + ALTO_GRAFICA - 1, 0x000000, 90)
+    paso = (w - 12) / HISTORIA
+    x0 = w - 6 - paso * historia.length
+    gfx_pen(c_cpu)
+    for i in (0..historia.length - 1)
+        alto = historia[i] * ALTO_GRAFICA / 1000
+        if alto > 0
+            gfx_rect(x0 + i * paso, yy + ALTO_GRAFICA - alto, x0 + i * paso + paso - 2, yy + ALTO_GRAFICA - 1)
+        end
+    end
+end
+
+func pintar_memoria(w: Int, yy: Int)
+    gfx_pen(c_texto)
+    gfx_text_at(6, yy + font_baseline(), "Chip libre")
+    t = kb(mem_chip_free())
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+    yy = yy + linea
+    gfx_text_at(6, yy + font_baseline(), "Fast libre")
+    t = kb(mem_fast_free())
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+end
+
+func pintar_tareas(w: Int, yy: Int)
+    # las tareas que más toman: nombre, % y una barra detrás
+    n = n_tareas
+    if n > tareas_max
+        n = tareas_max
+    end
+    for i in (0..n - 1)
+        carga = cpu_task_load(i)
+        largo = (w - 12) * carga / 1000
+        if largo > 0
+            gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110)
+        end
+        gfx_pen(c_suave)
+        nombre = cpu_task_name(i)
+        if nombre.length > 24
+            nombre = nombre[0:24]
+        end
+        gfx_text_at(8, yy + font_baseline(), nombre)
+        t = por_ciento(carga)
+        gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        yy = yy + linea
+    end
+end
+
+func pintar_discos(w: Int, yy: Int)
+    t = ""
+    # los discos: el nombre, lo ocupado (barra y %) y el tamaño
+    for i in (0..d_nombre.length - 1)
+        if d_kb[i] > 0
+            usado = (d_kb[i] - d_libre[i]) / (d_kb[i] / 1000 + 1)      # tantos por mil, sin desbordar
+            largo = (w - 12) * usado / 1000
+            if largo > 0
+                gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90)
+            end
+            t = "#{usado / 10} % de " + tam(d_kb[i])
+        elif d_kb[i] == 0
+            t = "vacío"
+        else
+            t = "sin respuesta"
+        end
+        gfx_pen(c_suave)
+        nombre = d_nombre[i]
+        if nombre.length > 14
+            nombre = nombre[0:14]
+        end
+        gfx_text_at(8, yy + font_baseline(), nombre)
+        gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        yy = yy + linea
+    end
+end
+
+func pintar_red(w: Int, yy: Int)
+    t = ""
+    # la red: lo que entra y sale por segundo, y la señal de la WiFi
+    col = font_text_width("999,9 KB/s") + 10        # ancho de la columna de lo que sale
+    gfx_pen(c_texto)
+    gfx_text_at(6, yy + font_baseline(), "Red")
+    gfx_text_at(w - 8 - col - font_text_width("entra"), yy + font_baseline(), "entra")
+    gfx_text_at(w - 8 - font_text_width("sale"), yy + font_baseline(), "sale")
+    yy = yy + linea
+    for i in (0..r_nombre.length - 1)
+        gfx_pen(c_suave)
+        nombre = r_nombre[i]
+        if nombre.length > 7 and nombre[nombre.length - 7:] == ".device"
+            nombre = nombre[0:nombre.length - 7]          # "wifipi.device": "wifipi"
+        end
+        gfx_text_at(8, yy + font_baseline(), nombre)
+        if r_arriba[i] == 1 and r_entra[i] < 0
+            t = "sin datos"
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        elif r_arriba[i] == 1
+            if r_paquetes
+                t = paquetes(r_entra[i])
+            else
+                t = velocidad(r_entra[i])
+            end
+            gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
+            if r_paquetes
+                t = paquetes(r_sale[i])
+            else
+                t = velocidad(r_sale[i])
+            end
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        else
+            t = "desconectado"
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+        end
+        yy = yy + linea
+        if con_wifi(i)
+            if r_wifi[i] == 0
+                fuerza = (r_senal[i] + 90) * 1000 / 60              # -90 dBm nada, -30 todo
+                if fuerza > 1000
+                    fuerza = 1000
+                end
+                if fuerza > 0
+                    gfx_blend_rect(6, yy, 6 + (w - 12) * fuerza / 1000, yy + linea - 2, 0x40C0FF, 90)
+                end
+                t = "#{r_senal[i]} dBm, " + calidad(r_senal[i])
+            elif r_wifi[i] == 1
+                t = "sin respuesta"
+            else
+                t = "desconectada"
+            end
+            gfx_text_at(16, yy + font_baseline(), "WiFi")
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            yy = yy + linea
+        end
+    end
+end
+
 func pintar(x, y, w, h)
     if not colores                       # las plumas, de la pantalla en la que se pinta
         c_texto = color_pen(240, 240, 240)
@@ -258,139 +460,42 @@ func pintar(x, y, w, h)
     t = "CPU " + por_ciento(total)
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
     font_style(0)
-    yy = yy + linea + 4
-    # la historia: una barra por segundo, de abajo arriba
-    gfx_blend_rect(6, yy, w - 7, yy + ALTO_GRAFICA - 1, 0x000000, 90)
-    paso = (w - 12) / HISTORIA
-    x0 = w - 6 - paso * historia.length
-    gfx_pen(c_cpu)
-    for i in (0..historia.length - 1)
-        alto = historia[i] * ALTO_GRAFICA / 1000
-        if alto > 0
-            gfx_rect(x0 + i * paso, yy + ALTO_GRAFICA - alto, x0 + i * paso + paso - 2, yy + ALTO_GRAFICA - 1)
-        end
-    end
-    yy = yy + ALTO_GRAFICA + 6
-    gfx_pen(c_texto)
-    gfx_text_at(6, yy + font_baseline(), "Chip libre")
-    t = kb(mem_chip_free())
-    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
     yy = yy + linea
-    gfx_text_at(6, yy + font_baseline(), "Fast libre")
-    t = kb(mem_fast_free())
-    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
-    yy = yy + linea + 6
-    # las tareas que más toman: nombre, % y una barra detrás
-    n = n_tareas
-    if n > TAREAS
-        n = TAREAS
-    end
-    for i in (0..n - 1)
-        carga = cpu_task_load(i)
-        largo = (w - 12) * carga / 1000
-        if largo > 0
-            gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110)
-        end
-        gfx_pen(c_suave)
-        nombre = cpu_task_name(i)
-        if nombre.length > 24
-            nombre = nombre[0:24]
-        end
-        gfx_text_at(8, yy + font_baseline(), nombre)
-        t = por_ciento(carga)
-        gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
-        yy = yy + linea
-    end
-    # los discos: el nombre, lo ocupado (barra y %) y el tamaño
-    if d_nombre.length > 0
-        yy = yy + 6
-        for i in (0..d_nombre.length - 1)
-            if d_kb[i] > 0
-                usado = (d_kb[i] - d_libre[i]) / (d_kb[i] / 1000 + 1)      # tantos por mil, sin desbordar
-                largo = (w - 12) * usado / 1000
-                if largo > 0
-                    gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90)
-                end
-                t = "#{usado / 10} % de " + tam(d_kb[i])
-            elif d_kb[i] == 0
-                t = "vacío"
+    primero = true
+    for i in (0..secciones.length - 1)
+        s = secciones[i]
+        a = alto_seccion(s)
+        if a > 0
+            if primero
+                yy = yy + 4
             else
-                t = "sin respuesta"
+                yy = yy + 6
             end
-            gfx_pen(c_suave)
-            nombre = d_nombre[i]
-            if nombre.length > 14
-                nombre = nombre[0:14]
-            end
-            gfx_text_at(8, yy + font_baseline(), nombre)
-            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
-            yy = yy + linea
-        end
-    end
-    # la red: lo que entra y sale por segundo, y la señal de la WiFi
-    if r_nombre.length > 0
-        yy = yy + 6
-        col = font_text_width("999,9 KB/s") + 10        # ancho de la columna de lo que sale
-        gfx_pen(c_texto)
-        gfx_text_at(6, yy + font_baseline(), "Red")
-        gfx_text_at(w - 8 - col - font_text_width("entra"), yy + font_baseline(), "entra")
-        gfx_text_at(w - 8 - font_text_width("sale"), yy + font_baseline(), "sale")
-        yy = yy + linea
-        for i in (0..r_nombre.length - 1)
-            gfx_pen(c_suave)
-            nombre = r_nombre[i]
-            if nombre.length > 7 and nombre[nombre.length - 7:] == ".device"
-                nombre = nombre[0:nombre.length - 7]          # "wifipi.device": "wifipi"
-            end
-            gfx_text_at(8, yy + font_baseline(), nombre)
-            if r_arriba[i] == 1 and r_entra[i] < 0
-                t = "sin datos"
-                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
-            elif r_arriba[i] == 1
-                if r_paquetes
-                    t = paquetes(r_entra[i])
-                else
-                    t = velocidad(r_entra[i])
-                end
-                gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
-                if r_paquetes
-                    t = paquetes(r_sale[i])
-                else
-                    t = velocidad(r_sale[i])
-                end
-                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+            primero = false
+            if s == "cpu"
+                pintar_cpu(w, yy)
+            elif s == "memoria"
+                pintar_memoria(w, yy)
+            elif s == "tareas"
+                pintar_tareas(w, yy)
+            elif s == "discos"
+                pintar_discos(w, yy)
             else
-                t = "desconectado"
-                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
+                pintar_red(w, yy)
             end
-            yy = yy + linea
-            if con_wifi(i)
-                if r_wifi[i] == 0
-                    fuerza = (r_senal[i] + 90) * 1000 / 60              # -90 dBm nada, -30 todo
-                    if fuerza > 1000
-                        fuerza = 1000
-                    end
-                    if fuerza > 0
-                        gfx_blend_rect(6, yy, 6 + (w - 12) * fuerza / 1000, yy + linea - 2, 0x40C0FF, 90)
-                    end
-                    t = "#{r_senal[i]} dBm, " + calidad(r_senal[i])
-                elif r_wifi[i] == 1
-                    t = "sin respuesta"
-                else
-                    t = "desconectada"
-                end
-                gfx_text_at(16, yy + font_baseline(), "WiFi")
-                gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
-                yy = yy + linea
-            end
+            yy = yy + a
         end
     end
 end
 
 # los discos y la red, que deciden el alto del panel: solo con el panel a la vista
 func medir_paneles()
-    leer_discos()
-    leer_red()
+    if hay("discos")
+        leer_discos()
+    end
+    if hay("red")
+        leer_red()
+    end
 end
 
 func mostrar()
@@ -451,6 +556,7 @@ Main
         Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
     else
         linea = font_height() + 1
+        leer_secciones()
         if cx_broker("Trasfondo", "Trasfondo 0.2", "Monitor de recursos en el fondo", Int(tooltype("CX_PRIORITY", "0")))
             tecla = tooltype("CX_POPKEY", "")
             if tecla != "" and not cx_hotkey(tecla)
