@@ -1,6 +1,7 @@
 ; Instalador de Trasfondo para el Installer del sistema (AmigaOS 3.0 a 3.2).
 ; Copia Trasfondo donde se elija (o a SYS:WBStartup, para que arranque con el Workbench) y sus
-; preferencias, TrasfondoPrefs, a SYS:Prefs.
+; preferencias, TrasfondoPrefs, a SYS:Prefs. Este fichero se escribe en UTF-8 y tools/paquete.py lo pasa
+; a ISO-8859-1, que es lo que lee el Amiga.
 
 (set @app-name "Trasfondo")
 (set #avisos "")
@@ -21,7 +22,8 @@
     (askbool
         (prompt "¿Quieres que Trasfondo arranque solo cada vez que se abre el Workbench?\n\n"
                 "Sí: se copia a SYS:WBStartup.\nNo: se copia al cajón que elijas.")
-        (help @askbool-help)
+        (help "Lo que hay en SYS:WBStartup se pone en marcha solo al abrirse el Workbench. "
+              "Si dices que no, Trasfondo se arranca cuando quieras con doble clic en su icono.")
         (choices "Sí" "No")
         (default 1)))
 (if #arranque
@@ -33,22 +35,30 @@
             (default "SYS:Utilities"))))
 (set @default-dest #destino)
 
-; --- Copiar ---
+; --- Copiar (los iconos, sin la posición que traen del paquete: cada cajón coloca los suyos) ---
 (copyfiles
     (prompt "Copiando Trasfondo")
     (help @copyfiles-help)
     (source "trasfondo")
     (dest #destino)
     (infos))
+(tooltype (dest (tackon #destino "trasfondo")) (noposition))
 (copyfiles
     (prompt "Copiando sus preferencias")
     (help @copyfiles-help)
     (source "TrasfondoPrefs")
     (dest "SYS:Prefs")
     (infos))
+(tooltype (dest "SYS:Prefs/TrasfondoPrefs") (noposition))
+
+; --- Arrancarlo ya ---
+(if (askbool
+        (prompt "Trasfondo está instalado. ¿Lo pongo en marcha ahora?")
+        (help "Si ya estaba en marcha, lanzarlo otra vez lo para: en ese caso, di que no.")
+        (choices "Sí" "No")
+        (default 1))
+    (run (cat "Run >NIL: \"" (tackon #destino "trasfondo") "\"")))
 
 (exit (cat "Trasfondo está en " #destino ".\n\n"
-           (if #arranque
-               "Arrancará solo con el Workbench. Para verlo ya, doble clic en su icono de SYS:WBStartup.\n\n"
-               "Para arrancarlo, doble clic en su icono. Para que arranque siempre, cópialo a SYS:WBStartup.\n\n")
-           "Qué se ve y cómo: SYS:Prefs/TrasfondoPrefs. Para pararlo: otra vez doble clic, o Eliminar en Exchange."))
+           "Qué se ve y cómo: SYS:Prefs/TrasfondoPrefs.\n"
+           "Para pararlo: doble clic otra vez en su icono, o Eliminar en Exchange."))
