@@ -4,12 +4,12 @@
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.10"
+@version "TrasfondoPrefs 0.11"
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
 
-const SECCIONES = "fecha,cpu,memoria,tareas,discos,red"
+const SECCIONES = "fecha,cpu,temperatura,memoria,tareas,discos,red"
 const COLORES = "16,24,32|0,0,0|48,48,48|16,40,96|16,56,32|72,16,24|48,24,72"   # los de MSG_COLORES, en su orden
 
 var prefs: String = ""
@@ -43,8 +43,14 @@ func secciones_de(texto: String) -> [String]
             s = "red"
         elif s == "date" or s == "time" or s == "clock" or s == "hora" or s == "reloj"
             s = "fecha"
+        elif s == "temp" or s == "temperature" or s == "pistorm"
+            s = "temperatura"
+        elif s == "netgraph" or s == "graficared"
+            s = "grafica_red"
+        elif s == "memgraph" or s == "graficamemoria"
+            s = "grafica_memoria"
         end
-        if s == "fecha" or s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red"
+        if s == "fecha" or s == "cpu" or s == "temperatura" or s == "memoria" or s == "grafica_memoria" or s == "tareas" or s == "discos" or s == "red" or s == "grafica_red"
             r.push(s)
         end
     end
@@ -77,6 +83,20 @@ Main
         end
         antes = con_fecha
     end
+    # y las de antes de la 0.11 (PREFS menor que 3) no conocían la temperatura: marcada, tras la CPU, como en Trasfondo
+    if Int(conf("PREFS", "0")) < 3 and not esta(antes, "temperatura")
+        var con_temp: [String] = []
+        for i in (0..antes.length - 1)
+            con_temp.push(antes[i])
+            if antes[i] == "cpu"
+                con_temp.push("temperatura")
+            end
+        end
+        if con_temp.length == antes.length
+            con_temp.push("temperatura")
+        end
+        antes = con_temp
+    end
 
     # medido con la fuente de la pantalla, la que usan los gadgets (en Coffin, más grande que la Topaz 8)
     f = screen_font_height()
@@ -85,7 +105,7 @@ Main
         fila = 16
     end
     m = 12                                   # el margen, por dentro de los bordes
-    var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi")]
+    var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_TEMP, "Show the Pi temperature"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_GMEM, "Show the memory graph"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi"), tr(MSG_VER_GRED, "Show the network graph")]
     t_cuantas = tr(MSG_CUANTAS, "Tasks shown")
     t_tecla = tr(MSG_TECLA, "Hotkey")
     t_cada = tr(MSG_CADA, "Measure every")
@@ -105,18 +125,31 @@ Main
     if largo < screen_font_text_width(t_oculto)
         largo = screen_font_text_width(t_oculto)
     end
+    largo_s = 0                                                 # las de las secciones, en dos columnas
     for i in (0..etiquetas.length - 1)
-        if largo < screen_font_text_width(etiquetas[i])
-            largo = screen_font_text_width(etiquetas[i])
+        if largo_s < screen_font_text_width(etiquetas[i])
+            largo_s = screen_font_text_width(etiquetas[i])
         end
     end
+    filas_s = (etiquetas.length + 1) / 2
+    columna = 26 + 8 + largo_s + 12          # dónde empieza la segunda
+    if m * 2 + columna * 2 > screen_width() - 8
+        filas_s = etiquetas.length           # no caben dos: una
+        columna = 0
+    end
     ancho = m + 26 + 8 + largo + m
+    if ancho < x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t_oculto) + m
+        ancho = x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t_oculto) + m
+    end
+    if ancho < m * 2 + columna + 26 + 8 + largo_s
+        ancho = m * 2 + columna + 26 + 8 + largo_s
+    end
     if ancho < x_campo + 200
         ancho = x_campo + 200
     end
     alto_boton = f + 6
     hueco = 8                                # lo que separa los grupos (el doble, antes de los botones)
-    alto = m * 2 + fila * 13 + 4 + 10 + hueco * 3 + alto_boton * 2
+    alto = m * 2 + fila * (filas_s + 6) + 4 + 10 + hueco * 3 + alto_boton * 2
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
     cabe = screen_height() - (f + 3) - 4
@@ -127,9 +160,16 @@ Main
         end
         hueco = 4
         m = 6
-        alto = m * 2 + fila * 13 + 4 + 10 + hueco * 3 + alto_boton * 2
+        alto = m * 2 + fila * (filas_s + 6) + 4 + 10 + hueco * 3 + alto_boton * 2
     end
-    arriba = 30                              # y la ventana, más arriba si hace falta
+    izquierda = 60                           # y la ventana, más a la izquierda y más arriba si hace falta
+    if izquierda + ancho + 8 > screen_width()
+        izquierda = screen_width() - ancho - 8
+        if izquierda < 0
+            izquierda = 0
+        end
+    end
+    arriba = 30
     if arriba + alto + f + 3 + 4 > screen_height()
         arriba = screen_height() - alto - f - 3 - 4
         if arriba < 0
@@ -145,21 +185,27 @@ Main
         linea_version = con(tr(MSG_HAY_NUEVA, "There is a new version: %s"), str_trim(hay_nueva))
     end
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
-    if window_create(tr(MSG_TITULO, "Trasfondo Preferences"), 60, arriba, ancho, alto, 8) == 0
+    if window_create(tr(MSG_TITULO, "Trasfondo Preferences"), izquierda, arriba, ancho, alto, 8) == 0
         Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
     else
         gt_init()
         y = m
         x = m
-        var claves: [String] = ["fecha", "cpu", "memoria", "tareas", "discos", "red"]
+        var claves: [String] = ["fecha", "cpu", "temperatura", "memoria", "grafica_memoria", "tareas", "discos", "red", "grafica_red"]
         var casillas: [Int] = []
-        for i in (0..5)
-            casillas.push(gt_checkbox(x, y, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
-            y = y + fila
+        for i in (0..claves.length - 1)
+            x_s = x
+            if i >= filas_s
+                x_s = x + columna
+            end
+            casillas.push(gt_checkbox(x_s, y + (i % filas_s) * fila, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
         end
+        y = y + filas_s * fila
         y = y + 4
         ancho_n = screen_font_text_width("000") + 24
         tareas = gt_integer(x_campo, y, ancho_n, f + 6, t_cuantas, Int(conf("TAREAS", "6")))
+        # arrancar oculto, en la misma fila (en una pantalla de 640x256 no sobra ni una)
+        oculto = gt_checkbox(x_campo + ancho_n + 16, y + 1, 26, f + 3, t_oculto, str_upper(conf("CX_POPUP", "YES")) == "NO")
         y = y + fila + 2
         tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, t_tecla, conf("CX_POPKEY", ""), 40)
         y = y + fila + 2
@@ -185,8 +231,6 @@ Main
         end
         g_color = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_color, nombres)
         y = y + fila + 2
-        oculto = gt_checkbox(x, y, 26, f + 3, t_oculto, str_upper(conf("CX_POPUP", "YES")) == "NO")
-        y = y + fila
         buscar = gt_checkbox(x, y, 26, f + 3, t_buscar, str_upper(conf("BUSCAR", "SI")) != "NO")
         y = y + fila + hueco
         ancho_act = screen_font_text_width(t_actualizar) + 24
@@ -241,15 +285,33 @@ Main
                 # las marcadas, en el orden que tenían; las nuevas, detrás
                 var mostrar: [String] = []
                 for i in (0..antes.length - 1)
-                    for j in (0..5)
+                    for j in (0..claves.length - 1)
                         if claves[j] == antes[i] and gt_get_value(casillas[j]) != 0
                             mostrar.push(antes[i])
                         end
                     end
                 end
-                for j in (0..5)
+                for j in (0..claves.length - 1)
                     if gt_get_value(casillas[j]) != 0 and not esta(mostrar, claves[j])
-                        mostrar.push(claves[j])
+                        # cada gráfica, debajo de su sección si está
+                        madre = ""
+                        if claves[j] == "grafica_red"
+                            madre = "red"
+                        elif claves[j] == "grafica_memoria"
+                            madre = "memoria"
+                        end
+                        if madre != "" and esta(mostrar, madre)
+                            var con_g: [String] = []
+                            for k in (0..mostrar.length - 1)
+                                con_g.push(mostrar[k])
+                                if mostrar[k] == madre
+                                    con_g.push(claves[j])
+                                end
+                            end
+                            mostrar = con_g
+                        else
+                            mostrar.push(claves[j])
+                        end
                     end
                 end
                 n = gt_get_value(tareas)
@@ -258,7 +320,7 @@ Main
                 elif n > 20
                     n = 20
                 end
-                texto = "PREFS=2\nMOSTRAR="     # PREFS=2: escritas sabiendo de la fecha
+                texto = "PREFS=3\nMOSTRAR="     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
                 for i in (0..mostrar.length - 1)
                     if i > 0
                         texto = texto + ","

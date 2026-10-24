@@ -213,3 +213,18 @@ Night blue|Black|Grey|Blue|Green|Wine|Purple
 ; MSG_OTRO
 MSG_105 (105//)
 Other (%s)
+; MSG_VER_TEMP
+MSG_106 (106//)
+Show the Pi temperature
+; MSG_TEMP
+MSG_107 (107//)
+Pi temperature
+; MSG_VER_GRED
+MSG_108 (108//)
+Show the network graph
+; MSG_VER_GMEM
+MSG_109 (109//)
+Show the memory graph
+; MSG_EN_USO
+MSG_110 (110//)
+%s in use

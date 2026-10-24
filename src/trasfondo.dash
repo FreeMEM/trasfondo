@@ -14,7 +14,7 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.10"
+@version "Trasfondo 0.11"
 @catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
@@ -23,11 +23,12 @@ import "actualizar.dash"
 const ANCHO = 260
 const HISTORIA = 60          # medidas de historia de la CPU (dos minutos, midiendo cada 2 s)
 const TAREAS = 6             # tareas que se enseñan, si el tooltype TAREAS no dice otra cosa
-const SECCIONES = "FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED"
+const SECCIONES = "FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED"
 const ALTO_GRAFICA = 32
 const DISCOS = 8             # volúmenes que se enseñan, como mucho
 const REDES = 3              # interfaces de red, como mucho
 const CADA_DISCOS = 10       # segundos entre dos lecturas de los discos: cambian despacio, y cada una pregunta a todos
+const CADA_TEMP = 10         # y de la temperatura de la PiStorm: cambia despacio
 const CADA_SENAL = 10        # y de la señal de la WiFi: preguntarla manda órdenes al chip (wifipi.device despierta su receptor)
 
 const CX_OCULTAR = 1         # las órdenes de cx_wait
@@ -50,6 +51,7 @@ var c_suave: Int = 1
 var c_cpu: Int = 3
 var colores: Bool = false
 var c_verde: Int = 1
+var c_caliente: Int = 1
 var paleta: Bool = false      # pantalla de 256 colores o menos: el velo sería una trama de puntos
 var c_b_tarea: Int = 1       # con el fondo fijo, las barras: lo que el velo mezclaría, ya mezclado con su color
 var c_b_disco: Int = 1
@@ -78,9 +80,15 @@ var r_entra: [Int] = []      # bytes (o paquetes) por segundo; -1 si el driver n
 var r_sale: [Int] = []
 var r_wifi: [Int] = []       # lo que dio wifi_read: 0 leída, 1 sin respuesta, 2 no es WiFi, 4 desconectada
 var r_senal: [Int] = []      # dBm
+var h_mem: [Int] = []        # la memoria en uso en cada medida, en tantos por mil del total (para su gráfica)
+var h_entra: [Int] = []      # lo que entró y salió en cada medida, sumando las redes (para su gráfica)
+var h_sale: [Int] = []
+var h_paquetes: Bool = false  # la gráfica suma paquetes: ninguna red da bytes
 var r_ms: Int = 0            # cuándo fue la lectura anterior
 var faltan_discos: Int = 0   # segundos para volver a leer los discos (0: en la próxima medida)
 var firmas: [String] = []    # lo que enseñaban la cabecera y cada sección al pintarlas: si no cambia, no se repinta
+var temp: Int = -1           # la temperatura de la Raspberry Pi de una PiStorm, en décimas de grado (-1: sin Emu68)
+var faltan_temp: Int = 0     # segundos para volver a leerla
 var faltan_senal: Int = 0    # segundos para volver a preguntar la señal de la WiFi
 
 func por_ciento(milesimas: Int) -> String
@@ -177,7 +185,7 @@ func poner_tecla()
     end
 end
 
-# MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
+# MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED (en el orden que se quiera; también en inglés) y TAREAS=6
 func leer_secciones()
     texto = conf("MOSTRAR", tooltype("SHOW", SECCIONES))
     secciones = []
@@ -194,13 +202,19 @@ func leer_secciones()
             s = "red"
         elif s == "date" or s == "time" or s == "clock" or s == "hora" or s == "reloj"
             s = "fecha"
+        elif s == "temp" or s == "temperature" or s == "pistorm"
+            s = "temperatura"
+        elif s == "netgraph" or s == "graficared"
+            s = "grafica_red"
+        elif s == "memgraph" or s == "graficamemoria"
+            s = "grafica_memoria"
         end
-        if (s == "fecha" or s == "cpu" or s == "memoria" or s == "tareas" or s == "discos" or s == "red") and not hay(s)
+        if (s == "fecha" or s == "cpu" or s == "temperatura" or s == "memoria" or s == "grafica_memoria" or s == "tareas" or s == "discos" or s == "red" or s == "grafica_red") and not hay(s)
             secciones.push(s)
         end
     end
     if secciones.length == 0
-        secciones = ["fecha", "cpu", "memoria", "tareas", "discos", "red"]
+        secciones = ["fecha", "cpu", "temperatura", "memoria", "tareas", "discos", "red"]
     end
     # unas preferencias de antes de la 0.7 (sin PREFS=) no conocían la fecha: no es que la quitaran, sale arriba
     if conf("MOSTRAR", "") != "" and conf("PREFS", "") == "" and not hay("fecha")
@@ -209,6 +223,21 @@ func leer_secciones()
             con_fecha.push(secciones[i])
         end
         secciones = con_fecha
+    end
+    # las de antes de la 0.11 (PREFS menor que 3, o solo los tooltypes) no conocían la temperatura: va tras la CPU.
+    # Sin PiStorm no se ve
+    if Int(conf("PREFS", "0")) < 3 and not hay("temperatura")
+        var con_temp: [String] = []
+        for i in (0..secciones.length - 1)
+            con_temp.push(secciones[i])
+            if secciones[i] == "cpu"
+                con_temp.push("temperatura")
+            end
+        end
+        if con_temp.length == secciones.length
+            con_temp.push("temperatura")
+        end
+        secciones = con_temp
     end
     tareas_max = Int(conf("TAREAS", tooltype("TASKS", "#{TAREAS}")))
     if tareas_max < 1
@@ -276,6 +305,18 @@ func alto_seccion(s: String) -> Int
     if s == "fecha"
         return linea
     elif s == "cpu"
+        return ALTO_GRAFICA
+    elif s == "temperatura"
+        if temp < 0
+            return 0
+        end
+        return linea
+    elif s == "grafica_red"
+        if r_nombre.length == 0
+            return 0
+        end
+        return ALTO_GRAFICA
+    elif s == "grafica_memoria"
         return ALTO_GRAFICA
     elif s == "memoria"
         return linea * 2
@@ -451,6 +492,31 @@ func leer_red()
     r_senal = senal
     r_en_paquetes = en_paquetes
     r_ms = ahora
+    # para la gráfica, la suma de las redes conectadas en bytes; si ninguna los da, en paquetes
+    h_paquetes = true
+    for i in (0..r_nombre.length - 1)
+        if r_arriba[i] == 1 and r_en_paquetes[i] == 0
+            h_paquetes = false
+        end
+    end
+    se = 0
+    ss = 0
+    for i in (0..r_nombre.length - 1)
+        if r_arriba[i] == 1 and (r_en_paquetes[i] == 1) == h_paquetes
+            if r_entra[i] > 0
+                se = se + r_entra[i]
+            end
+            if r_sale[i] > 0
+                ss = ss + r_sale[i]
+            end
+        end
+    end
+    h_entra.push(se)
+    h_sale.push(ss)
+    if h_entra.length > HISTORIA
+        h_entra.remove(0)
+        h_sale.remove(0)
+    end
 end
 
 func pintar_cpu(w: Int, yy: Int)
@@ -474,6 +540,71 @@ func pintar_fecha(w: Int, yy: Int)
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
 end
 
+# la historia de la memoria en uso (Chip y Fast juntas), sobre el total; arriba a la izquierda, la de ahora
+func pintar_grafica_memoria(w: Int, yy: Int)
+    paso = (w - 12) / HISTORIA
+    x0 = w - 6 - paso * h_mem.length
+    gfx_pen(c_verde)
+    for i in (0..h_mem.length - 1)
+        alto = h_mem[i] * ALTO_GRAFICA / 1000
+        if alto > 0
+            gfx_rect(x0 + i * paso, yy + ALTO_GRAFICA - alto, x0 + i * paso + paso - 2, yy + ALTO_GRAFICA - 1)
+        end
+    end
+    if h_mem.length > 0
+        gfx_pen(c_suave)
+        gfx_text_at(8, yy + font_baseline(), con(tr(MSG_EN_USO, "%s in use"), por_ciento(h_mem[h_mem.length - 1])))
+    end
+end
+
+# la historia de la red: lo que entra hacia arriba (azul) y lo que sale hacia abajo (verde), desde la mitad,
+# a la escala del máximo que se ve (escrito arriba a la izquierda)
+func pintar_grafica_red(w: Int, yy: Int)
+    tope = 1
+    for i in (0..h_entra.length - 1)
+        if h_entra[i] > tope
+            tope = h_entra[i]
+        end
+        if h_sale[i] > tope
+            tope = h_sale[i]
+        end
+    end
+    mitad = ALTO_GRAFICA / 2
+    paso = (w - 12) / HISTORIA
+    x0 = w - 6 - paso * h_entra.length
+    gfx_pen(c_cpu)
+    for i in (0..h_entra.length - 1)
+        a = h_entra[i] * mitad / tope
+        if a > 0
+            gfx_rect(x0 + i * paso, yy + mitad - a, x0 + i * paso + paso - 2, yy + mitad - 1)
+        end
+    end
+    gfx_pen(c_verde)
+    for i in (0..h_sale.length - 1)
+        a = h_sale[i] * mitad / tope
+        if a > 0
+            gfx_rect(x0 + i * paso, yy + mitad, x0 + i * paso + paso - 2, yy + mitad + a - 1)
+        end
+    end
+    t = velocidad(tope)
+    if h_paquetes
+        t = paquetes(tope)
+    end
+    gfx_pen(c_suave)
+    gfx_text_at(8, yy + font_baseline(), t)
+end
+
+# la temperatura de la Raspberry Pi de una PiStorm; desde 70 °C, en naranja
+func pintar_temperatura(w: Int, yy: Int)
+    gfx_pen(c_texto)
+    gfx_text_at(6, yy + font_baseline(), tr(MSG_TEMP, "Pi temperature"))
+    if temp >= 700
+        gfx_pen(c_caliente)
+    end
+    t = "#{temp / 10}" + tr(MSG_COMA, ".") + "#{temp % 10} °C"
+    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+end
+
 func pintar_memoria(w: Int, yy: Int)
     gfx_pen(c_texto)
     gfx_text_at(6, yy + font_baseline(), tr(MSG_CHIP, "Chip free"))
@@ -492,19 +623,24 @@ func pintar_tareas(w: Int, yy: Int)
         n = tareas_max
     end
     for i in (0..n - 1)
-        carga = cpu_task_load(i)
-        largo = (w - 12) * carga / 1000
-        if largo > 0
-            barra(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110, c_b_tarea)
+        if desktop_canvas_drawing(0, yy, w, linea)
+            carga = cpu_task_load(i)
+            largo = (w - 12) * carga / 1000
+            if largo > 0
+                barra(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110, c_b_tarea)
+            end
+            gfx_pen(c_suave)
+            nombre = cpu_task_name(i)
+            if nombre.length > 24
+                nombre = nombre[0:24]
+            end
+            t = por_ciento(carga)
+            while nombre.length > 1 and 8 + font_text_width(nombre) + 6 > w - 8 - font_text_width(t)   # que no pise el %
+                nombre = nombre[0:nombre.length - 1]
+            end
+            gfx_text_at(8, yy + font_baseline(), nombre)
+            gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         end
-        gfx_pen(c_suave)
-        nombre = cpu_task_name(i)
-        if nombre.length > 24
-            nombre = nombre[0:24]
-        end
-        gfx_text_at(8, yy + font_baseline(), nombre)
-        t = por_ciento(carga)
-        gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         yy = yy + linea
     end
 end
@@ -603,6 +739,7 @@ func pintar(x, y, w, h)
         c_suave = color_pen(200, 210, 220)
         c_cpu = color_pen(80, 200, 255)
         c_verde = color_pen(96, 220, 120)
+        c_caliente = color_pen(255, 160, 64)
         c_b_tarea = pluma_mezcla(64, 192, 255, 110)
         c_b_disco = pluma_mezcla(96, 208, 128, 90)
         c_b_wifi = pluma_mezcla(64, 192, 255, 90)
@@ -652,6 +789,12 @@ func pintar(x, y, w, h)
                 pintar_fecha(w, yy)
             elif s == "cpu"
                 pintar_cpu(w, yy)
+            elif s == "temperatura"
+                pintar_temperatura(w, yy)
+            elif s == "grafica_red"
+                pintar_grafica_red(w, yy)
+            elif s == "grafica_memoria"
+                pintar_grafica_memoria(w, yy)
             elif s == "memoria"
                 pintar_memoria(w, yy)
             elif s == "tareas"
@@ -676,8 +819,26 @@ func medir_paneles()
         end
         faltan_discos = faltan_discos - cada
     end
-    if hay("red")
+    if hay("temperatura")
+        if faltan_temp <= 0
+            t = pistorm_temperature()
+            if t >= 0 or temp < 0                # una lectura fallida no quita la línea
+                temp = t
+            end
+            faltan_temp = CADA_TEMP
+        end
+        faltan_temp = faltan_temp - cada
+    end
+    if hay("red") or hay("grafica_red")
         leer_red()
+    end
+    if hay("grafica_memoria")
+        total = mem_chip_total() / 1024 + mem_fast_total() / 1024        # en KB: más de 2 GB no cabrían
+        libre = mem_chip_free() / 1024 + mem_fast_free() / 1024
+        h_mem.push((total - libre) * 10 / (total / 100 + 1))
+        if h_mem.length > HISTORIA
+            h_mem.remove(0)
+        end
     end
 end
 
@@ -715,13 +876,24 @@ func firma(s: String) -> String
         t = date_text("%A %d-%b-%y %H:%M")
     elif s == "cpu"
         t = "#{time_ms()}"
+    elif s == "grafica_memoria"
+        for i in (0..h_mem.length - 1)
+            t = t + "#{h_mem[i]},"
+        end
+    elif s == "grafica_red"
+        for i in (0..h_entra.length - 1)
+            t = t + "#{h_entra[i]},#{h_sale[i]},"
+        end
+    elif s == "temperatura"
+        t = "#{temp}"
     elif s == "memoria"
         t = kb(mem_chip_free()) + "|" + kb(mem_fast_free())
-    elif s == "tareas"
-        for i in (0..n_tareas - 1)
-            if i < tareas_max
-                t = t + cpu_task_name(i) + "|" + por_ciento(cpu_task_load(i)) + "|"
+    elif s == "tareas"                   # una línea por fila, para repintar solo las que cambian
+        for i in (0..tareas_max - 1)
+            if i < n_tareas
+                t = t + cpu_task_name(i) + "|" + por_ciento(cpu_task_load(i))
             end
+            t = t + "\n"
         end
     elif s == "discos"
         for i in (0..d_nombre.length - 1)
@@ -752,37 +924,48 @@ func pintar_todo()
     firmas = todas_las_firmas()
 end
 
-# lo de cada medida: solo las partes que cambiaron. Las que cambian seguidas van en una sola actualización
+# lo de cada medida: solo las partes que cambiaron (de las tareas, cada fila). Las que cambian seguidas van
+# en una sola actualización
+var b0: Int = -1                 # la franja abierta (-1: ninguna)
+var b1: Int = -1
+
+# una parte del panel, de y a y + a: si cambió, entra en la franja; si no, la cierra y la actualiza
+func franja(y: Int, a: Int, cambia: Bool)
+    if cambia
+        if b0 < 0
+            b0 = y
+        end
+        b1 = y + a
+    elif b0 >= 0
+        desktop_canvas_update_area(lienzo, 0, b0, ANCHO, b1 - b0)
+        b0 = -1
+    end
+end
+
 func repintar()
     var nuevas: [String] = todas_las_firmas()
     if nuevas.length != firmas.length
         pintar_todo()
         return
     end
-    y0 = -1                              # la franja abierta (-1: ninguna)
-    y1 = -1
-    if nuevas[0] != firmas[0]
-        y0 = 0
-        y1 = 6 + linea
-    end
+    b0 = -1
+    franja(0, 6 + linea, nuevas[0] != firmas[0])
     for i in (0..secciones.length - 1)
         a = alto_seccion(secciones[i])
         if a > 0
-            if nuevas[i + 1] != firmas[i + 1]
-                y = y_seccion(secciones[i])
-                if y0 < 0
-                    y0 = y
+            y = y_seccion(secciones[i])
+            if secciones[i] == "tareas" and nuevas[i + 1] != firmas[i + 1]
+                var nuevas_f: [String] = str_split(nuevas[i + 1], "\n")
+                var viejas_f: [String] = str_split(firmas[i + 1], "\n")
+                for k in (0..tareas_max - 1)
+                    franja(y + k * linea, linea, k >= nuevas_f.length or k >= viejas_f.length or nuevas_f[k] != viejas_f[k])
                 end
-                y1 = y + a
-            elif y0 >= 0                 # sin cambios: cierra la franja que venía
-                desktop_canvas_update_area(lienzo, 0, y0, ANCHO, y1 - y0)
-                y0 = -1
+            else
+                franja(y, a, nuevas[i + 1] != firmas[i + 1])
             end
         end
     end
-    if y0 >= 0
-        desktop_canvas_update_area(lienzo, 0, y0, ANCHO, y1 - y0)
-    end
+    franja(0, 0, false)                  # la última
     firmas = nuevas
 end
 
@@ -812,9 +995,12 @@ func poner_velo()
         alfa = 255
     end
     desktop_canvas_veil(lienzo, f_r * 65536 + f_g * 256 + f_b, alfa)
-    y = y_seccion("cpu")
-    if y >= 0
-        desktop_canvas_veil_rect(lienzo, 6, y, ANCHO - 12, ALTO_GRAFICA, 0x000000, 90)
+    var graficas: [String] = ["cpu", "grafica_memoria", "grafica_red"]     # el recuadro de cada gráfica
+    for i in (0..graficas.length - 1)
+        y = y_seccion(graficas[i])
+        if y >= 0
+            desktop_canvas_veil_rect(lienzo, 6, y, ANCHO - 12, ALTO_GRAFICA, 0x000000, 90)
+        end
     end
 end
 

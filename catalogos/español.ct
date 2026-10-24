@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (24.10.2026)
+## version $VER: Trasfondo.catalog 1.0 (25.10.2026)
 ## language español
 ## codeset 0
 ;
@@ -215,3 +215,18 @@ Azul noche|Negro|Gris|Azul|Verde|Granate|Morado
 MSG_105
 Otro (%s)
 ; Other (%s)
+MSG_106
+Ver la temperatura (Pi)
+; Show the Pi temperature
+MSG_107
+Temperatura de la Pi
+; Pi temperature
+MSG_108
+Ver la gráfica de la red
+; Show the network graph
+MSG_109
+Ver la gráfica de la memoria
+; Show the memory graph
+MSG_110
+%s en uso
+; %s in use

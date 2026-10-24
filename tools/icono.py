@@ -38,7 +38,7 @@ def icono_prefs():
 
 # DONOTWAIT: en WBStartup, el Workbench no espera a que acabe; los tooltypes de commodity; la tecla
 # rápida, entre paréntesis: apagada hasta que se le quiten
-TOOLTYPES = ["DONOTWAIT", "SHOW=DATE,CPU,MEMORY,TASKS,DISKS,NET", "TASKS=6", "INTERVAL=2", "BACKGROUND=SEETHROUGH",
+TOOLTYPES = ["DONOTWAIT", "SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET", "TASKS=6", "INTERVAL=2", "BACKGROUND=SEETHROUGH",
              "COLOR=16,24,32", "CX_PRIORITY=0", "CX_POPUP=YES", "(CX_POPKEY=ctrl alt t)"]
 
 

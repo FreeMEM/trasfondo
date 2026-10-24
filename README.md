@@ -7,11 +7,14 @@ Arriba a la derecha del escritorio enseña:
 
 - La fecha y la hora, en el idioma del sistema.
 - La CPU en uso y su historia: las últimas 60 medidas (dos minutos, midiendo cada 2 s).
+- En una PiStorm (Emu68), la temperatura de su Raspberry Pi; en naranja desde 70 °C.
 - La memoria Chip y Fast libre.
 - Las seis tareas que más CPU toman.
 - Los discos montados: cuánto está lleno cada uno y su tamaño.
 - La red: lo que entra y sale por segundo (en KB/s si la pila o el driver dan los bytes; si no, en paquetes), y la señal de la WiFi si la tarjeta la da. Con cualquier pila
   TCP/IP (Roadshow, MiamiDx, AmiTCP...).
+- Si se pide (TrasfondoPrefs, o `MEMGRAPH` y `NETGRAPH`), la gráfica de la memoria en uso y la de la red: lo que entra hacia arriba y lo que sale hacia
+  abajo, a la escala del máximo de la historia.
 
 Mide y se actualiza cada 2 segundos, o cada 1, 5 o 10 si se prefiere (menos a menudo, menos CPU). Los iconos quedan por encima del panel, como siempre.
 
@@ -52,6 +55,7 @@ Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (
 - `disks_read`, `disk_kb`, `disk_free_kb`: los discos, sin esperar a uno lento.
 - `net_ifs_read`, `net_if_bytes_in`, `net_drivers_read`, `net_driver_read`, `wifi_read`, `wifi_read_device`: la red
   y la WiFi, con un tiempo máximo para cada pregunta.
+- `pistorm_temperature`: la temperatura de la Raspberry Pi de una PiStorm, preguntada a su firmware por Emu68.
 
 Así, cualquier otro programa en Dash puede usarlas también.
 
@@ -86,7 +90,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.10.lha` (de la página de
+1. Descomprime `trasfondo-0.11.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
@@ -141,7 +145,7 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 
 | Tooltype | Qué hace |
 |---|---|
-| `SHOW=DATE,CPU,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora). Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED`. |
+| `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora; TEMP, la temperatura de la PiStorm, que sin Emu68 no sale). Se pueden añadir `MEMGRAPH` y `NETGRAPH`, las gráficas de la memoria y de la red, que no salen de serie. Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
 | `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
 | `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
