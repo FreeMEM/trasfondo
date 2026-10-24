@@ -12,7 +12,7 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.9.1"
+@version "Trasfondo 0.9.2"
 @catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
@@ -677,8 +677,7 @@ func cambiaron_prefs()
     if lienzo != 0 and alto_panel() != alto_lienzo
         ocultar()
         mostrar()
-    end
-    if lienzo != 0
+    elif lienzo != 0
         desktop_canvas_update(lienzo)
     end
 end
@@ -691,6 +690,7 @@ func mostrar()
             Print tr(MSG_NO_FONDO, "Trasfondo: cannot draw on the Workbench backdrop")
         else
             desktop_canvas_on_draw(lienzo, pintar)
+            desktop_canvas_update(lienzo)        # entero ya: repintar() se salta los discos hasta la próxima lectura
         end
     end
 end
@@ -726,10 +726,7 @@ func obedecer(orden: Int)
         ocultar()
     elif activo and lienzo == 0
         medir_paneles()
-        mostrar()
-        if lienzo != 0
-            desktop_canvas_update(lienzo)        # al momento, sin esperar al segundo siguiente
-        end
+        mostrar()                                # pinta al momento, sin esperar al segundo siguiente
     end
 end
 
