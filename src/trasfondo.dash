@@ -606,7 +606,6 @@ func pintar(x, y, w, h)
         c_b_tarea = pluma_mezcla(64, 192, 255, 110)
         c_b_disco = pluma_mezcla(96, 208, 128, 90)
         c_b_wifi = pluma_mezcla(64, 192, 255, 90)
-        paleta = rtg_get_depth() <= 8   # la del panel, que es la de la pantalla (solo se sabe dibujando)
         colores = true
     end
     # el fondo y el recuadro de la gráfica ya vienen pintados: son los velos (poner_velo)
@@ -807,9 +806,7 @@ end
 # en cada dibujo. Sin color real (sería un moteado ilegible sobre un fondo claro) o con el fondo fijo, el del
 # panel es opaco: de un color
 func poner_velo()
-    if not colores                       # la pantalla, aún sin mirar: un dibujo de un punto la mira
-        desktop_canvas_update_area(lienzo, 0, 0, 1, 1)
-    end
+    paleta = rtg_get_depth() <= 8        # la del panel, que es la del Workbench
     alfa = 150
     if paleta or fijo
         alfa = 255
