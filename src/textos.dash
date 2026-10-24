@@ -1,0 +1,97 @@
+# Los textos que se ven, por número, para tr(): el programa los lleva en inglés y el catálogo
+# Trasfondo.catalog (catalogos/español.ct) trae el castellano. Lo comparten Trasfondo y TrasfondoPrefs,
+# así que cada número es de uno solo. Los números no se cambian nunca: son los del catálogo.
+# Lo que va entre % (%s, %1, %2...) lo rellena con() con str_replace. Sin comentarios al final de las
+# líneas de los const: tools/catalogo.py no los entendería.
+
+# Trasfondo, el panel
+# la coma de los decimales
+const MSG_COMA = 1
+# "%s pkt/s"
+const MSG_PAQUETES = 2
+# la señal de la WiFi
+const MSG_EXCELENTE = 3
+const MSG_BUENA = 4
+const MSG_REGULAR = 5
+const MSG_MALA = 6
+const MSG_TECLA_MAL = 7
+const MSG_CHIP = 8
+const MSG_FAST = 9
+# "%1 % of %2"
+const MSG_DISCO = 10
+const MSG_VACIO = 11
+# un disco que no contesta
+const MSG_DISCO_CALLADO = 12
+const MSG_RED = 13
+const MSG_ENTRA = 14
+const MSG_SALE = 15
+const MSG_SIN_DATOS = 16
+# una red
+const MSG_DESCONECTADO = 17
+const MSG_WIFI_CALLADA = 18
+# la WiFi
+const MSG_DESCONECTADA = 19
+const MSG_NO_FONDO = 20
+const MSG_YA_EN_MARCHA = 21
+const MSG_NO_CPU = 22
+# la de Exchange
+const MSG_DESCRIPCION = 23
+
+# Trasfondo, ponerse al día (lo enseña TrasfondoPrefs, que lo lee de ENV:Trasfondo.estado)
+const MSG_SIN_MEMORIA = 50
+const MSG_SIN_RED = 51
+const MSG_SIN_TLS = 52
+const MSG_NO_CONECTA = 53
+const MSG_NO_PIDE = 54
+const MSG_CERTIFICADO = 55
+const MSG_MUY_GRANDE = 56
+const MSG_NO_CONTESTA = 57
+const MSG_SIN_CABECERA = 58
+const MSG_GITHUB_DIJO = 59
+const MSG_AL_DIA = 60
+const MSG_TAMANO = 61
+const MSG_NO_EJECUTABLE = 62
+const MSG_OTRA_VERSION = 63
+const MSG_NO_ESCRIBE = 64
+const MSG_NO_ESCRIBE_PREFS = 65
+const MSG_INSTALADA = 66
+const MSG_BUSCANDO = 67
+const MSG_BAJANDO = 68
+const MSG_ERROR = 69
+const MSG_BAJANDO_POR = 70
+const MSG_NO_CATALOGO = 71
+
+# TrasfondoPrefs
+const MSG_TITULO = 80
+const MSG_SIN_VENTANA = 81
+const MSG_TIENES = 82
+const MSG_HAY_NUEVA = 83
+const MSG_VER_FECHA = 84
+const MSG_VER_CPU = 85
+const MSG_VER_MEMORIA = 86
+const MSG_VER_TAREAS = 87
+const MSG_VER_DISCOS = 88
+const MSG_VER_RED = 89
+const MSG_CUANTAS = 90
+const MSG_TECLA = 91
+const MSG_OCULTO = 92
+const MSG_BUSCAR = 93
+const MSG_ACTUALIZAR = 94
+const MSG_GUARDAR = 95
+const MSG_USAR = 96
+const MSG_CANCELAR = 97
+const MSG_NO_ESTA = 98
+const MSG_PEDIDO = 99
+
+# un texto del catálogo con sus huecos rellenos: %s o %1 con a, %2 con b, %3 con c
+func con(texto: String, a: String) -> String
+    return str_replace(str_replace(texto, "%s", a), "%1", a)
+end
+
+func con2(texto: String, a: String, b: String) -> String
+    return str_replace(con(texto, a), "%2", b)
+end
+
+func con3(texto: String, a: String, b: String, c: String) -> String
+    return str_replace(con2(texto, a, b), "%3", c)
+end

@@ -1,0 +1,197 @@
+; Texts of /home/freemem/Projects/trasfondo/src/trasfondo.dash, /home/freemem/Projects/trasfondo/src/trasfondoprefs.dash (tools/catalogo.py)
+;
+; MSG_COMA
+MSG_1 (1//)
+.
+; MSG_PAQUETES
+MSG_2 (2//)
+%s pkt/s
+; MSG_EXCELENTE
+MSG_3 (3//)
+excellent
+; MSG_BUENA
+MSG_4 (4//)
+good
+; MSG_REGULAR
+MSG_5 (5//)
+fair
+; MSG_MALA
+MSG_6 (6//)
+poor
+; MSG_TECLA_MAL
+MSG_7 (7//)
+Trasfondo: the hotkey is not valid: %s
+; MSG_CHIP
+MSG_8 (8//)
+Chip free
+; MSG_FAST
+MSG_9 (9//)
+Fast free
+; MSG_DISCO
+MSG_10 (10//)
+%1 % of %2
+; MSG_VACIO
+MSG_11 (11//)
+empty
+; MSG_DISCO_CALLADO
+MSG_12 (12//)
+no answer
+; MSG_RED
+MSG_13 (13//)
+Network
+; MSG_ENTRA
+MSG_14 (14//)
+in
+; MSG_SALE
+MSG_15 (15//)
+out
+; MSG_SIN_DATOS
+MSG_16 (16//)
+no data
+; MSG_DESCONECTADO
+MSG_17 (17//)
+disconnected
+; MSG_WIFI_CALLADA
+MSG_18 (18//)
+no answer
+; MSG_DESCONECTADA
+MSG_19 (19//)
+disconnected
+; MSG_NO_FONDO
+MSG_20 (20//)
+Trasfondo: cannot draw on the Workbench backdrop
+; MSG_YA_EN_MARCHA
+MSG_21 (21//)
+Trasfondo was already running: stopping it
+; MSG_NO_CPU
+MSG_22 (22//)
+Trasfondo: cannot measure the CPU (it needs OS 2.04 or later)
+; MSG_DESCRIPCION
+MSG_23 (23//)
+Resource monitor on the backdrop
+; MSG_SIN_MEMORIA
+MSG_50 (50//)
+out of memory
+; MSG_SIN_RED
+MSG_51 (51//)
+no network
+; MSG_SIN_TLS
+MSG_52 (52//)
+no TLS (AmiSSL)
+; MSG_NO_CONECTA
+MSG_53 (53//)
+cannot connect to %s
+; MSG_NO_PIDE
+MSG_54 (54//)
+cannot send the request
+; MSG_CERTIFICADO
+MSG_55 (55//)
+the certificate of %s is not valid
+; MSG_MUY_GRANDE
+MSG_56 (56//)
+the answer is too big
+; MSG_NO_CONTESTA
+MSG_57 (57//)
+%s does not answer
+; MSG_SIN_CABECERA
+MSG_58 (58//)
+an answer without headers
+; MSG_GITHUB_DIJO
+MSG_59 (59//)
+GitHub answered %s
+; MSG_AL_DIA
+MSG_60 (60//)
+You have the latest version (%s)
+; MSG_TAMANO
+MSG_61 (61//)
+%1: the size does not match (%2 instead of %3)
+; MSG_NO_EJECUTABLE
+MSG_62 (62//)
+%s: not an executable
+; MSG_OTRA_VERSION
+MSG_63 (63//)
+%1: not version %2
+; MSG_NO_ESCRIBE
+MSG_64 (64//)
+Error: cannot write %s
+; MSG_NO_ESCRIBE_PREFS
+MSG_65 (65//)
+Error: cannot write %s (Trasfondo is up to date)
+; MSG_INSTALADA
+MSG_66 (66//)
+Installed %s: Trasfondo starts again
+; MSG_BUSCANDO
+MSG_67 (67//)
+Looking for the latest version...
+; MSG_BAJANDO
+MSG_68 (68//)
+Downloading %s...
+; MSG_ERROR
+MSG_69 (69//)
+Error: %s
+; MSG_BAJANDO_POR
+MSG_70 (70//)
+Downloading %1: %2 %
+; MSG_NO_CATALOGO
+MSG_71 (71//)
+%s: not a catalog
+; MSG_TITULO
+MSG_80 (80//)
+Trasfondo Preferences
+; MSG_SIN_VENTANA
+MSG_81 (81//)
+TrasfondoPrefs: cannot open the window
+; MSG_TIENES
+MSG_82 (82//)
+You have %s
+; MSG_HAY_NUEVA
+MSG_83 (83//)
+There is a new version: %s
+; MSG_VER_FECHA
+MSG_84 (84//)
+Show the date and time
+; MSG_VER_CPU
+MSG_85 (85//)
+Show the CPU graph
+; MSG_VER_MEMORIA
+MSG_86 (86//)
+Show the free memory
+; MSG_VER_TAREAS
+MSG_87 (87//)
+Show the tasks
+; MSG_VER_DISCOS
+MSG_88 (88//)
+Show the disks
+; MSG_VER_RED
+MSG_89 (89//)
+Show the network and WiFi
+; MSG_CUANTAS
+MSG_90 (90//)
+Tasks shown
+; MSG_TECLA
+MSG_91 (91//)
+Hotkey
+; MSG_OCULTO
+MSG_92 (92//)
+Start hidden
+; MSG_BUSCAR
+MSG_93 (93//)
+Look for new versions on GitHub
+; MSG_ACTUALIZAR
+MSG_94 (94//)
+Update
+; MSG_GUARDAR
+MSG_95 (95//)
+Save
+; MSG_USAR
+MSG_96 (96//)
+Use
+; MSG_CANCELAR
+MSG_97 (97//)
+Cancel
+; MSG_NO_ESTA
+MSG_98 (98//)
+Trasfondo is not running: start it and try again
+; MSG_PEDIDO
+MSG_99 (99//)
+Asked Trasfondo...

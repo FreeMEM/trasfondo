@@ -1,64 +1,96 @@
 ; Instalador de Trasfondo para el Installer del sistema (AmigaOS 3.0 a 3.2).
-; Copia Trasfondo donde se elija (o a SYS:WBStartup, para que arranque con el Workbench) y sus
-; preferencias, TrasfondoPrefs, a SYS:Prefs. Este fichero se escribe en UTF-8 y tools/paquete.py lo pasa
-; a ISO-8859-1, que es lo que lee el Amiga.
+; Copia Trasfondo donde se elija (o a SYS:WBStartup, para que arranque con el Workbench), sus
+; preferencias, TrasfondoPrefs, a SYS:Prefs, y el catálogo en castellano a LOCALE:Catalogs.
+; Habla en inglés, o en castellano si el sistema lo está (@language). Este fichero se escribe en UTF-8 y
+; tools/paquete.py lo pasa a ISO-8859-1, que es lo que lee el Amiga.
 
 (set @app-name "Trasfondo")
+(set #es (= @language "español"))
 (set #avisos "")
 
-(welcome "Este programa instala Trasfondo, un monitor de recursos pintado en el fondo del Workbench, escrito en Dash.")
+(welcome
+    (if #es "Este programa instala Trasfondo, un monitor de recursos pintado en el fondo del Workbench, escrito en Dash."
+            "This program installs Trasfondo, a resource monitor painted on the Workbench backdrop, written in Dash."))
 
 ; --- Lo que necesita (solo avisa: se instala igual) ---
 (if (< (/ (getversion "exec.library" (resident)) 65536) 39)
-    (set #avisos (cat #avisos "- Trasfondo necesita AmigaOS 3.0 o superior.\n")))
+    (set #avisos (cat #avisos
+        (if #es "- Trasfondo necesita AmigaOS 3.0 o superior.\n"
+                "- Trasfondo needs AmigaOS 3.0 or later.\n"))))
 (if (not (exists "LIBS:commodities.library"))
     (if (not (exists "SYS:Libs/commodities.library"))
-        (set #avisos (cat #avisos "- No se encuentra commodities.library: Trasfondo funcionará, pero no saldrá en Exchange.\n"))))
+        (set #avisos (cat #avisos
+            (if #es "- No se encuentra commodities.library: Trasfondo funcionará, pero no saldrá en Exchange.\n"
+                    "- commodities.library is missing: Trasfondo will work, but it will not show up in Exchange.\n")))))
 (if (<> #avisos "")
-    (message (cat "Se instalará igual, pero ojo:\n\n" #avisos)))
+    (message (cat (if #es "Se instalará igual, pero ojo:\n\n" "It will be installed anyway, but note:\n\n") #avisos)))
 
 ; --- Dónde ---
 (set #arranque
     (askbool
-        (prompt "¿Quieres que Trasfondo arranque solo cada vez que se abre el Workbench?\n\n"
-                "Sí: se copia a SYS:WBStartup.\nNo: se copia al cajón que elijas.")
-        (help "Lo que hay en SYS:WBStartup se pone en marcha solo al abrirse el Workbench. "
-              "Si dices que no, Trasfondo se arranca cuando quieras con doble clic en su icono.")
-        (choices "Sí" "No")
+        (prompt (if #es "¿Quieres que Trasfondo arranque solo cada vez que se abre el Workbench?\n\nSí: se copia a SYS:WBStartup.\nNo: se copia al cajón que elijas."
+                        "Should Trasfondo start by itself every time the Workbench opens?\n\nYes: it is copied to SYS:WBStartup.\nNo: it is copied to the drawer you choose."))
+        (help (if #es "Lo que hay en SYS:WBStartup se pone en marcha solo al abrirse el Workbench. Si dices que no, Trasfondo se arranca cuando quieras con doble clic en su icono."
+                      "What is in SYS:WBStartup starts by itself when the Workbench opens. If you say no, start Trasfondo whenever you like with a double click on its icon."))
+        (choices (if #es "Sí" "Yes") "No")
         (default 1)))
 (if #arranque
     (set #destino "SYS:WBStartup")
     (set #destino
         (askdir
-            (prompt "¿Dónde copio Trasfondo?")
+            (prompt (if #es "¿Dónde copio Trasfondo?" "Where should Trasfondo go?"))
             (help @askdir-help)
             (default "SYS:Utilities"))))
 (set @default-dest #destino)
 
 ; --- Copiar (los iconos, sin la posición que traen del paquete: cada cajón coloca los suyos) ---
 (copyfiles
-    (prompt "Copiando Trasfondo")
+    (prompt (if #es "Copiando Trasfondo" "Copying Trasfondo"))
     (help @copyfiles-help)
     (source "trasfondo")
     (dest #destino)
     (infos))
 (tooltype (dest (tackon #destino "trasfondo")) (noposition))
 (copyfiles
-    (prompt "Copiando sus preferencias")
+    (prompt (if #es "Copiando sus preferencias" "Copying its preferences"))
     (help @copyfiles-help)
     (source "TrasfondoPrefs")
     (dest "SYS:Prefs")
     (infos))
 (tooltype (dest "SYS:Prefs/TrasfondoPrefs") (noposition))
+; el catálogo en castellano, en LOCALE:Catalogs con el nombre que tenga el idioma en este sistema (el 3.1 y el
+; 3.9 lo llaman "español"; el 3.2, "spanish"). Solo se usa si el castellano está en las Preferencias de idioma
+; (el idioma va en #idioma: los argumentos de un procedure son del Installer 43, y este vale para el del 3.0)
+(procedure P_CATALOGO
+    (if (exists (cat "LOCALE:Languages/" #idioma ".language") (noreq))
+        (
+            (if (not (exists "LOCALE:Catalogs" (noreq)))
+                (makedir "LOCALE:Catalogs" (safe)))
+            (if (not (exists (cat "LOCALE:Catalogs/" #idioma) (noreq)))
+                (makedir (cat "LOCALE:Catalogs/" #idioma) (safe)))
+            (copyfiles
+                (prompt (if #es "Copiando el catálogo en castellano" "Copying the Spanish catalog"))
+                (help @copyfiles-help)
+                (source (cat "Catalogs/" #idioma "/Trasfondo.catalog"))
+                (dest (cat "LOCALE:Catalogs/" #idioma))))))
+(set #idioma "español")
+(P_CATALOGO)
+(set #idioma "spanish")
+(P_CATALOGO)
 
 ; --- Arrancarlo ya ---
 (if (askbool
-        (prompt "Trasfondo está instalado. ¿Lo pongo en marcha ahora?")
-        (help "Si ya estaba en marcha, lanzarlo otra vez lo para: en ese caso, di que no.")
-        (choices "Sí" "No")
+        (prompt (if #es "Trasfondo está instalado. ¿Lo pongo en marcha ahora?" "Trasfondo is installed. Start it now?"))
+        (help (if #es "Si ya estaba en marcha, lanzarlo otra vez lo para: en ese caso, di que no."
+                      "If it was already running, starting it again stops it: in that case, say no."))
+        (choices (if #es "Sí" "Yes") "No")
         (default 1))
     (run (cat "Run >NIL: \"" (tackon #destino "trasfondo") "\"")))
 
-(exit (cat "Trasfondo está en " #destino ".\n\n"
-           "Qué se ve y cómo: SYS:Prefs/TrasfondoPrefs.\n"
-           "Para pararlo: doble clic otra vez en su icono, o Eliminar en Exchange."))
+(exit (if #es
+          (cat "Trasfondo está en " #destino ".\n\n"
+               "Qué se ve y cómo: SYS:Prefs/TrasfondoPrefs.\n"
+               "Para pararlo: doble clic otra vez en su icono, o Eliminar en Exchange.")
+          (cat "Trasfondo is in " #destino ".\n\n"
+               "What it shows and how: SYS:Prefs/TrasfondoPrefs.\n"
+               "To stop it: double click its icon again, or Remove in Exchange.")))

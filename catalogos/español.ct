@@ -1,0 +1,199 @@
+## version $VER: Trasfondo.catalog 1.0 (24.10.2026)
+## language español
+## codeset 0
+;
+MSG_1
+,
+; .
+MSG_2
+%s paq/s
+; %s pkt/s
+MSG_3
+excelente
+; excellent
+MSG_4
+buena
+; good
+MSG_5
+regular
+; fair
+MSG_6
+mala
+; poor
+MSG_7
+Trasfondo: la tecla rápida no vale: %s
+; Trasfondo: the hotkey is not valid: %s
+MSG_8
+Chip libre
+; Chip free
+MSG_9
+Fast libre
+; Fast free
+MSG_10
+%1 % de %2
+; %1 % of %2
+MSG_11
+vacío
+; empty
+MSG_12
+sin respuesta
+; no answer
+MSG_13
+Red
+; Network
+MSG_14
+entra
+; in
+MSG_15
+sale
+; out
+MSG_16
+sin datos
+; no data
+MSG_17
+desconectado
+; disconnected
+MSG_18
+sin respuesta
+; no answer
+MSG_19
+desconectada
+; disconnected
+MSG_20
+Trasfondo: no puedo pintar en el fondo del Workbench
+; Trasfondo: cannot draw on the Workbench backdrop
+MSG_21
+Trasfondo ya estaba en marcha: se para
+; Trasfondo was already running: stopping it
+MSG_22
+Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)
+; Trasfondo: cannot measure the CPU (it needs OS 2.04 or later)
+MSG_23
+Monitor de recursos en el fondo
+; Resource monitor on the backdrop
+MSG_50
+no hay memoria
+; out of memory
+MSG_51
+no hay red
+; no network
+MSG_52
+sin TLS (AmiSSL)
+; no TLS (AmiSSL)
+MSG_53
+no se puede conectar con %s
+; cannot connect to %s
+MSG_54
+no se puede pedir
+; cannot send the request
+MSG_55
+el certificado de %s no vale
+; the certificate of %s is not valid
+MSG_56
+la respuesta es demasiado grande
+; the answer is too big
+MSG_57
+%s no contesta
+; %s does not answer
+MSG_58
+respuesta sin cabecera
+; an answer without headers
+MSG_59
+GitHub contestó %s
+; GitHub answered %s
+MSG_60
+Ya tienes la última versión (%s)
+; You have the latest version (%s)
+MSG_61
+%1: el tamaño no cuadra (%2 en vez de %3)
+; %1: the size does not match (%2 instead of %3)
+MSG_62
+%s: no es un ejecutable
+; %s: not an executable
+MSG_63
+%1: no es la versión %2
+; %1: not version %2
+MSG_64
+Error: no se puede escribir %s
+; Error: cannot write %s
+MSG_65
+Error: no se puede escribir %s (Trasfondo sí está al día)
+; Error: cannot write %s (Trasfondo is up to date)
+MSG_66
+Instalada la %s: Trasfondo vuelve a arrancar
+; Installed %s: Trasfondo starts again
+MSG_67
+Buscando la última versión...
+; Looking for the latest version...
+MSG_68
+Bajando %s...
+; Downloading %s...
+MSG_69
+Error: %s
+; Error: %s
+MSG_70
+Bajando %1: %2 %
+; Downloading %1: %2 %
+MSG_71
+%s: no es un catálogo
+; %s: not a catalog
+MSG_80
+Preferencias de Trasfondo
+; Trasfondo Preferences
+MSG_81
+TrasfondoPrefs: no puedo abrir la ventana
+; TrasfondoPrefs: cannot open the window
+MSG_82
+Tienes la %s
+; You have %s
+MSG_83
+Hay una versión nueva: %s
+; There is a new version: %s
+MSG_84
+Ver la fecha y la hora
+; Show the date and time
+MSG_85
+Ver la gráfica de la CPU
+; Show the CPU graph
+MSG_86
+Ver la memoria libre
+; Show the free memory
+MSG_87
+Ver las tareas
+; Show the tasks
+MSG_88
+Ver los discos
+; Show the disks
+MSG_89
+Ver la red y la WiFi
+; Show the network and WiFi
+MSG_90
+Cuántas tareas
+; Tasks shown
+MSG_91
+Tecla rápida
+; Hotkey
+MSG_92
+Arrancar oculto
+; Start hidden
+MSG_93
+Buscar versiones nuevas en GitHub
+; Look for new versions on GitHub
+MSG_94
+Actualizar
+; Update
+MSG_95
+Guardar
+; Save
+MSG_96
+Usar
+; Use
+MSG_97
+Cancelar
+; Cancel
+MSG_98
+Trasfondo no está en marcha: arráncalo y vuelve a probar
+; Trasfondo is not running: start it and try again
+MSG_99
+Pedido a Trasfondo...
+; Asked Trasfondo...

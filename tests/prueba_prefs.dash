@@ -72,24 +72,25 @@ end
 end
 
 # el centro (en la pantalla) del gadget con ese texto en la ventana de ese título: x * 10000 + y; -1 si no está.
-# Los botones de GadTools no guardan su texto en el gadget: detrás de "Buscar versiones nuevas en GitHub" van
-# la línea de la versión, "Actualizar", "Guardar", "Usar" y "Cancelar", en ese orden.
+# Los botones de GadTools no guardan su texto en el gadget: detrás de "Look for new versions on GitHub" van
+# la línea de la versión, "Update", "Save", "Use" y "Cancel", en ese orden. (Los textos, en inglés: el
+# sistema del emulador no tiene el catálogo en castellano.)
 @native func centro(titulo: String, texto: String) -> Int
 """
     ULONG lock = LockIBase(0);
     struct Window *w;
     struct Gadget *g;
     LONG r = -1, boton = -1, k = -1;
-    if (!strcmp((char *)texto, "Actualizar")) boton = 2;
-    else if (!strcmp((char *)texto, "Guardar")) boton = 3;
-    else if (!strcmp((char *)texto, "Usar")) boton = 4;
-    else if (!strcmp((char *)texto, "Cancelar")) boton = 5;
+    if (!strcmp((char *)texto, "Update")) boton = 2;
+    else if (!strcmp((char *)texto, "Save")) boton = 3;
+    else if (!strcmp((char *)texto, "Use")) boton = 4;
+    else if (!strcmp((char *)texto, "Cancel")) boton = 5;
     for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
         if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
     if (w)
         for (g = w->FirstGadget; g; g = g->NextGadget) {
             if (k >= 0) k++;
-            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Buscar versiones nuevas en GitHub")) k = 0;
+            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Look for new versions on GitHub")) k = 0;
             if (boton > 0 ? k == boton : g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, (char *)texto)) {
                 /* la ventana es GimmeZeroZero: los gadgets cuentan desde dentro del borde */
                 LONG bx = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderLeft : 0;
@@ -113,9 +114,9 @@ end
     LONG n = 0;
     b[0] = 0;
     for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
-        if (w->Title && !strcmp((char *)w->Title, "Preferencias de Trasfondo")) break;
+        if (w->Title && !strcmp((char *)w->Title, "Trasfondo Preferences")) break;
     if (w) for (g = w->FirstGadget; g && n < 30; g = g->NextGadget)
-        if (g->GadgetText && g->GadgetText->IText && !strncmp((char *)g->GadgetText->IText, "Ver ", 4)) b[n++] = (g->Flags & GFLG_SELECTED) ? '1' : '0';
+        if (g->GadgetText && g->GadgetText->IText && !strncmp((char *)g->GadgetText->IText, "Show ", 5)) b[n++] = (g->Flags & GFLG_SELECTED) ? '1' : '0';
     b[n] = 0;
     UnlockIBase(lock);
     return _dash_str_dup((STRPTR)b, TRUE);
@@ -142,7 +143,7 @@ const IECODE_UP_PREFIX = 0x80
 const IEQUALIFIER_RELATIVEMOUSE = 0x8000
 
 func pulsar(texto: String) -> Bool
-    c = centro("Preferencias de Trasfondo", texto)
+    c = centro("Trasfondo Preferences", texto)
     if c < 0
         Print "no encuentro: " + texto
         return false
@@ -177,9 +178,9 @@ Main
 
     lanzar("Run >NIL: DH0:trasfondoprefs")
     esperar(100)
-    pulsar("Ver las tareas")
-    pulsar("Ver los discos")
-    pulsar("Usar")
+    pulsar("Show the tasks")
+    pulsar("Show the disks")
+    pulsar("Use")
     esperar(150)
     a1 = alto_panel()
     Print "Usar sin tareas ni discos: ENV " + fichero("ENV:Trasfondo.prefs") + "; ENVARC " + fichero("ENVARC:Trasfondo.prefs")
@@ -187,9 +188,9 @@ Main
 
     lanzar("Run >NIL: DH0:trasfondoprefs")
     esperar(100)
-    pulsar("Ver los discos")
-    pulsar("Arrancar oculto")
-    pulsar("Guardar")
+    pulsar("Show the disks")
+    pulsar("Start hidden")
+    pulsar("Save")
     esperar(150)
     a2 = alto_panel()
     Print "Guardar con discos: ENVARC " + fichero("ENVARC:Trasfondo.prefs")
@@ -197,8 +198,8 @@ Main
 
     lanzar("Run >NIL: DH0:trasfondoprefs")
     esperar(100)
-    pulsar("Ver la memoria libre")
-    pulsar("Cancelar")
+    pulsar("Show the free memory")
+    pulsar("Cancel")
     esperar(100)
     Print "Cancelar no cambia nada: ENV " + fichero("ENV:Trasfondo.prefs")
     Print "ventana cerrada: #{centro(\"Preferencias de Trasfondo\", \"Usar\") < 0}"

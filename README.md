@@ -15,6 +15,9 @@ Arriba a la derecha del escritorio enseña:
 
 Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
 
+Habla inglés de serie y castellano con su catálogo (`Trasfondo.catalog`, que pone el instalador): sale en el
+idioma que tengas elegido en las Preferencias de idioma del sistema.
+
 ![Trasfondo en Coffin R65, sobre un fondo de pantalla con imagen](docs/captura-coffin.png)
 
 En AmigaOS 3.2.3, pantalla AGA de 640x256:
@@ -57,7 +60,7 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 110 KB (la mitad es lo de ponerse al día: la red y el TLS).
+- **Memoria**: el ejecutable ocupa 116 KB (la mitad es lo de ponerse al día: la red y el TLS).
 - **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
   interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
   `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
@@ -80,16 +83,17 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.8.lha` (de la página de
+1. Descomprime `trasfondo-0.9.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
-   `SYS:Prefs`.
+   `SYS:Prefs`, y el catálogo en castellano en `LOCALE:Catalogs`.
 3. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
 4. Para pararlo, lánzalo otra vez, usa Eliminar en Exchange o pulsa Ctrl-C en su Shell. El fondo queda
    como estaba.
 
-Sin instalador también vale: copia `trasfondo` y `trasfondo.info` a donde quieras. En `SYS:WBStartup`
+Sin instalador también vale: copia `trasfondo` y `trasfondo.info` a donde quieras, y el cajón `Catalogs`
+a su lado para tenerlo en castellano. En `SYS:WBStartup`
 arranca solo; su icono lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que
 acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco más?").
 
@@ -106,7 +110,9 @@ Desde la 0.8, Trasfondo mira en GitHub si hay una versión nueva: un minuto desp
 seis horas, sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
 «Trasfondo». En TrasfondoPrefs, **Actualizar** la baja (los dos ejecutables sueltos de la release),
 comprueba que llegó entera y que es la versión que dice, deja los de ahora como `.old` y Trasfondo vuelve a
-arrancar con la nueva.
+arrancar con la nueva. Desde la 0.9 baja también el catálogo en castellano; y si tu sistema está en
+castellano y falta, lo baja él solo al minuto de arrancar (le pasa a quien llega a la 0.9 desde la 0.8 con
+el botón).
 
 Necesita una pila TCP/IP y AmiSSL; sin ellas no hace nada. Solo pregunta a `api.github.com`, y la casilla
 **Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
@@ -131,8 +137,8 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 
 | Tooltype | Qué hace |
 |---|---|
-| `MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED` | Qué secciones salen y en qué orden (FECHA es la fecha y la hora). Por ejemplo, `MOSTRAR=CPU,DISCOS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. |
-| `TAREAS=6` | Cuántas tareas enseña (de 1 a 20). |
+| `SHOW=DATE,CPU,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora). Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED`. |
+| `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |

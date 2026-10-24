@@ -3,10 +3,11 @@
 
     python3 tools/paquete.py 0.3        →  build/paquete/Trasfondo/...  y  build/trasfondo-0.3.lha
 
-Necesita build/trasfondo y build/trasfondoprefs compilados, y el lha de 68k (/opt/amiga/bin/lha) para que
+Necesita build/trasfondo y build/trasfondoprefs compilados, los catálogos hechos (tools/catalogos.py) y el lha de 68k (/opt/amiga/bin/lha) para que
 el archivo guarde bien los atributos.
 """
 
+import os
 import shutil
 import subprocess
 import sys
@@ -45,10 +46,19 @@ def main():
     (caj / "LEEME").write_bytes((raiz / "README.md").read_text().encode("latin-1", "replace"))
     (caj / "LEEME.info").write_bytes(situar(info(documento(), WBPROJECT, herramienta="SYS:Utilities/MultiView"), 250, 6))
     shutil.copy(raiz / "LICENSE", caj / "LICENSE")
+    # los catálogos (tools/catalogos.py), con el nombre del idioma en Latin-1: Catalogs/español/Trasfondo.catalog.
+    # Junto a trasfondo valen tal cual (PROGDIR:Catalogs); el instalador los copia además a LOCALE:Catalogs
+    cats = os.fsencode(raiz / "build/Catalogs")
+    for idioma in os.listdir(cats):
+        os.makedirs(os.path.join(os.fsencode(caj), b"Catalogs", idioma))
+        shutil.copy(os.path.join(cats, idioma, b"Trasfondo.catalog"),
+                    os.path.join(os.fsencode(caj), b"Catalogs", idioma, b"Trasfondo.catalog"))
     lha = raiz / f"build/trasfondo-{version}.lha"
     lha.unlink(missing_ok=True)
-    subprocess.run(["/opt/amiga/bin/lha", "ao5q", str(lha), "Trasfondo", "Trasfondo.info"]
-                   + [f"Trasfondo/{p.name}" for p in sorted(caj.iterdir())], cwd=dest, check=True)
+    ficheros = [os.path.relpath(os.path.join(d, f), os.fsencode(dest))
+                for d, _, fs in os.walk(os.fsencode(caj)) for f in fs]
+    subprocess.run([b"/opt/amiga/bin/lha", b"ao5q", b"--system-kanji-code=latin1", b"--archive-kanji-code=latin1", os.fsencode(lha), b"Trasfondo", b"Trasfondo.info"]
+                   + sorted(ficheros), cwd=dest, check=True)
     print(lha)
 
 

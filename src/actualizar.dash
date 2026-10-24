@@ -1,7 +1,9 @@
 # Trasfondo se pone al día solo. Mira en GitHub cuál es la última versión (un minuto después de arrancar y
 # luego cada seis horas) y, si se lo pide TrasfondoPrefs (botón Actualizar, que deja "actualizar" en
 # ENV:Trasfondo.orden), baja los dos ejecutables sueltos de esa release, los comprueba (tamaño, que sean
-# ejecutables y que lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old.
+# ejecutables y que lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old. Con ellos
+# baja el catálogo en castellano, si hace falta (ver act_donde_catalogo). Y si falta el catálogo
+# en un sistema en castellano (pasa al venir de la 0.8, que no lo bajaba), lo baja solo y lo usa al momento.
 # Todo va paso a paso desde el bucle del panel, sin esperar nunca: act_paso() avanza lo que se pueda.
 # Lo que va pasando, en ENV:Trasfondo.estado; la versión nueva que hay, en ENV:Trasfondo.nueva.
 
@@ -12,18 +14,21 @@ const CADA = 21600000              # y luego, cada seis horas
 const ESPERA_RED = 30000           # lo más que se espera a cada paso de la red
 const TOPE_API = 131072            # la respuesta de la API cabe de sobra
 const MUESTRA = 8192               # lo que se recibe de una vez
+const CAT_ASSET = "Trasfondo-espanol.catalog"   # el castellano, suelto en cada release
 
 var a_version: String = ""         # la de este ejecutable ("0.8")
 var a_buscar: Bool = true          # BUSCAR=NO en las preferencias: no pregunta a GitHub
 var a_proxima: Int = 0             # time_ms de la próxima consulta
 var a_nueva: String = ""           # la versión nueva que hay ("" si ninguna)
-var a_url: [String] = ["", ""]     # trasfondo y TrasfondoPrefs: de dónde se bajan
-var a_tam: [Int] = [0, 0]          # y cuánto miden
+var a_url: [String] = ["", "", ""]  # trasfondo, TrasfondoPrefs y el catálogo: de dónde se bajan ("" si no está)
+var a_tam: [Int] = [0, 0, 0]       # y cuánto miden
 var a_fase: Int = 0                # 0 nada, 1 consultando, 2 bajando
-var a_cual: Int = 0                # el fichero que se baja (0 trasfondo, 1 TrasfondoPrefs)
+var a_cual: Int = 0                # el fichero que se baja (0 trasfondo, 1 TrasfondoPrefs, 2 el catálogo)
 var a_quiere: Bool = false         # se pidió actualizar
 var a_listo: Bool = false          # instalada: hay que relanzarse
-var a_cuerpo: [Int] = [0, 0]       # los dos ejecutables bajados y comprobados (búferes)
+var a_cuerpo: [Int] = [0, 0, 0]    # lo bajado y comprobado (búferes)
+var a_falta_cat: Bool = false      # el sistema está en castellano y no hay catálogo: se baja en la consulta
+var a_idioma: Bool = false         # llegó el catálogo: hay que repintar
 var a_estado: String = ""
 
 # la conexión en curso: HTTPS, HTTP/1.0 (sin trozos), siguiendo las redirecciones
@@ -74,6 +79,8 @@ func act_iniciar(version: String, buscar: Bool)
     a_buscar = buscar
     a_proxima = time_ms() + PRIMERA
     file_delete("ENV:Trasfondo.orden")
+    tr(MSG_COMA, ".")                     # el primer tr abre el catálogo: antes, catalog_language() no sabe
+    a_falta_cat = catalog_language() == "" and act_en_castellano()
     vieja = file_read_text("ENV:Trasfondo.nueva")
     if vieja != nil
         if act_mas_nueva(str_trim(vieja), version)
@@ -82,6 +89,49 @@ func act_iniciar(version: String, buscar: Bool)
             file_delete("ENV:Trasfondo.nueva")
         end
     end
+end
+
+# el sistema habla castellano: locale.library escribe los días en su idioma
+func act_en_castellano() -> Bool
+    dia = str_lower(date_text("%A"))
+    var dias: [String] = ["lunes", "martes", "rcoles", "jueves", "viernes", "bado", "domingo"]
+    for i in (0..dias.length - 1)
+        if str_contains(dia, dias[i])
+            return true
+        end
+    end
+    return false
+end
+
+# dónde va el catálogo: donde ya esté y, si el sistema está en castellano, en LOCALE:Catalogs con el nombre
+# de su idioma (el 3.1 y el 3.9 lo llaman "español"; el 3.2, "spanish"). Vacía si no hace falta
+func act_donde_catalogo() -> [String]
+    var r: [String] = []
+    castellano = act_en_castellano()
+    var idiomas: [String] = ["español", "spanish"]
+    for i in (0..1)
+        p = "PROGDIR:Catalogs/" + idiomas[i] + "/Trasfondo.catalog"
+        if file_exists(p)
+            r.push(p)
+        end
+        cajon = "LOCALE:Catalogs/" + idiomas[i]
+        if file_exists(cajon + "/Trasfondo.catalog")
+            r.push(cajon + "/Trasfondo.catalog")
+        elif castellano and file_exists("LOCALE:Languages/" + idiomas[i] + ".language")
+            if not file_exists(cajon)
+                dir_create(cajon)
+            end
+            r.push(cajon + "/Trasfondo.catalog")
+        end
+    end
+    return r
+end
+
+# llegó un catálogo nuevo (se pregunta una vez: luego vuelve a ser false)
+func act_idioma_nuevo() -> Bool
+    r = a_idioma
+    a_idioma = false
+    return r
 end
 
 func act_nueva() -> String
@@ -134,12 +184,12 @@ func http_empezar(host: String, ruta: String, tope: Int)
     h_n = 0
     h_buf = buffer_alloc(tope)
     if h_buf == 0 or h_tmp == 0
-        http_fallo("no hay memoria")
+        http_fallo(tr(MSG_SIN_MEMORIA, "out of memory"))
         return
     end
     h_sock = net_connect_start(host, 443, ESPERA_RED)
     if h_sock < 0
-        http_fallo("no hay red")
+        http_fallo(tr(MSG_SIN_RED, "no network"))
         return
     end
     h_paso = 1
@@ -153,26 +203,26 @@ func http_paso()
         if r == 1
             h_tls = tls_connect_start(h_sock, h_host, ESPERA_RED)
             if h_tls == -1
-                http_fallo("sin TLS (AmiSSL)")
+                http_fallo(tr(MSG_SIN_TLS, "no TLS (AmiSSL)"))
             else
                 h_paso = 2
             end
         elif r < 0
             h_sock = -1                        # ya está cerrado
-            http_fallo("no se puede conectar con " + h_host)
+            http_fallo(con(tr(MSG_NO_CONECTA, "cannot connect to %s"), h_host))
         end
     elif h_paso == 2
         r = tls_connect_poll(h_tls)
         if r == 1
             if tls_send(h_tls, h_peticion) < 0
-                http_fallo("no se puede pedir")
+                http_fallo(tr(MSG_NO_PIDE, "cannot send the request"))
             else
                 h_paso = 3
                 h_desde = time_ms()
             end
         elif r < 0
             h_tls = -1                         # ya está liberada
-            http_fallo("el certificado de " + h_host + " no vale")
+            http_fallo(con(tr(MSG_CERTIFICADO, "the certificate of %s is not valid"), h_host))
         end
     elif h_paso == 3
         vueltas = 0                            # lo que haya ya, sin esperar (y sin quedarse toda la tarde)
@@ -180,7 +230,7 @@ func http_paso()
             n = tls_recv_buffer(h_tls, h_tmp, MUESTRA, 0)
             if n > 0
                 if h_n + n > h_tope
-                    http_fallo("la respuesta es demasiado grande")
+                    http_fallo(tr(MSG_MUY_GRANDE, "the answer is too big"))
                 else
                     buffer_copy(h_buf, h_n, h_tmp, 0, n)
                     h_n = h_n + n
@@ -195,7 +245,7 @@ func http_paso()
             vueltas = vueltas + 1
         end
         if h_paso == 3 and time_ms() - h_desde > ESPERA_RED
-            http_fallo(h_host + " no contesta")
+            http_fallo(con(tr(MSG_NO_CONTESTA, "%s does not answer"), h_host))
         end
     end
 end
@@ -220,7 +270,7 @@ end
 func http_terminada() -> Bool
     c = http_cuerpo()
     if c < 0
-        http_fallo("respuesta sin cabecera")
+        http_fallo(tr(MSG_SIN_CABECERA, "an answer without headers"))
         return false
     end
     cab = str_from_buffer(h_buf, 0, c)
@@ -247,7 +297,7 @@ func http_terminada() -> Bool
             end
         end
     end
-    http_fallo("GitHub contestó #{codigo}")
+    http_fallo(con(tr(MSG_GITHUB_DIJO, "GitHub answered %s"), "#{codigo}"))
     return false
 end
 
@@ -295,18 +345,20 @@ func act_consulta_hecha()
     if str_starts(etiqueta, "v")
         etiqueta = etiqueta[1:etiqueta.length]
     end
-    var nombres: [String] = ["trasfondo", "TrasfondoPrefs"]
-    completa = true
-    for k in (0..1)
+    var nombres: [String] = ["trasfondo", "TrasfondoPrefs", CAT_ASSET]
+    completa = true                       # los dos ejecutables; el catálogo puede faltar
+    for k in (0..2)
+        a_url[k] = ""
         i = str_find(j, "\"name\":\"" + nombres[k] + "\"")
-        if i < 0
-            completa = false
-        else
+        if i >= 0
             a_tam[k] = json_numero(j, "size", i)
             a_url[k] = json_texto(j, "browser_download_url", i)
             if a_tam[k] <= 0 or not str_starts(a_url[k], "https://")
-                completa = false
+                a_url[k] = ""
             end
+        end
+        if a_url[k] == "" and k < 2
+            completa = false
         end
     end
     if etiqueta != "" and completa and act_mas_nueva(etiqueta, a_version)
@@ -317,7 +369,7 @@ func act_consulta_hecha()
         file_delete("ENV:Trasfondo.nueva")
         if a_quiere
             a_quiere = false
-            act_estado("Ya tienes la última versión (" + a_version + ")")
+            act_estado(con(tr(MSG_AL_DIA, "You have the latest version (%s)"), a_version))
         end
     end
 end
@@ -337,10 +389,16 @@ end
 func act_comprobar(c: Int, nombre: String, programa: String) -> String
     n = h_n - c
     if n != a_tam[a_cual]
-        return "#{nombre}: el tamaño no cuadra (#{n} en vez de #{a_tam[a_cual]})"
+        return con3(tr(MSG_TAMANO, "%1: the size does not match (%2 instead of %3)"), nombre, "#{n}", "#{a_tam[a_cual]}")
+    end
+    if a_cual == 2                        # un catálogo: FORM ... CTLG
+        if buffer_get_long(h_buf, c) != 0x464F524D or buffer_get_long(h_buf, c + 8) != 0x43544C47
+            return con(tr(MSG_NO_CATALOGO, "%s: not a catalog"), nombre)
+        end
+        return ""
     end
     if buffer_get_long(h_buf, c) != 0x3F3
-        return nombre + ": no es un ejecutable"
+        return con(tr(MSG_NO_EJECUTABLE, "%s: not an executable"), nombre)
     end
     marca = "$VER: " + programa + " " + a_nueva
     i = c
@@ -350,7 +408,7 @@ func act_comprobar(c: Int, nombre: String, programa: String) -> String
         end
         i = i + 1
     end
-    return nombre + ": no es la versión " + a_nueva
+    return con2(tr(MSG_OTRA_VERSION, "%1: not version %2"), nombre, a_nueva)
 end
 
 # escribe el nuevo al lado, guarda el de ahora como .old y pone el nuevo en su sitio
@@ -379,9 +437,22 @@ func act_poner(destino: String, b: Int, n: Int) -> Bool
     return true
 end
 
+# el catálogo, donde toque; true si se puso en alguna parte
+func act_poner_catalogo(b: Int) -> Bool
+    var destinos: [String] = act_donde_catalogo()
+    puesto = false
+    for i in (0..destinos.length - 1)
+        if act_poner(destinos[i], b, a_tam[2])
+            file_delete(destinos[i] + ".old")     # el de antes no hace falta: sin catálogo sale en inglés
+            puesto = true
+        end
+    end
+    return puesto
+end
+
 func act_instalar()
     if not act_poner("PROGDIR:trasfondo", a_cuerpo[0], a_tam[0])
-        act_estado("Error: no se puede escribir PROGDIR:trasfondo")
+        act_estado(con(tr(MSG_NO_ESCRIBE, "Error: cannot write %s"), "PROGDIR:trasfondo"))
         return
     end
     prefs_en = ""                                 # TrasfondoPrefs, donde esté (el instalador lo pone en SYS:Prefs)
@@ -391,16 +462,19 @@ func act_instalar()
         prefs_en = "PROGDIR:TrasfondoPrefs"
     end
     if prefs_en != "" and not act_poner(prefs_en, a_cuerpo[1], a_tam[1])
-        act_estado("Error: no se puede escribir " + prefs_en + " (Trasfondo sí está al día)")
+        act_estado(con(tr(MSG_NO_ESCRIBE_PREFS, "Error: cannot write %s (Trasfondo is up to date)"), prefs_en))
     else
-        act_estado("Instalada la " + a_nueva + ": Trasfondo vuelve a arrancar")
+        act_estado(con(tr(MSG_INSTALADA, "Installed %s: Trasfondo starts again"), a_nueva))
+    end
+    if a_cuerpo[2] != 0
+        act_poner_catalogo(a_cuerpo[2])
     end
     file_delete("ENV:Trasfondo.nueva")
     a_listo = true
 end
 
 func act_soltar_cuerpos()
-    for k in (0..1)
+    for k in (0..2)
         if a_cuerpo[k] != 0
             buffer_free(a_cuerpo[k])
             a_cuerpo[k] = 0
@@ -410,16 +484,63 @@ end
 
 # TrasfondoPrefs pidió actualizar
 func act_actualizar()
+    if a_fase == 1 and not a_quiere           # ya estaba preguntando: que baje lo que encuentre
+        a_quiere = true
+        act_estado(tr(MSG_BUSCANDO, "Looking for the latest version..."))
+        return
+    end
     if a_fase != 0 or a_listo
         return
     end
     a_quiere = true
     if a_nueva == "" or a_url[0] == ""
-        act_estado("Buscando la última versión...")
+        act_estado(tr(MSG_BUSCANDO, "Looking for the latest version..."))
         act_consultar()                           # y, si hay una nueva, la baja después
     else
-        act_estado("Bajando trasfondo...")
+        act_estado(con(tr(MSG_BAJANDO, "Downloading %s..."), "trasfondo"))
         act_bajar(0)
+    end
+end
+
+# el nombre de lo que se baja (el del fichero) y el de su $VER: (el del programa)
+func act_nombre(cual: Int) -> String
+    if cual == 0
+        return "trasfondo"
+    elif cual == 1
+        return "TrasfondoPrefs"
+    end
+    return "Trasfondo.catalog"
+end
+
+# lo siguiente que hay que bajar después de cual, o -1 si ya está todo
+func act_siguiente(cual: Int) -> Int
+    if cual == 0
+        return 1
+    elif cual == 1 and a_url[2] != "" and act_donde_catalogo().length > 0
+        return 2
+    end
+    return -1
+end
+
+# lo bajado (a_cual) está comprobado y guardado: lo que sigue
+func act_bajado()
+    if not a_quiere                       # solo el catálogo, que faltaba: se pone y se usa ya
+        a_fase = 0
+        if act_poner_catalogo(a_cuerpo[2]) and catalog_open("Trasfondo.catalog", 1)
+            a_idioma = true
+        end
+        act_soltar_cuerpos()
+        return
+    end
+    sig = act_siguiente(a_cual)
+    if sig >= 0
+        act_estado(con(tr(MSG_BAJANDO, "Downloading %s..."), act_nombre(sig)))
+        act_bajar(sig)
+    else
+        a_fase = 0
+        a_quiere = false
+        act_instalar()
+        act_soltar_cuerpos()
     end
 end
 
@@ -438,59 +559,51 @@ func act_paso()
             a_fase = 0
             act_consulta_hecha()
             if a_quiere and a_nueva != ""
-                act_estado("Bajando trasfondo...")
+                act_estado(con(tr(MSG_BAJANDO, "Downloading %s..."), "trasfondo"))
                 act_bajar(0)
+            elif a_falta_cat and not a_quiere and a_url[2] != "" and act_donde_catalogo().length > 0
+                a_falta_cat = false               # una vez: si falla, sigue en inglés hasta que arranque otra vez
+                act_bajar(2)
             end
         else
             c = http_cuerpo()
-            nombre = "trasfondo"
-            programa = "Trasfondo"
-            if a_cual == 1
-                nombre = "TrasfondoPrefs"
-                programa = "TrasfondoPrefs"
+            programa = act_nombre(a_cual)
+            if a_cual == 0
+                programa = "Trasfondo"
             end
-            fallo = act_comprobar(c, nombre, programa)
+            fallo = act_comprobar(c, act_nombre(a_cual), programa)
+            b = 0
+            if fallo == ""
+                b = buffer_alloc(a_tam[a_cual])
+                if b == 0
+                    fallo = tr(MSG_SIN_MEMORIA, "out of memory")
+                end
+            end
             if fallo != ""
+                if a_quiere
+                    act_estado(con(tr(MSG_ERROR, "Error: %s"), fallo))
+                end
                 a_fase = 0
                 a_quiere = false
                 act_soltar_cuerpos()
-                act_estado("Error: " + fallo)
             else
-                b = buffer_alloc(a_tam[a_cual])
-                if b == 0
-                    a_fase = 0
-                    act_estado("Error: no hay memoria")
-                else
-                    buffer_copy(b, 0, h_buf, c, a_tam[a_cual])
-                    a_cuerpo[a_cual] = b
-                    if a_cual == 0
-                        act_estado("Bajando TrasfondoPrefs...")
-                        act_bajar(1)
-                    else
-                        a_fase = 0
-                        a_quiere = false
-                        act_instalar()
-                        act_soltar_cuerpos()
-                    end
-                end
+                buffer_copy(b, 0, h_buf, c, a_tam[a_cual])
+                a_cuerpo[a_cual] = b
+                act_bajado()
             end
         end
     elif h_paso == 5
         if a_quiere
-            act_estado("Error: " + h_error)
+            act_estado(con(tr(MSG_ERROR, "Error: %s"), h_error))
         end
         a_fase = 0
         a_quiere = false
         act_soltar_cuerpos()
-    elif a_fase == 2 and h_paso == 3 and a_tam[a_cual] > 0
-        nombre = "trasfondo"
-        if a_cual == 1
-            nombre = "TrasfondoPrefs"
-        end
+    elif a_fase == 2 and h_paso == 3 and a_tam[a_cual] > 0 and a_quiere
         por = h_n * 100 / (a_tam[a_cual] + 400)     # (las cabeceras van en lo recibido)
         if por > 99
             por = 99
         end
-        act_estado("Bajando #{nombre}: #{por} %")
+        act_estado(con2(tr(MSG_BAJANDO_POR, "Downloading %1: %2 %"), act_nombre(a_cual), "#{por}"))
     end
 end

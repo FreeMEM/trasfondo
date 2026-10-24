@@ -4,7 +4,10 @@
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.8"
+@version "TrasfondoPrefs 0.9"
+@catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
+
+import "textos.dash"
 
 const SECCIONES = "fecha,cpu,memoria,tareas,discos,red"
 
@@ -81,30 +84,67 @@ Main
         fila = 16
     end
     m = 12                                   # el margen, por dentro de los bordes
-    x_campo = m + screen_font_text_width("Cuántas tareas") + 10   # los campos, con su texto a la izquierda
-    ancho = m + 26 + 8 + screen_font_text_width("Buscar versiones nuevas en GitHub") + m   # las casillas, con el texto a la derecha
+    var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi")]
+    t_cuantas = tr(MSG_CUANTAS, "Tasks shown")
+    t_tecla = tr(MSG_TECLA, "Hotkey")
+    t_oculto = tr(MSG_OCULTO, "Start hidden")
+    t_buscar = tr(MSG_BUSCAR, "Look for new versions on GitHub")
+    t_actualizar = tr(MSG_ACTUALIZAR, "Update")
+    x_campo = m + screen_font_text_width(t_cuantas) + 10        # los campos, con su texto a la izquierda
+    if x_campo < m + screen_font_text_width(t_tecla) + 10
+        x_campo = m + screen_font_text_width(t_tecla) + 10
+    end
+    largo = screen_font_text_width(t_buscar)                    # las casillas, con el texto a la derecha
+    if largo < screen_font_text_width(t_oculto)
+        largo = screen_font_text_width(t_oculto)
+    end
+    for i in (0..etiquetas.length - 1)
+        if largo < screen_font_text_width(etiquetas[i])
+            largo = screen_font_text_width(etiquetas[i])
+        end
+    end
+    ancho = m + 26 + 8 + largo + m
     if ancho < x_campo + 200
         ancho = x_campo + 200
     end
     alto_boton = f + 6
-    alto = m + fila * 6 + 4 + (fila + 2) * 2 + fila * 2 + 8 + (alto_boton + 8) + 8 + alto_boton + m
+    hueco = 8                                # lo que separa los grupos (el doble, antes de los botones)
+    alto = m * 2 + fila * 10 + 4 + 4 + hueco * 3 + alto_boton * 2
+    # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
+    # título, con la fuente de la pantalla
+    cabe = screen_height() - (f + 3) - 4
+    if alto > cabe
+        fila = f + 4
+        if fila < 12
+            fila = 12
+        end
+        hueco = 4
+        m = 6
+        alto = m * 2 + fila * 10 + 4 + 4 + hueco * 3 + alto_boton * 2
+    end
+    arriba = 30                              # y la ventana, más arriba si hace falta
+    if arriba + alto + f + 3 + 4 > screen_height()
+        arriba = screen_height() - alto - f - 3 - 4
+        if arriba < 0
+            arriba = 0
+        end
+    end
 
     # la versión: la que hay, o la nueva que encontró Trasfondo (ENV:Trasfondo.nueva)
     yo = str_replace(program_version(), "TrasfondoPrefs ", "")
     hay_nueva = file_read_text("ENV:Trasfondo.nueva")
-    linea_version = "Tienes la " + yo
+    linea_version = con(tr(MSG_TIENES, "You have %s"), yo)
     if hay_nueva != nil and str_trim(hay_nueva) != ""
-        linea_version = "Hay una versión nueva: " + str_trim(hay_nueva)
+        linea_version = con(tr(MSG_HAY_NUEVA, "There is a new version: %s"), str_trim(hay_nueva))
     end
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
-    if window_create("Preferencias de Trasfondo", 60, 30, ancho, alto, 8) == 0
-        Print "TrasfondoPrefs: no puedo abrir la ventana"
+    if window_create(tr(MSG_TITULO, "Trasfondo Preferences"), 60, arriba, ancho, alto, 8) == 0
+        Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
     else
         gt_init()
         y = m
         x = m
         var claves: [String] = ["fecha", "cpu", "memoria", "tareas", "discos", "red"]
-        var etiquetas: [String] = ["Ver la fecha y la hora", "Ver la gráfica de la CPU", "Ver la memoria libre", "Ver las tareas", "Ver los discos", "Ver la red y la WiFi"]
         var casillas: [Int] = []
         for i in (0..5)
             casillas.push(gt_checkbox(x, y, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
@@ -112,22 +152,22 @@ Main
         end
         y = y + 4
         ancho_n = screen_font_text_width("000") + 24
-        tareas = gt_integer(x_campo, y, ancho_n, f + 6, "Cuántas tareas", Int(conf("TAREAS", "6")))
+        tareas = gt_integer(x_campo, y, ancho_n, f + 6, t_cuantas, Int(conf("TAREAS", "6")))
         y = y + fila + 2
-        tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, "Tecla rápida", conf("CX_POPKEY", ""), 40)
+        tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, t_tecla, conf("CX_POPKEY", ""), 40)
         y = y + fila + 2
-        oculto = gt_checkbox(x, y, 26, f + 3, "Arrancar oculto", str_upper(conf("CX_POPUP", "YES")) == "NO")
+        oculto = gt_checkbox(x, y, 26, f + 3, t_oculto, str_upper(conf("CX_POPUP", "YES")) == "NO")
         y = y + fila
-        buscar = gt_checkbox(x, y, 26, f + 3, "Buscar versiones nuevas en GitHub", str_upper(conf("BUSCAR", "SI")) != "NO")
-        y = y + fila + 8
-        ancho_act = screen_font_text_width("Actualizar") + 24
+        buscar = gt_checkbox(x, y, 26, f + 3, t_buscar, str_upper(conf("BUSCAR", "SI")) != "NO")
+        y = y + fila + hueco
+        ancho_act = screen_font_text_width(t_actualizar) + 24
         estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
-        actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, "Actualizar")
-        y = y + alto_boton + 16
+        actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, t_actualizar)
+        y = y + alto_boton + hueco * 2
         boton = (ancho - m * 2 - 16) / 3
-        guardar = gt_button(x, y, boton, alto_boton, "Guardar")
-        usar = gt_button(x + boton + 8, y, boton, alto_boton, "Usar")
-        cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, "Cancelar")
+        guardar = gt_button(x, y, boton, alto_boton, tr(MSG_GUARDAR, "Save"))
+        usar = gt_button(x + boton + 8, y, boton, alto_boton, tr(MSG_USAR, "Use"))
+        cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CANCELAR, "Cancel"))
         gt_attach()
 
         ultimo = ""
@@ -143,14 +183,14 @@ Main
                         gt_set_text(estado, ultimo)
                         pedido = time_ms()
                     elif ultimo == "" and time_ms() - pedido > 8000
-                        ultimo = "Trasfondo no está en marcha: arráncalo y vuelve a probar"
+                        ultimo = tr(MSG_NO_ESTA, "Trasfondo is not running: start it and try again")
                         gt_set_text(estado, ultimo)
                     end
                 end
             elif e == actualizar
                 file_delete("ENV:Trasfondo.estado")
                 file_write_text("ENV:Trasfondo.orden", "actualizar\n")
-                gt_set_text(estado, "Pedido a Trasfondo...")
+                gt_set_text(estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
                 ultimo = ""
                 pedido = time_ms()
             elif e == -2 or e == cancelar

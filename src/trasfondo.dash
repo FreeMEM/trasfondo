@@ -12,8 +12,10 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.8"
+@version "Trasfondo 0.9"
+@catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
+import "textos.dash"
 import "actualizar.dash"
 
 const ANCHO = 260
@@ -73,7 +75,7 @@ var discos_leidos: Bool = false   # los discos se leyeron en esta vuelta: hay qu
 var faltan_senal: Int = 0    # segundos para volver a preguntar la señal de la WiFi
 
 func por_ciento(milesimas: Int) -> String
-    return "#{milesimas / 10},#{milesimas % 10} %"
+    return "#{milesimas / 10}" + tr(MSG_COMA, ".") + "#{milesimas % 10} %"
 end
 
 func kb(bytes: Int) -> String
@@ -88,7 +90,7 @@ end
 func tam(k: Int) -> String
     if k >= 1048576
         g = k / 104858                   # décimas de GB
-        return "#{g / 10},#{g % 10} GB"
+        return "#{g / 10}" + tr(MSG_COMA, ".") + "#{g % 10} GB"
     end
     if k >= 10240
         return "#{k / 1024} MB"
@@ -99,28 +101,28 @@ end
 func velocidad(b: Int) -> String
     if b >= 1048576
         m = b / 104858
-        return "#{m / 10},#{m % 10} MB/s"
+        return "#{m / 10}" + tr(MSG_COMA, ".") + "#{m % 10} MB/s"
     end
     if b >= 1024
         k = b * 10 / 1024
-        return "#{k / 10},#{k % 10} KB/s"
+        return "#{k / 10}" + tr(MSG_COMA, ".") + "#{k % 10} KB/s"
     end
     return "#{b} B/s"
 end
 
 func paquetes(p: Int) -> String
-    return "#{p} paq/s"
+    return con(tr(MSG_PAQUETES, "%s pkt/s"), "#{p}")
 end
 
 func calidad(dbm: Int) -> String
     if dbm >= -50
-        return "excelente"
+        return tr(MSG_EXCELENTE, "excellent")
     elif dbm >= -60
-        return "buena"
+        return tr(MSG_BUENA, "good")
     elif dbm >= -70
-        return "regular"
+        return tr(MSG_REGULAR, "fair")
     end
-    return "mala"
+    return tr(MSG_MALA, "poor")
 end
 
 # la línea de la WiFi de un interfaz: solo si es WiFi
@@ -160,7 +162,7 @@ func poner_tecla()
     tecla = conf("CX_POPKEY", "")
     if tecla != tecla_puesta
         if not cx_hotkey(tecla) and tecla != ""
-            Print "Trasfondo: la tecla rápida no vale: " + tecla
+            Print con(tr(MSG_TECLA_MAL, "Trasfondo: the hotkey is not valid: %s"), tecla)
         end
         tecla_puesta = tecla
     end
@@ -421,11 +423,11 @@ end
 
 func pintar_memoria(w: Int, yy: Int)
     gfx_pen(c_texto)
-    gfx_text_at(6, yy + font_baseline(), "Chip libre")
+    gfx_text_at(6, yy + font_baseline(), tr(MSG_CHIP, "Chip free"))
     t = kb(mem_chip_free())
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
     yy = yy + linea
-    gfx_text_at(6, yy + font_baseline(), "Fast libre")
+    gfx_text_at(6, yy + font_baseline(), tr(MSG_FAST, "Fast free"))
     t = kb(mem_fast_free())
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
 end
@@ -464,11 +466,11 @@ func pintar_discos(w: Int, yy: Int)
             if largo > 0
                 gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90)
             end
-            t = "#{usado / 10} % de " + tam(d_kb[i])
+            t = con2(tr(MSG_DISCO, "%1 % of %2"), "#{usado / 10}", tam(d_kb[i]))
         elif d_kb[i] == 0
-            t = "vacío"
+            t = tr(MSG_VACIO, "empty")
         else
-            t = "sin respuesta"
+            t = tr(MSG_DISCO_CALLADO, "no answer")
         end
         gfx_pen(c_suave)
         nombre = d_nombre[i]
@@ -486,9 +488,11 @@ func pintar_red(w: Int, yy: Int)
     # la red: lo que entra y sale por segundo, y la señal de la WiFi
     col = font_text_width("999,9 KB/s") + 10        # ancho de la columna de lo que sale
     gfx_pen(c_texto)
-    gfx_text_at(6, yy + font_baseline(), "Red")
-    gfx_text_at(w - 8 - col - font_text_width("entra"), yy + font_baseline(), "entra")
-    gfx_text_at(w - 8 - font_text_width("sale"), yy + font_baseline(), "sale")
+    gfx_text_at(6, yy + font_baseline(), tr(MSG_RED, "Network"))
+    t = tr(MSG_ENTRA, "in")
+    gfx_text_at(w - 8 - col - font_text_width(t), yy + font_baseline(), t)
+    t = tr(MSG_SALE, "out")
+    gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
     yy = yy + linea
     for i in (0..r_nombre.length - 1)
         gfx_pen(c_suave)
@@ -498,7 +502,7 @@ func pintar_red(w: Int, yy: Int)
         end
         gfx_text_at(8, yy + font_baseline(), nombre)
         if r_arriba[i] == 1 and r_entra[i] < 0
-            t = "sin datos"
+            t = tr(MSG_SIN_DATOS, "no data")
             gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         elif r_arriba[i] == 1
             if r_en_paquetes[i] == 1
@@ -514,7 +518,7 @@ func pintar_red(w: Int, yy: Int)
             end
             gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         else
-            t = "desconectado"
+            t = tr(MSG_DESCONECTADO, "disconnected")
             gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
         end
         yy = yy + linea
@@ -529,9 +533,9 @@ func pintar_red(w: Int, yy: Int)
                 end
                 t = "#{r_senal[i]} dBm, " + calidad(r_senal[i])
             elif r_wifi[i] == 1
-                t = "sin respuesta"
+                t = tr(MSG_WIFI_CALLADA, "no answer")
             else
-                t = "desconectada"
+                t = tr(MSG_DESCONECTADA, "disconnected")
             end
             gfx_text_at(16, yy + font_baseline(), "WiFi")
             gfx_text_at(w - 8 - font_text_width(t), yy + font_baseline(), t)
@@ -684,7 +688,7 @@ func mostrar()
         alto_lienzo = alto_panel()
         lienzo = desktop_canvas(-4, 4, ANCHO, alto_lienzo)
         if lienzo == 0
-            Print "Trasfondo: no puedo pintar en el fondo del Workbench"
+            Print tr(MSG_NO_FONDO, "Trasfondo: cannot draw on the Workbench backdrop")
         else
             desktop_canvas_on_draw(lienzo, pintar)
         end
@@ -732,9 +736,9 @@ end
 Main
     # lanzarlo otra vez lo para (y Ctrl-C, o Break desde la Shell, o Eliminar en Exchange)
     if not single_instance("Trasfondo")
-        Print "Trasfondo ya estaba en marcha: se para"
+        Print tr(MSG_YA_EN_MARCHA, "Trasfondo was already running: stopping it")
     elif not cpu_start()
-        Print "Trasfondo: no puedo medir la CPU (hace falta OS 2.04 o posterior)"
+        Print tr(MSG_NO_CPU, "Trasfondo: cannot measure the CPU (it needs OS 2.04 or later)")
     else
         linea = font_height() + 1
         leer_prefs()
@@ -742,7 +746,7 @@ Main
         act_iniciar(str_replace(program_version(), "Trasfondo ", ""), str_upper(conf("BUSCAR", "SI")) != "NO")
         aviso_prefs = file_notify("ENV:Trasfondo.prefs")   # 0 si no se puede vigilar: entonces se lee cada segundo
         aviso_orden = file_notify("ENV:Trasfondo.orden")   # lo que pide TrasfondoPrefs (actualizar)
-        if cx_broker("Trasfondo", program_version(), "Monitor de recursos en el fondo", Int(conf("CX_PRIORITY", "0")))
+        if cx_broker("Trasfondo", program_version(), tr(MSG_DESCRIPCION, "Resource monitor on the backdrop"), Int(conf("CX_PRIORITY", "0")))
             poner_tecla()
         end
         visible = str_upper(conf("CX_POPUP", "YES")) != "NO"
@@ -763,6 +767,9 @@ Main
                 end
                 orden = cx_wait(espera)
                 act_paso()
+                if act_idioma_nuevo() and lienzo != 0   # llegó el catálogo: en castellano ya
+                    desktop_canvas_update(lienzo)
+                end
                 if act_listo()                          # instalada la versión nueva: arranca otra vez con ella
                     program_relaunch()
                     break
