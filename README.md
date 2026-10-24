@@ -114,7 +114,7 @@ arrancar con la nueva. Desde la 0.9 baja también el catálogo en castellano; y 
 castellano y falta, lo baja él solo al minuto de arrancar (le pasa a quien llega a la 0.9 desde la 0.8 con
 el botón).
 
-Necesita una pila TCP/IP y AmiSSL; sin ellas no hace nada. Solo pregunta a `api.github.com`, y la casilla
+Necesita una pila TCP/IP en marcha y AmiSSL; sin ellas no hace nada (y no pone en marcha la red: si no hay pila, espera a que la haya). Al acabar cada consulta suelta la red. Solo pregunta a `api.github.com`, y la casilla
 **Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
 para llegar a la 0.8 hay que instalarla a mano una vez.
 

@@ -12,7 +12,7 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.9"
+@version "Trasfondo 0.9.1"
 @catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"

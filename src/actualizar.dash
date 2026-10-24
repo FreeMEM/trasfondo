@@ -29,6 +29,7 @@ var a_listo: Bool = false          # instalada: hay que relanzarse
 var a_cuerpo: [Int] = [0, 0, 0]    # lo bajado y comprobado (búferes)
 var a_falta_cat: Bool = false      # el sistema está en castellano y no hay catálogo: se baja en la consulta
 var a_idioma: Bool = false         # llegó el catálogo: hay que repintar
+var a_red: Bool = false            # se abrió la red: al acabar se suelta (net_release)
 var a_estado: String = ""
 
 # la conexión en curso: HTTPS, HTTP/1.0 (sin trozos), siguiendo las redirecciones
@@ -333,6 +334,7 @@ func json_numero(j: String, clave: String, desde: Int) -> Int
 end
 
 func act_consultar()
+    a_red = true
     a_fase = 1
     h_saltos = 0
     http_empezar(API_HOST, API_RUTA, TOPE_API)
@@ -377,6 +379,7 @@ end
 # --- bajar, comprobar e instalar ---
 
 func act_bajar(cual: Int)
+    a_red = true
     a_fase = 2
     a_cual = cual
     h_saltos = 0
@@ -492,6 +495,10 @@ func act_actualizar()
     if a_fase != 0 or a_listo
         return
     end
+    if not net_stack_running()
+        act_estado(con(tr(MSG_ERROR, "Error: %s"), tr(MSG_SIN_RED, "no network")))
+        return
+    end
     a_quiere = true
     if a_nueva == "" or a_url[0] == ""
         act_estado(tr(MSG_BUSCANDO, "Looking for the latest version..."))
@@ -547,9 +554,20 @@ end
 # lo que toque ahora: llamarla en cada vuelta del bucle
 func act_paso()
     if a_fase == 0
+        if a_red                          # acabó lo de la red: se suelta bsdsocket.library hasta la próxima
+            http_cerrar()
+            net_release()
+            a_red = false
+        end
         if a_buscar and time_ms() >= a_proxima and not a_listo
-            a_proxima = time_ms() + CADA
-            act_consultar()
+            # sin pila TCP/IP en marcha no se abre la red: se cargaría bsdsocket.library de LIBS: (con MiamiDx
+            # en CaffeineOS, eso se pelea con su arranque de la red). Se vuelve a mirar en un minuto
+            if net_stack_running()
+                a_proxima = time_ms() + CADA
+                act_consultar()
+            else
+                a_proxima = time_ms() + PRIMERA
+            end
         end
         return
     end

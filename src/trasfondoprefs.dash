@@ -4,7 +4,7 @@
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.9"
+@version "TrasfondoPrefs 0.9.1"
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
