@@ -10,7 +10,7 @@ lo que falta se añade a Dash como builtins, igual que `desktop_canvas*` y `cpu_
 
 | Orden | Qué hace Trasfondo |
 |---|---|
-| Ocultar (Hide) | Quita el panel del fondo. Sigue midiendo la CPU: al mostrarlo, la historia del último minuto está completa. |
+| Ocultar (Hide) | Quita el panel del fondo. Sigue midiendo la CPU: al mostrarlo, la historia de la CPU está completa. |
 | Mostrar (Show) | Vuelve a poner el panel. |
 | Desactivar (Disable) | Quita el panel y deja de medir la CPU (`cpu_stop`). No gasta nada mientras tanto. |
 | Activar (Enable) | Vuelve a medir (`cpu_start`), con la historia vacía, y pone el panel si no estaba oculto. |

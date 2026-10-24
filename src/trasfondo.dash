@@ -1,25 +1,27 @@
 # Trasfondo: un "top" gráfico en el fondo del Workbench, detrás de los iconos y sin clics.
 #
-# Arriba a la derecha del escritorio: la CPU en uso y su historia del último minuto, la memoria libre
+# Arriba a la derecha del escritorio: la CPU en uso y su historia (60 medidas), la memoria libre
 # y las tareas que más CPU toman; debajo, los discos (lo ocupado de cada volumen) y la red (lo que entra y
 # sale por segundo y la señal de la WiFi si el driver la da). Con Roadshow, bytes de cada interfaz; con otra
-# pila (MiamiDx, AmiTCP), paquetes, preguntados al driver de red. Se actualiza cada segundo.
+# pila (MiamiDx, AmiTCP), paquetes, preguntados al driver de red. Mide y se actualiza cada 2 segundos, o
+# cada lo que diga INTERVAL (o TrasfondoPrefs).
 # Se para lanzándolo otra vez, o con Ctrl-C.
 #
 # Es una commodity: desde Exchange se oculta y se muestra (sigue midiendo), se desactiva (deja de medir)
-# y se elimina. Tooltypes: CX_PRIORITY, CX_POPKEY (tecla para ocultar y mostrar), CX_POPUP=NO (arranca oculto).
+# y se elimina. Tooltypes: CX_PRIORITY, CX_POPKEY (tecla para ocultar y mostrar), CX_POPUP=NO (arranca oculto),
+# INTERVAL (segundos entre medidas), BACKGROUND=SOLID (fondo fijo, sin velo) y COLOR=r,g,b (el del fondo).
 
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 0.9.3"
+@version "Trasfondo 0.10"
 @catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
 import "actualizar.dash"
 
 const ANCHO = 260
-const HISTORIA = 60          # segundos de historia de la CPU
+const HISTORIA = 60          # medidas de historia de la CPU (dos minutos, midiendo cada 2 s)
 const TAREAS = 6             # tareas que se enseñan, si el tooltype TAREAS no dice otra cosa
 const SECCIONES = "FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED"
 const ALTO_GRAFICA = 32
@@ -40,16 +42,23 @@ var secciones: [String] = [] # lo que se enseña y en qué orden (tooltype MOSTR
 var tareas_max: Int = TAREAS
 var prefs: String = ""       # ENV:Trasfondo.prefs (lo escribe TrasfondoPrefs): manda sobre los tooltypes
 var tecla_puesta: String = ""
-var historia: [Int] = []     # CPU total de cada segundo, en tantos por mil (la más nueva al final)
+var historia: [Int] = []     # CPU total de cada medida, en tantos por mil (la más nueva al final)
 var n_tareas: Int = 0
 var linea: Int = 10          # alto de una línea de texto
 var c_texto: Int = 1
 var c_suave: Int = 1
 var c_cpu: Int = 3
 var colores: Bool = false
-var c_fondo: Int = 1
 var c_verde: Int = 1
 var paleta: Bool = false      # pantalla de 256 colores o menos: el velo sería una trama de puntos
+var c_b_tarea: Int = 1       # con el fondo fijo, las barras: lo que el velo mezclaría, ya mezclado con su color
+var c_b_disco: Int = 1
+var c_b_wifi: Int = 1
+var cada: Int = 2            # segundos entre dos medidas (INTERVAL)
+var fijo: Bool = false       # fondo de un color, sin velo: no lee lo de debajo (en RTG por Zorro, mucho más barato)
+var f_r: Int = 16            # el color del fondo (COLOR)
+var f_g: Int = 24
+var f_b: Int = 32
 var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
 var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
 var activo: Bool = true      # midiendo la CPU
@@ -71,7 +80,7 @@ var r_wifi: [Int] = []       # lo que dio wifi_read: 0 leída, 1 sin respuesta, 
 var r_senal: [Int] = []      # dBm
 var r_ms: Int = 0            # cuándo fue la lectura anterior
 var faltan_discos: Int = 0   # segundos para volver a leer los discos (0: en la próxima medida)
-var discos_leidos: Bool = false   # los discos se leyeron en esta vuelta: hay que repintar su sección
+var firmas: [String] = []    # lo que enseñaban la cabecera y cada sección al pintarlas: si no cambia, no se repinta
 var faltan_senal: Int = 0    # segundos para volver a preguntar la señal de la WiFi
 
 func por_ciento(milesimas: Int) -> String
@@ -209,6 +218,51 @@ func leer_secciones()
     end
 end
 
+# cada cuánto mide, y el fondo: fijo o con velo, y su color
+func leer_aspecto()
+    cada = Int(conf("CADA", tooltype("INTERVAL", "2")))
+    if cada < 1
+        cada = 1
+    elif cada > 60
+        cada = 60
+    end
+    f = str_upper(conf("FONDO", tooltype("BACKGROUND", "VELO")))
+    fijo = f == "FIJO" or f == "SOLID"
+    var rgb: [String] = str_split(conf("COLOR", "16,24,32"), ",")
+    if rgb.length == 3
+        f_r = componente(rgb[0])
+        f_g = componente(rgb[1])
+        f_b = componente(rgb[2])
+    end
+    colores = false                      # las plumas, otra vez: con el color nuevo
+end
+
+func componente(t: String) -> Int
+    n = Int(str_trim(t))
+    if n < 0
+        return 0
+    elif n > 255
+        return 255
+    end
+    return n
+end
+
+# la pluma de un color mezclado con el del fondo, como lo dejaría el velo (alpha de 0 a 255)
+func pluma_mezcla(r: Int, g: Int, b: Int, alpha: Int) -> Int
+    return color_pen((r * alpha + f_r * (255 - alpha)) / 255, (g * alpha + f_g * (255 - alpha)) / 255, (b * alpha + f_b * (255 - alpha)) / 255)
+end
+
+# un rectángulo semitransparente: con el velo, mezclado con lo de debajo; con el fondo fijo, de su pluma
+# ya mezclada (sin leer la pantalla)
+func barra(x1: Int, y1: Int, x2: Int, y2: Int, rgb: Int, alpha: Int, pluma: Int)
+    if fijo
+        gfx_pen(pluma)
+        gfx_rect(x1, y1, x2, y2)
+    else
+        gfx_blend_rect(x1, y1, x2, y2, rgb, alpha)
+    end
+end
+
 func hay(s: String) -> Bool
     for i in (0..secciones.length - 1)
         if secciones[i] == s
@@ -295,7 +349,7 @@ func leer_red()
     if toca_senal
         faltan_senal = CADA_SENAL
     end
-    faltan_senal = faltan_senal - 1
+    faltan_senal = faltan_senal - cada
     m = net_ifs_read()
     r_paquetes = m < 0
     if m < 0                             # sin Roadshow: los drivers de red en uso, con cualquier pila
@@ -400,8 +454,7 @@ func leer_red()
 end
 
 func pintar_cpu(w: Int, yy: Int)
-    # la historia: una barra por segundo, de abajo arriba
-    gfx_blend_rect(6, yy, w - 7, yy + ALTO_GRAFICA - 1, 0x000000, 90)
+    # la historia: una barra por medida, de abajo arriba, sobre su recuadro (un velo: poner_velo)
     paso = (w - 12) / HISTORIA
     x0 = w - 6 - paso * historia.length
     gfx_pen(c_cpu)
@@ -442,7 +495,7 @@ func pintar_tareas(w: Int, yy: Int)
         carga = cpu_task_load(i)
         largo = (w - 12) * carga / 1000
         if largo > 0
-            gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110)
+            barra(6, yy, 6 + largo, yy + linea - 2, 0x40C0FF, 110, c_b_tarea)
         end
         gfx_pen(c_suave)
         nombre = cpu_task_name(i)
@@ -464,7 +517,7 @@ func pintar_discos(w: Int, yy: Int)
             usado = (d_kb[i] - d_libre[i]) / (d_kb[i] / 1000 + 1)      # tantos por mil, sin desbordar
             largo = (w - 12) * usado / 1000
             if largo > 0
-                gfx_blend_rect(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90)
+                barra(6, yy, 6 + largo, yy + linea - 2, 0x60D080, 90, c_b_disco)
             end
             t = con2(tr(MSG_DISCO, "%1 % of %2"), "#{usado / 10}", tam(d_kb[i]))
         elif d_kb[i] == 0
@@ -529,7 +582,7 @@ func pintar_red(w: Int, yy: Int)
                     fuerza = 1000
                 end
                 if fuerza > 0
-                    gfx_blend_rect(6, yy, 6 + (w - 12) * fuerza / 1000, yy + linea - 2, 0x40C0FF, 90)
+                    barra(6, yy, 6 + (w - 12) * fuerza / 1000, yy + linea - 2, 0x40C0FF, 90, c_b_wifi)
                 end
                 t = "#{r_senal[i]} dBm, " + calidad(r_senal[i])
             elif r_wifi[i] == 1
@@ -549,39 +602,39 @@ func pintar(x, y, w, h)
         c_texto = color_pen(240, 240, 240)
         c_suave = color_pen(200, 210, 220)
         c_cpu = color_pen(80, 200, 255)
-        c_fondo = color_pen(16, 24, 32)
         c_verde = color_pen(96, 220, 120)
-        paleta = rtg_get_depth() <= 8   # la del panel, que es la de la pantalla
+        c_b_tarea = pluma_mezcla(64, 192, 255, 110)
+        c_b_disco = pluma_mezcla(96, 208, 128, 90)
+        c_b_wifi = pluma_mezcla(64, 192, 255, 90)
+        paleta = rtg_get_depth() <= 8   # la del panel, que es la de la pantalla (solo se sabe dibujando)
         colores = true
     end
-    if paleta                            # sin color real, el velo sería un moteado ilegible sobre un fondo claro
-        gfx_pen(c_fondo)
-        gfx_rect(0, 0, w - 1, h - 1)
-    else
-        gfx_blend_rect(0, 0, w - 1, h - 1, 0x101820, 150)   # velo oscuro: el fondo se ve a través
-    end
-    font_style(2)
-    gfx_pen(c_texto)
+    # el fondo y el recuadro de la gráfica ya vienen pintados: son los velos (poner_velo)
+    # lo que no cae en la parte que se dibuja no se pinta: no saldría
     yy = 6
-    gfx_text_at(6, yy + font_baseline(), "Trasfondo")
-    nueva = act_nueva()
-    if nueva != ""                       # hay una versión nueva: un piloto verde y su número (se instala desde TrasfondoPrefs)
-        x = 6 + font_text_width("Trasfondo") + 8
-        r = linea / 3
-        gfx_pen(c_verde)
-        gfx_circle_fill(x + r, yy + linea / 2, r)
-        font_style(0)
-        gfx_text_at(x + r * 2 + 4, yy + font_baseline(), nueva)
+    if desktop_canvas_drawing(0, 0, w, yy + linea)
         font_style(2)
         gfx_pen(c_texto)
+        gfx_text_at(6, yy + font_baseline(), "Trasfondo")
+        nueva = act_nueva()
+        if nueva != ""                   # hay una versión nueva: un piloto verde y su número (se instala desde TrasfondoPrefs)
+            x = 6 + font_text_width("Trasfondo") + 8
+            r = linea / 3
+            gfx_pen(c_verde)
+            gfx_circle_fill(x + r, yy + linea / 2, r)
+            font_style(0)
+            gfx_text_at(x + r * 2 + 4, yy + font_baseline(), nueva)
+            font_style(2)
+            gfx_pen(c_texto)
+        end
+        total = 0
+        if historia.length > 0
+            total = historia[historia.length - 1]
+        end
+        t = "CPU " + por_ciento(total)
+        gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
+        font_style(0)
     end
-    total = 0
-    if historia.length > 0
-        total = historia[historia.length - 1]
-    end
-    t = "CPU " + por_ciento(total)
-    gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
-    font_style(0)
     yy = yy + linea
     primero = true
     for i in (0..secciones.length - 1)
@@ -594,7 +647,9 @@ func pintar(x, y, w, h)
                 yy = yy + 6
             end
             primero = false
-            if s == "fecha"
+            if not desktop_canvas_drawing(0, yy, w, a)
+                # fuera de lo que se dibuja
+            elif s == "fecha"
                 pintar_fecha(w, yy)
             elif s == "cpu"
                 pintar_cpu(w, yy)
@@ -615,14 +670,12 @@ end
 # los discos y la red, que deciden el alto del panel: solo con el panel a la vista. Los discos, cada
 # CADA_DISCOS segundos (cada lectura manda un ACTION_DISK_INFO a cada volumen)
 func medir_paneles()
-    discos_leidos = false
     if hay("discos")
         if faltan_discos <= 0
             leer_discos()
-            discos_leidos = true
             faltan_discos = CADA_DISCOS
         end
-        faltan_discos = faltan_discos - 1
+        faltan_discos = faltan_discos - cada
     end
     if hay("red")
         leer_red()
@@ -651,26 +704,93 @@ func y_seccion(nombre: String) -> Int
     return -1
 end
 
-# lo de cada segundo: todo menos los discos, que solo se repintan cuando se han vuelto a leer
-func repintar()
-    y = -1
-    if not discos_leidos
-        y = y_seccion("discos")
-    end
-    if y < 0
-        desktop_canvas_update(lienzo)
+# lo que enseña ahora la cabecera ("") o una sección, en un texto. La gráfica de la CPU corre en cada medida
+func firma(s: String) -> String
+    t = ""
+    if s == ""
+        if historia.length > 0
+            t = por_ciento(historia[historia.length - 1])
+        end
+        t = t + "|" + act_nueva()
+    elif s == "fecha"
+        t = date_text("%A %d-%b-%y %H:%M")
+    elif s == "cpu"
+        t = "#{time_ms()}"
+    elif s == "memoria"
+        t = kb(mem_chip_free()) + "|" + kb(mem_fast_free())
+    elif s == "tareas"
+        for i in (0..n_tareas - 1)
+            if i < tareas_max
+                t = t + cpu_task_name(i) + "|" + por_ciento(cpu_task_load(i)) + "|"
+            end
+        end
+    elif s == "discos"
+        for i in (0..d_nombre.length - 1)
+            t = t + d_nombre[i] + "|#{d_kb[i]}|"
+            if d_kb[i] > 0
+                t = t + "#{(d_kb[i] - d_libre[i]) / (d_kb[i] / 1000 + 1) / 10}|"
+            end
+        end
     else
-        a = alto_seccion("discos")
-        desktop_canvas_update_area(lienzo, 0, 0, ANCHO, y)
-        if y + a < alto_lienzo
-            desktop_canvas_update_area(lienzo, 0, y + a, ANCHO, alto_lienzo - y - a)
+        for i in (0..r_nombre.length - 1)
+            t = t + r_nombre[i] + "|#{r_arriba[i]}|#{r_entra[i]}|#{r_sale[i]}|#{r_wifi[i]}|#{r_senal[i]}|"
         end
     end
+    return t
+end
+
+func todas_las_firmas() -> [String]
+    var f: [String] = [firma("")]
+    for i in (0..secciones.length - 1)
+        f.push(firma(secciones[i]))
+    end
+    return f
+end
+
+# el panel entero, ya
+func pintar_todo()
+    desktop_canvas_update(lienzo)
+    firmas = todas_las_firmas()
+end
+
+# lo de cada medida: solo las partes que cambiaron. Las que cambian seguidas van en una sola actualización
+func repintar()
+    var nuevas: [String] = todas_las_firmas()
+    if nuevas.length != firmas.length
+        pintar_todo()
+        return
+    end
+    y0 = -1                              # la franja abierta (-1: ninguna)
+    y1 = -1
+    if nuevas[0] != firmas[0]
+        y0 = 0
+        y1 = 6 + linea
+    end
+    for i in (0..secciones.length - 1)
+        a = alto_seccion(secciones[i])
+        if a > 0
+            if nuevas[i + 1] != firmas[i + 1]
+                y = y_seccion(secciones[i])
+                if y0 < 0
+                    y0 = y
+                end
+                y1 = y + a
+            elif y0 >= 0                 # sin cambios: cierra la franja que venía
+                desktop_canvas_update_area(lienzo, 0, y0, ANCHO, y1 - y0)
+                y0 = -1
+            end
+        end
+    end
+    if y0 >= 0
+        desktop_canvas_update_area(lienzo, 0, y0, ANCHO, y1 - y0)
+    end
+    firmas = nuevas
 end
 
 # TrasfondoPrefs cambió los ajustes
 func cambiaron_prefs()
     leer_secciones()
+    leer_aspecto()
     poner_tecla()
     faltan_discos = 0
     act_buscar(str_upper(conf("BUSCAR", "SI")) != "NO")
@@ -678,7 +798,26 @@ func cambiaron_prefs()
         ocultar()
         mostrar()
     elif lienzo != 0
-        desktop_canvas_update(lienzo)
+        poner_velo()
+        pintar_todo()
+    end
+end
+
+# el fondo del panel y el recuadro de la gráfica: velos que Dash mezcla con el fondo de pantalla una vez, no
+# en cada dibujo. Sin color real (sería un moteado ilegible sobre un fondo claro) o con el fondo fijo, el del
+# panel es opaco: de un color
+func poner_velo()
+    if not colores                       # la pantalla, aún sin mirar: un dibujo de un punto la mira
+        desktop_canvas_update_area(lienzo, 0, 0, 1, 1)
+    end
+    alfa = 150
+    if paleta or fijo
+        alfa = 255
+    end
+    desktop_canvas_veil(lienzo, f_r * 65536 + f_g * 256 + f_b, alfa)
+    y = y_seccion("cpu")
+    if y >= 0
+        desktop_canvas_veil_rect(lienzo, 6, y, ANCHO - 12, ALTO_GRAFICA, 0x000000, 90)
     end
 end
 
@@ -690,7 +829,8 @@ func mostrar()
             Print tr(MSG_NO_FONDO, "Trasfondo: cannot draw on the Workbench backdrop")
         else
             desktop_canvas_on_draw(lienzo, pintar)
-            desktop_canvas_update(lienzo)        # entero ya: repintar() se salta los discos hasta la próxima lectura
+            poner_velo()
+            pintar_todo()                       # entero ya: repintar() solo pinta lo que cambia
         end
     end
 end
@@ -726,7 +866,7 @@ func obedecer(orden: Int)
         ocultar()
     elif activo and lienzo == 0
         medir_paneles()
-        mostrar()                                # pinta al momento, sin esperar al segundo siguiente
+        mostrar()                                # pinta al momento, sin esperar a la medida siguiente
     end
 end
 
@@ -740,8 +880,9 @@ Main
         linea = font_height() + 1
         leer_prefs()
         leer_secciones()
+        leer_aspecto()
         act_iniciar(str_replace(program_version(), "Trasfondo ", ""), str_upper(conf("BUSCAR", "SI")) != "NO")
-        aviso_prefs = file_notify("ENV:Trasfondo.prefs")   # 0 si no se puede vigilar: entonces se lee cada segundo
+        aviso_prefs = file_notify("ENV:Trasfondo.prefs")   # 0 si no se puede vigilar: entonces se lee en cada medida
         aviso_orden = file_notify("ENV:Trasfondo.orden")   # lo que pide TrasfondoPrefs (actualizar)
         if cx_broker("Trasfondo", program_version(), tr(MSG_DESCRIPCION, "Resource monitor on the backdrop"), Int(conf("CX_PRIORITY", "0")))
             poner_tecla()
@@ -753,7 +894,7 @@ Main
             mostrar()
         end
         if not visible or lienzo != 0
-            proximo = time_ms() + 1000       # cada segundo justo, aunque lleguen órdenes entre medias
+            proximo = time_ms() + cada * 1000       # cada INTERVAL justo, aunque lleguen órdenes entre medias
             while true
                 espera = proximo - time_ms()
                 if act_activo() and espera > 100       # bajando o consultando: vuelve pronto
@@ -765,7 +906,7 @@ Main
                 orden = cx_wait(espera)
                 act_paso()
                 if act_idioma_nuevo() and lienzo != 0   # llegó el catálogo: en castellano ya
-                    desktop_canvas_update(lienzo)
+                    pintar_todo()
                 end
                 if act_listo()                          # instalada la versión nueva: arranca otra vez con ella
                     program_relaunch()
@@ -786,10 +927,10 @@ Main
                     end
                 elif orden > 0
                     obedecer(orden)
-                else                         # pasó el segundo
-                    proximo = proximo + 1000
+                else                         # tocaba medir
+                    proximo = proximo + cada * 1000
                     if proximo < time_ms()
-                        proximo = time_ms() + 1000
+                        proximo = time_ms() + cada * 1000
                     end
                     if activo
                         n_tareas = cpu_sample()
@@ -798,7 +939,7 @@ Main
                             historia.remove(0)
                         end
                     end
-                    if aviso_prefs == 0 and leer_prefs()      # sin aviso del sistema: mirarlo cada segundo
+                    if aviso_prefs == 0 and leer_prefs()      # sin aviso del sistema: mirarlo en cada medida
                         cambiaron_prefs()
                     end
                     if lienzo != 0

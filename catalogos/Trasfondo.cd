@@ -195,3 +195,21 @@ Trasfondo is not running: start it and try again
 ; MSG_PEDIDO
 MSG_99 (99//)
 Asked Trasfondo...
+; MSG_CADA
+MSG_100 (100//)
+Measure every
+; MSG_FONDO
+MSG_101 (101//)
+Background
+; MSG_FONDOS
+MSG_102 (102//)
+See-through|Solid
+; MSG_COLOR
+MSG_103 (103//)
+Colour
+; MSG_COLORES
+MSG_104 (104//)
+Night blue|Black|Grey|Blue|Green|Wine|Purple
+; MSG_OTRO
+MSG_105 (105//)
+Other (%s)

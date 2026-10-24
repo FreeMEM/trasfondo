@@ -82,6 +82,12 @@ const MSG_USAR = 96
 const MSG_CANCELAR = 97
 const MSG_NO_ESTA = 98
 const MSG_PEDIDO = 99
+const MSG_CADA = 100
+const MSG_FONDO = 101
+const MSG_FONDOS = 102
+const MSG_COLOR = 103
+const MSG_COLORES = 104
+const MSG_OTRO = 105
 
 # un texto del catálogo con sus huecos rellenos: %s o %1 con a, %2 con b, %3 con c
 func con(texto: String, a: String) -> String

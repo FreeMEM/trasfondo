@@ -1,0 +1,70 @@
+# Cuánta CPU gasta Trasfondo: cuenta vueltas de un bucle a la prioridad más baja (solo corre cuando nadie
+# más quiere la CPU) sin Trasfondo y con él en marcha. Lo que gasta es lo que baja la cuenta. Mira también
+# la memoria libre, para ver si crece con el tiempo.
+#
+#     python3 tests/medir_cpu.py [planar|rtg] [argumentos de trasfondo]
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+@native func al_fondo()
+"""
+    SetTaskPri(FindTask(NULL), -120);
+"""
+end
+
+@native func libre() -> Int
+"""
+    return (LONG)AvailMem(MEMF_ANY);
+"""
+end
+
+# vueltas de un bucle vacío en tantos segundos (mira el reloj cada 4096)
+@native func contar(segundos: Int) -> Int
+"""
+    struct DateStamp a, b;
+    ULONG n = 0;
+    LONG fin = segundos * 50;
+    DateStamp(&a);
+    for (;;) {
+        n++;
+        if ((n & 4095) == 0) {
+            DateStamp(&b);
+            if ((b.ds_Minute - a.ds_Minute) * 3000 + (b.ds_Tick - a.ds_Tick) >= fin) break;
+        }
+    }
+    return (LONG)(n >> 4);
+"""
+end
+
+Main
+    argumentos = file_read_text("DH0:argumentos.txt")
+    if argumentos == nil
+        argumentos = ""
+    end
+    al_fondo()
+    esperar(300)
+    sin = contar(20)
+    lanzar("run >NIL: DH0:trasfondo " + str_trim(argumentos))
+    esperar(500)
+    m0 = libre()
+    con = contar(20)
+    m1 = libre()
+    con2 = contar(20)
+    m2 = libre()
+    lanzar("DH0:trasfondo")                  # otra vez: lo para
+    gasto = (sin - con) / (sin / 1000 + 1)    # por mil (sin desbordar)
+    gasto2 = (sin - con2) / (sin / 1000 + 1)
+    Print "vueltas sin trasfondo: #{sin}, con: #{con} y #{con2}"
+    Print "trasfondo gasta: #{gasto / 10}.#{gasto % 10} % y #{gasto2 / 10}.#{gasto2 % 10} %"
+    Print "memoria libre: #{m0}, #{m1}, #{m2} (cambio: #{m2 - m0})"
+end

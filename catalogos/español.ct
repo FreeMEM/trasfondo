@@ -197,3 +197,21 @@ Trasfondo no está en marcha: arráncalo y vuelve a probar
 MSG_99
 Pedido a Trasfondo...
 ; Asked Trasfondo...
+MSG_100
+Medir cada
+; Measure every
+MSG_101
+Fondo
+; Background
+MSG_102
+Transparente|Fijo
+; See-through|Solid
+MSG_103
+Color
+; Colour
+MSG_104
+Azul noche|Negro|Gris|Azul|Verde|Granate|Morado
+; Night blue|Black|Grey|Blue|Green|Wine|Purple
+MSG_105
+Otro (%s)
+; Other (%s)

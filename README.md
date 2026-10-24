@@ -6,14 +6,14 @@ propio fondo de pantalla, detrás de los iconos y las ventanas. No se puede puls
 Arriba a la derecha del escritorio enseña:
 
 - La fecha y la hora, en el idioma del sistema.
-- La CPU en uso y su historia del último minuto.
+- La CPU en uso y su historia: las últimas 60 medidas (dos minutos, midiendo cada 2 s).
 - La memoria Chip y Fast libre.
 - Las seis tareas que más CPU toman.
 - Los discos montados: cuánto está lleno cada uno y su tamaño.
 - La red: lo que entra y sale por segundo (en KB/s si la pila o el driver dan los bytes; si no, en paquetes), y la señal de la WiFi si la tarjeta la da. Con cualquier pila
   TCP/IP (Roadshow, MiamiDx, AmiTCP...).
 
-Se actualiza cada segundo. Los iconos quedan por encima del panel, como siempre.
+Mide y se actualiza cada 2 segundos, o cada 1, 5 o 10 si se prefiere (menos a menudo, menos CPU). Los iconos quedan por encima del panel, como siempre.
 
 Habla inglés de serie y castellano con su catálogo (`Trasfondo.catalog`, que pone el instalador): sale en el
 idioma que tengas elegido en las Preferencias de idioma del sistema.
@@ -42,7 +42,10 @@ son unas 500 líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash).
 
 Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (builtins):
 
-- `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`: pintar en el fondo del Workbench.
+- `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`, `desktop_canvas_update_area`: pintar en
+  el fondo del Workbench, y repintar solo lo que cambia.
+- `desktop_canvas_veil`, `desktop_canvas_veil_rect`, `desktop_canvas_drawing`: el velo del panel, mezclado
+  con el fondo una sola vez, y saltarse lo que no se repinta.
 - `cpu_start`, `cpu_sample`, `cpu_total`, `cpu_task_name`, `cpu_task_load`: la CPU total y la de cada tarea.
 - `single_instance` y `break_check`: una sola copia en marcha, y pararla con Ctrl-C.
 - `tooltype`, `cx_broker`, `cx_hotkey`, `cx_wait`: una commodity con sus tooltypes.
@@ -83,7 +86,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.9.3.lha` (de la página de
+1. Descomprime `trasfondo-0.10.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
    a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
@@ -99,7 +102,8 @@ acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco m�
 
 ### Preferencias
 
-**TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida y si arranca oculto.
+**TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida, cada cuánto mide, el
+fondo (transparente o fijo) y su color, y si arranca oculto.
 **Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
 Trasfondo, si está en marcha, cambia al momento, sin reiniciarlo (el sistema le avisa cuando cambian). Lo
 que pone TrasfondoPrefs manda sobre los tooltypes del icono.
@@ -140,6 +144,9 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 | `SHOW=DATE,CPU,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora). Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,MEMORIA,TAREAS,DISCOS,RED`. |
 | `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
+| `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
+| `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |
+| `COLOR=16,24,32` | Color del fondo, en rojo, verde y azul (de 0 a 255). |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |
 | `DONOTWAIT` | En `WBStartup`, el Workbench no espera a que acabe. |
@@ -150,18 +157,25 @@ El Workbench rellena su fondo con una función propia (un "gancho" de la capa). 
 primero llama a la del Workbench, que pinta el fondo de siempre, y luego copia encima el panel. Los
 iconos los pinta el Workbench después, así que quedan por encima.
 
-Cada segundo el panel se refresca sin borrar los iconos: se lee la zona de la pantalla, lo que ha
-cambiado respecto al panel anterior es un icono, y el panel nuevo se copia solo fuera de eso.
+En cada medida se repintan solo las partes del panel que cambiaron, sin borrar los iconos: se lee la zona
+de la pantalla, lo que ha cambiado respecto al panel anterior es un icono, y el panel nuevo se copia solo
+fuera de eso. El velo transparente se mezcla con el fondo una sola vez, no en cada medida.
+
+Lo que gasta, medido en el emulador con el defecto de una medida cada 2 s: un 8 % de un A1200 y un 11 % de
+un 68030 con tarjeta gráfica (antes de la 0.10, midiendo cada segundo, un 21 % y casi todo el 68030). Se mide
+con `tests/medir_cpu.py`.
 
 La CPU de cada tarea se mide con los ganchos de cambio de tarea de exec, como hace PM. No es una
 estimación: es el tiempo real que cada tarea pasa en la CPU.
 
 ## Límites conocidos
 
-- En pantallas de 256 colores o menos (AGA, ECS, RTG de 8 bits) el panel lleva un fondo oscuro sólido: el
+- En pantallas de 256 colores o menos (AGA, ECS, RTG de 8 bits) el panel lleva siempre fondo fijo: el
   velo semitransparente solo se puede imitar con una trama de puntos, que sobre un fondo claro no se lee.
   La transparencia queda para RTG de 15 bits o más.
-- La posición, los colores y lo que se enseña aún no se pueden cambiar (vendrán por tooltypes).
+- Con una tarjeta gráfica en el bus Zorro cada repintado lee y escribe la memoria de la tarjeta, que por ese
+  bus es lenta: ahí se nota más lo que gasta. Medir cada más segundos y el fondo fijo lo bajan.
+- La posición aún no se puede cambiar.
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.
 

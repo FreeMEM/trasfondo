@@ -1,15 +1,16 @@
 # TrasfondoPrefs: las preferencias de Trasfondo en una ventana, como las de SYS:Prefs. Qué secciones se ven,
-# cuántas tareas, la tecla rápida y si arranca oculto. Usar las deja en ENV:Trasfondo.prefs (hasta
+# cuántas tareas, la tecla rápida, cada cuánto mide, el fondo (con velo o fijo) y su color, y si arranca oculto. Usar las deja en ENV:Trasfondo.prefs (hasta
 # reiniciar); Guardar, también en ENVARC:. Trasfondo, si está en marcha, las nota en un segundo.
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.9.3"
+@version "TrasfondoPrefs 0.10"
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
 
 const SECCIONES = "fecha,cpu,memoria,tareas,discos,red"
+const COLORES = "16,24,32|0,0,0|48,48,48|16,40,96|16,56,32|72,16,24|48,24,72"   # los de MSG_COLORES, en su orden
 
 var prefs: String = ""
 
@@ -87,12 +88,18 @@ Main
     var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi")]
     t_cuantas = tr(MSG_CUANTAS, "Tasks shown")
     t_tecla = tr(MSG_TECLA, "Hotkey")
+    t_cada = tr(MSG_CADA, "Measure every")
+    t_fondo = tr(MSG_FONDO, "Background")
+    t_color = tr(MSG_COLOR, "Colour")
     t_oculto = tr(MSG_OCULTO, "Start hidden")
     t_buscar = tr(MSG_BUSCAR, "Look for new versions on GitHub")
     t_actualizar = tr(MSG_ACTUALIZAR, "Update")
-    x_campo = m + screen_font_text_width(t_cuantas) + 10        # los campos, con su texto a la izquierda
-    if x_campo < m + screen_font_text_width(t_tecla) + 10
-        x_campo = m + screen_font_text_width(t_tecla) + 10
+    x_campo = 0                                                 # los campos, con su texto a la izquierda
+    var campos: [String] = [t_cuantas, t_tecla, t_cada, t_fondo, t_color]
+    for i in (0..campos.length - 1)
+        if x_campo < m + screen_font_text_width(campos[i]) + 10
+            x_campo = m + screen_font_text_width(campos[i]) + 10
+        end
     end
     largo = screen_font_text_width(t_buscar)                    # las casillas, con el texto a la derecha
     if largo < screen_font_text_width(t_oculto)
@@ -109,7 +116,7 @@ Main
     end
     alto_boton = f + 6
     hueco = 8                                # lo que separa los grupos (el doble, antes de los botones)
-    alto = m * 2 + fila * 10 + 4 + 4 + hueco * 3 + alto_boton * 2
+    alto = m * 2 + fila * 13 + 4 + 10 + hueco * 3 + alto_boton * 2
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
     cabe = screen_height() - (f + 3) - 4
@@ -120,7 +127,7 @@ Main
         end
         hueco = 4
         m = 6
-        alto = m * 2 + fila * 10 + 4 + 4 + hueco * 3 + alto_boton * 2
+        alto = m * 2 + fila * 13 + 4 + 10 + hueco * 3 + alto_boton * 2
     end
     arriba = 30                              # y la ventana, más arriba si hace falta
     if arriba + alto + f + 3 + 4 > screen_height()
@@ -156,6 +163,28 @@ Main
         y = y + fila + 2
         tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, t_tecla, conf("CX_POPKEY", ""), 40)
         y = y + fila + 2
+        var segundos: [Int] = [1, 2, 5, 10]
+        medir = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_cada, "1 s|2 s|5 s|10 s")
+        y = y + fila + 2
+        fondo = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_fondo, tr(MSG_FONDOS, "See-through|Solid"))
+        y = y + fila + 2
+        # los colores de la lista; uno puesto a mano (tooltype o prefs) sale al final, para no perderlo
+        var rgb: [String] = str_split(COLORES, "|")
+        nombres = tr(MSG_COLORES, "Night blue|Black|Grey|Blue|Green|Wine|Purple")
+        puesto = str_replace(conf("COLOR", rgb[0]), " ", "")
+        n_color = -1
+        for i in (0..rgb.length - 1)
+            if rgb[i] == puesto
+                n_color = i
+            end
+        end
+        if n_color < 0
+            n_color = rgb.length
+            rgb.push(puesto)
+            nombres = nombres + "|" + con(tr(MSG_OTRO, "Other (%s)"), puesto)
+        end
+        g_color = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_color, nombres)
+        y = y + fila + 2
         oculto = gt_checkbox(x, y, 26, f + 3, t_oculto, str_upper(conf("CX_POPUP", "YES")) == "NO")
         y = y + fila
         buscar = gt_checkbox(x, y, 26, f + 3, t_buscar, str_upper(conf("BUSCAR", "SI")) != "NO")
@@ -169,6 +198,19 @@ Main
         usar = gt_button(x + boton + 8, y, boton, alto_boton, tr(MSG_USAR, "Use"))
         cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CANCELAR, "Cancel"))
         gt_attach()
+        cada = Int(conf("CADA", "2"))
+        n_cada = 0
+        for i in (0..segundos.length - 1)
+            if segundos[i] <= cada
+                n_cada = i
+            end
+        end
+        gt_set_value(medir, n_cada)
+        f_puesto = str_upper(conf("FONDO", "VELO"))
+        if f_puesto == "FIJO" or f_puesto == "SOLID"
+            gt_set_value(fondo, 1)
+        end
+        gt_set_value(g_color, n_color)
 
         ultimo = ""
         pedido = 0                           # time_ms de cuando se pidió actualizar (0: no se ha pedido)
@@ -231,7 +273,13 @@ Main
                 if gt_get_value(buscar) == 0
                     busca = "NO"
                 end
-                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\nBUSCAR=" + busca + "\n"
+                capa = "VELO"
+                if gt_get_value(fondo) == 1
+                    capa = "FIJO"
+                end
+                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\nBUSCAR=" + busca
+                s_cada = segundos[gt_get_value(medir)]
+                texto = texto + "\nCADA=#{s_cada}\nFONDO=" + capa + "\nCOLOR=" + rgb[gt_get_value(g_color)] + "\n"
                 file_write_text("ENV:Trasfondo.prefs", texto)
                 if e == guardar
                     file_write_text("ENVARC:Trasfondo.prefs", texto)
