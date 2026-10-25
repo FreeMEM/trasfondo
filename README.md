@@ -1,203 +1,206 @@
 # Trasfondo
 
-Monitor de recursos para el Workbench de **Commodore Amiga** (AmigaOS 3.x): un "top" gráfico pintado en el
-propio fondo de pantalla, detrás de los iconos y las ventanas. No se puede pulsar: solo está ahí, de fondo.
+*English | [Castellano](README.es.md)*
 
-Arriba a la derecha del escritorio enseña:
+Resource monitor for the **Commodore Amiga** Workbench (AmigaOS 3.x): a graphical "top" painted on the
+backdrop itself, behind the icons and the windows. You can't click it: it just sits there, in the background.
 
-- La fecha y la hora, en el idioma del sistema.
-- La CPU en uso y su historia: las últimas 60 medidas (dos minutos, midiendo cada 2 s).
-- En una PiStorm (Emu68), la temperatura de su Raspberry Pi; en naranja desde 70 °C.
-- La memoria Chip y Fast libre.
-- Las seis tareas que más CPU toman.
-- Los discos montados: cuánto está lleno cada uno y su tamaño.
-- La red: lo que entra y sale por segundo (en KB/s si la pila o el driver dan los bytes; si no, en paquetes), y la señal de la WiFi si la tarjeta la da. Con cualquier pila
-  TCP/IP (Roadshow, MiamiDx, AmiTCP...).
-- Si se pide (TrasfondoPrefs, o `MEMGRAPH` y `NETGRAPH`), la gráfica de la memoria en uso y la de la red: lo que entra hacia arriba y lo que sale hacia
-  abajo, a la escala del máximo de la historia.
+In the top right corner of the desktop it shows:
 
-Mide y se actualiza cada 2 segundos, o cada 1, 5 o 10 si se prefiere (menos a menudo, menos CPU). Los iconos quedan por encima del panel, como siempre.
+- The date and time, in the system language.
+- CPU usage and its history: the last 60 measurements (two minutes, measuring every 2 s).
+- On a PiStorm (Emu68), the temperature of its Raspberry Pi; in orange from 70 °C.
+- Free Chip and Fast memory.
+- The six tasks using the most CPU.
+- The mounted disks: how full each one is and its size.
+- The network: what comes in and goes out per second (in KB/s if the stack or the driver gives the bytes; otherwise, in packets), and the WiFi signal if the card gives it. With any
+  TCP/IP stack (Roadshow, MiamiDx, AmiTCP...).
+- If asked for (TrasfondoPrefs, or `MEMGRAPH` and `NETGRAPH`), the graph of memory in use and the network graph: incoming traffic upwards and outgoing traffic
+  downwards, scaled to the maximum in the history.
 
-Habla inglés de serie y castellano con su catálogo (`Trasfondo.catalog`, que pone el instalador): sale en el
-idioma que tengas elegido en las Preferencias de idioma del sistema.
+It measures and updates every 2 seconds, or every 1, 5 or 10 if you prefer (less often, less CPU). The icons stay on top of the panel, as always.
 
-![Trasfondo en Coffin R65, sobre un fondo de pantalla con imagen](docs/captura-coffin.png)
+It speaks English out of the box and Spanish with its catalog (`Trasfondo.catalog`, which the installer puts in place): it uses the
+language you have chosen in the system's Locale preferences.
 
-En AmigaOS 3.2.3, pantalla AGA de 640x256:
+![Trasfondo on Coffin R65, over a backdrop picture](docs/captura-coffin.png)
 
-![Trasfondo en el Workbench de AmigaOS 3.2, pantalla AGA de 640x256](docs/captura-aga.png)
+On AmigaOS 3.2.3, 640x256 AGA screen:
 
-En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de la pantalla):
+![Trasfondo on the AmigaOS 3.2 Workbench, 640x256 AGA screen](docs/captura-aga.png)
 
-![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
+On a graphics card (RTG), at 1024x768 and 32-bit colour (top part of the screen):
 
-**Vídeo** (6 min, en castellano): cómo se instala y cómo se usa, en Coffin R65, en AGA y con tarjeta gráfica
-(RTG). En [YouTube](https://youtu.be/vMqksMRh4rI) o para
-[descargar](https://github.com/FreeMEM/trasfondo/releases/download/v0.3/trasfondo-0.3.mp4).
+![Trasfondo on the AmigaOS 3.2 Workbench with RTG at 1024x768](docs/captura-rtg.png)
 
-[![Vídeo: Trasfondo 0.3, cómo se instala y cómo se usa](docs/video.jpg)](https://youtu.be/vMqksMRh4rI)
+**Video** (5 min): Trasfondo 0.11 on Coffin R65 with a graphics card: how to install it, everything it shows, how it
+updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https://youtu.be/asdHx5MZsJA) (also
+[in Spanish](https://youtu.be/QyzxsXAyeg4)).
 
-## Escrito en Dash
+[![Video: Trasfondo 0.11, a resource monitor on your Workbench backdrop](docs/video-en.jpg)](https://youtu.be/asdHx5MZsJA)
 
-Trasfondo está escrito entero en [Dash](https://github.com/FreeMEM/dash), un lenguaje de alto nivel para
-Amiga que se traduce a C y se compila a un ejecutable nativo de 68k. No lleva C a mano: todo el programa
-son unas 500 líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash).
+## Written in Dash
 
-Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (builtins):
+Trasfondo is written entirely in [Dash](https://github.com/FreeMEM/dash), a high-level language for the
+Amiga that is translated to C and compiled into a native 68k executable. There is no hand-written C: the panel is about 1,100
+lines of Dash in [src/trasfondo.dash](src/trasfondo.dash), and the whole program, with TrasfondoPrefs, the
+updater and the texts, about 2,200.
 
-- `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`, `desktop_canvas_update_area`: pintar en
-  el fondo del Workbench, y repintar solo lo que cambia.
-- `desktop_canvas_veil`, `desktop_canvas_veil_rect`, `desktop_canvas_drawing`: el velo del panel, mezclado
-  con el fondo una sola vez, y saltarse lo que no se repinta.
-- `cpu_start`, `cpu_sample`, `cpu_total`, `cpu_task_name`, `cpu_task_load`: la CPU total y la de cada tarea.
-- `single_instance` y `break_check`: una sola copia en marcha, y pararla con Ctrl-C.
-- `tooltype`, `cx_broker`, `cx_hotkey`, `cx_wait`: una commodity con sus tooltypes.
-- `disks_read`, `disk_kb`, `disk_free_kb`: los discos, sin esperar a uno lento.
-- `net_ifs_read`, `net_if_bytes_in`, `net_drivers_read`, `net_driver_read`, `wifi_read`, `wifi_read_device`: la red
-  y la WiFi, con un tiempo máximo para cada pregunta.
-- `pistorm_temperature`: la temperatura de la Raspberry Pi de una PiStorm, preguntada a su firmware por Emu68.
+Whatever Dash couldn't do was added to it as functions built into the language (builtins):
 
-Así, cualquier otro programa en Dash puede usarlas también.
+- `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`, `desktop_canvas_update_area`: painting on
+  the Workbench backdrop, and repainting only what changes.
+- `desktop_canvas_veil`, `desktop_canvas_veil_rect`, `desktop_canvas_drawing`: the panel's veil, blended
+  with the backdrop only once, and skipping whatever isn't repainted.
+- `cpu_start`, `cpu_sample`, `cpu_total`, `cpu_task_name`, `cpu_task_load`: total CPU and the CPU of each task.
+- `single_instance` and `break_check`: only one copy running, and stopping it with Ctrl-C.
+- `tooltype`, `cx_broker`, `cx_hotkey`, `cx_wait`: a commodity with its tooltypes.
+- `disks_read`, `disk_kb`, `disk_free_kb`: the disks, without waiting for a slow one.
+- `net_ifs_read`, `net_if_bytes_in`, `net_drivers_read`, `net_driver_read`, `wifi_read`, `wifi_read_device`: the network
+  and the WiFi, with a time limit for each query.
+- `pistorm_temperature`: the temperature of a PiStorm's Raspberry Pi, asked of its firmware through Emu68.
 
-## Requisitos
+That way, any other Dash program can use them too.
 
-- **AmigaOS 3.0 o posterior** (Kickstart 39). Usa funciones de `graphics.library` y `layers.library` que
-  llegaron con la versión 39.
-- **Workbench en marcha**: el panel se pinta en su fondo.
-- **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
-- **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
-  `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 116 KB (la mitad es lo de ponerse al día: la red y el TLS).
-- **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
-  interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
-  `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
-  WiFi la tiene que dar el driver (`wifipi.device` de Emu68, `prism2.device` y otros de Neil Cafferkey la dan).
-  Ninguna pregunta espera más de un tercio de segundo: un driver que no contesta no cuelga el sistema.
+## Requirements
 
-Dónde se ha probado:
+- **AmigaOS 3.0 or later** (Kickstart 39). It uses `graphics.library` and `layers.library` functions that
+  arrived with version 39.
+- **Workbench running**: the panel is painted on its backdrop.
+- **Any 68k**: the executable is 68000 code and doesn't use an FPU.
+- **Native chipset (OCS, ECS, AGA) or graphics card (RTG)**. With RTG it uses `cybergraphics.library` or
+  `Picasso96API.library` if they are present.
+- **Memory**: the executable takes up 138 KB.
+- **Network and WiFi: any TCP/IP stack.** With Roadshow, incoming and outgoing bytes per second for each
+  interface. With another stack (MiamiDx, AmiTCP...), Trasfondo asks the card's driver (the one in
+  `DEVS:Networks/` that is in use) and gives packets per second: drivers don't count bytes. The WiFi
+  signal has to come from the driver (Emu68's `wifipi.device`, `prism2.device` and others by Neil Cafferkey give it).
+  No query waits more than a third of a second: a driver that doesn't answer won't hang the system.
 
-| Sistema | Máquina | Pantalla |
+Where it has been tested:
+
+| System | Machine | Screen |
 |---|---|---|
-| AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68020 | AGA, 640x256, 4 colores |
-| AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32 bits |
-| Coffin R65 | Amiberry, 68040 | RTG, 1024x768, fondo con imagen |
+| AmigaOS 3.2.3 | Emulated A1200 (FS-UAE), 68020 | AGA, 640x256, 4 colours |
+| AmigaOS 3.2.3 | Emulated A1200 (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32-bit |
+| Coffin R65 | Amiberry, 68040 | RTG, 1024x768, backdrop picture |
 
-La parte de red y WiFi se ha probado en el emulador con un driver de red falso (señal y paquetes); no aún
-con Roadshow, MiamiDx ni una tarjeta WiFi de verdad.
+The network and WiFi part has been tested in the emulator with a fake network driver (signal and packets); not yet
+with Roadshow, MiamiDx or a real WiFi card.
 
-Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workbench sin ventana de fondo
-(backdrop).
+Not tested yet: AmigaOS 3.0, 3.1 and 3.9, a real 68000, OCS/ECS and the Workbench without a backdrop
+window.
 
-## Instalación y uso
+## Installation and use
 
-1. Descomprime `trasfondo-0.11.lha` (de la página de
-   [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
-2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
-   a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
-   `SYS:Prefs`, y el catálogo en castellano en `LOCALE:Catalogs`.
-3. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
-4. Para pararlo, lánzalo otra vez, usa Eliminar en Exchange o pulsa Ctrl-C en su Shell. El fondo queda
-   como estaba.
+1. Unpack `trasfondo-0.11.lha` (from the
+   [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
+2. Double-click **Instalar** (the installer). It asks whether you want Trasfondo to start by itself with the Workbench (it copies it
+   to `SYS:WBStartup`) or which drawer to leave it in, and puts its preferences, **TrasfondoPrefs**, in
+   `SYS:Prefs`, and the Spanish catalog in `LOCALE:Catalogs`.
+3. Start it with a double-click, or from the Shell with `run trasfondo`.
+4. To stop it, start it again, use Remove in Exchange or press Ctrl-C in its Shell. The backdrop is left
+   as it was.
 
-Sin instalador también vale: copia `trasfondo` y `trasfondo.info` a donde quieras, y el cajón `Catalogs`
-a su lado para tenerlo en castellano. En `SYS:WBStartup`
-arranca solo; su icono lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que
-acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco más?").
+It works without the installer too: copy `trasfondo` and `trasfondo.info` wherever you like, and the `Catalogs` drawer
+next to them to have it in Spanish. In `SYS:WBStartup`
+it starts by itself; its icon carries the `DONOTWAIT` tooltype, so that the Workbench doesn't sit waiting for it to
+finish (without it, it asks "Program has not finished yet. Wait a little longer?").
 
-### Preferencias
+### Preferences
 
-**TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida, cada cuánto mide, el
-fondo (transparente o fijo) y su color, y si arranca oculto.
-**Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
-Trasfondo, si está en marcha, cambia al momento, sin reiniciarlo (el sistema le avisa cuando cambian). Lo
-que pone TrasfondoPrefs manda sobre los tooltypes del icono.
+**TrasfondoPrefs** (in `SYS:Prefs`) sets what is shown, how many tasks, the hotkey, how often it measures, the
+background (see-through or solid) and its colour, and whether it starts hidden.
+**Use** applies them until you reboot and **Save**, for good (`ENV:` and `ENVARC:Trasfondo.prefs`).
+Trasfondo, if it is running, changes straight away, without restarting it (the system tells it when they change).
+What TrasfondoPrefs sets takes precedence over the icon's tooltypes.
 
-### Ponerse al día solo
+### Updating itself
 
-Desde la 0.8, Trasfondo mira en GitHub si hay una versión nueva: un minuto después de arrancar y luego cada
-seis horas, sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
-«Trasfondo». En TrasfondoPrefs, **Actualizar** la baja (los dos ejecutables sueltos de la release),
-comprueba que llegó entera y que es la versión que dice, deja los de ahora como `.old` y Trasfondo vuelve a
-arrancar con la nueva. Desde la 0.9 baja también el catálogo en castellano; y si tu sistema está en
-castellano y falta, lo baja él solo al minuto de arrancar (le pasa a quien llega a la 0.9 desde la 0.8 con
-el botón).
+Since 0.8, Trasfondo checks GitHub for a new version: one minute after starting and then every
+six hours, without waiting or slowing the panel down. If there is one, a green indicator with its number appears next to
+"Trasfondo". In TrasfondoPrefs, **Update** downloads it (the two loose executables from the release),
+checks that it arrived complete and that it is the version it claims to be, keeps the current ones as `.old` and Trasfondo
+restarts with the new one. Since 0.9 it also downloads the Spanish catalog; and if your system is in
+Spanish and the catalog is missing, it downloads it by itself a minute after starting (this happens to anyone who moves from 0.8 to 0.9 with
+the button).
 
-Necesita una pila TCP/IP en marcha y AmiSSL; sin ellas no hace nada (y no pone en marcha la red: si no hay pila, espera a que la haya). Al acabar cada consulta suelta la red. Solo pregunta a `api.github.com`, y la casilla
-**Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
-para llegar a la 0.8 hay que instalarla a mano una vez.
+It needs a running TCP/IP stack and AmiSSL; without them it does nothing (and it doesn't start the network: if there is no stack, it waits until there is one). When each check is done it lets go of the network. It only talks to `api.github.com`, and the
+**Look for new versions on GitHub** checkbox in TrasfondoPrefs turns it off. Versions up to 0.7 don't have it:
+to get to 0.8 you have to install it by hand once.
 
-### Desde Exchange
+### From Exchange
 
-Trasfondo es una commodity: sale en Exchange (`SYS:Tools/Commodities/Exchange`).
+Trasfondo is a commodity: it shows up in Exchange (`SYS:Tools/Commodities/Exchange`).
 
-| Botón | Qué hace |
+| Button | What it does |
 |---|---|
-| Ocultar | Quita el panel. Sigue midiendo: al mostrarlo, la historia de la CPU está completa. |
-| Mostrar | Vuelve a poner el panel. |
-| Desactivar | Quita el panel y deja de medir. No gasta nada mientras tanto. |
-| Activar | Vuelve a medir, con la historia vacía. |
-| Eliminar | Lo cierra y deja el fondo como estaba. |
+| Hide | Removes the panel. It keeps measuring: when you show it again, the CPU history is complete. |
+| Show | Puts the panel back. |
+| Disable | Removes the panel and stops measuring. It uses nothing in the meantime. |
+| Enable | Starts measuring again, with an empty history. |
+| Remove | Closes it and leaves the backdrop as it was. |
 
 ### Tooltypes
 
-Se cambian en el icono (Información, en el menú Iconos) o se dan como argumentos en el Shell
+They are changed in the icon (Information, in the Icons menu) or given as arguments in the Shell
 (`run trasfondo CX_POPKEY="ctrl alt t"`).
 
-| Tooltype | Qué hace |
+| Tooltype | What it does |
 |---|---|
-| `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora; TEMP, la temperatura de la PiStorm, que sin Emu68 no sale). Se pueden añadir `MEMGRAPH` y `NETGRAPH`, las gráficas de la memoria y de la red, que no salen de serie. Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
-| `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
-| `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
-| `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
-| `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |
-| `COLOR=16,24,32` | Color del fondo, en rojo, verde y azul (de 0 a 255). |
-| `CX_POPUP=NO` | Arranca oculto. |
-| `CX_PRIORITY=0` | Prioridad de la commodity. |
-| `DONOTWAIT` | En `WBStartup`, el Workbench no espera a que acabe. |
+| `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Which sections appear and in what order (DATE is the date and time; TEMP, the PiStorm temperature, which doesn't appear without Emu68). You can add `MEMGRAPH` and `NETGRAPH`, the memory and network graphs, which don't appear by default. For example, `SHOW=CPU,DISKS` shows only the CPU and the disks. Whatever isn't shown isn't measured either. Spanish works too: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
+| `TASKS=6` | How many tasks it shows (1 to 20). Also `TAREAS=6`. |
+| `CX_POPKEY=ctrl alt t` | Hotkey to hide and show the panel. In the icon it comes in parentheses, switched off: remove them to use it. |
+| `INTERVAL=2` | How many seconds between measuring and repainting (1 to 60). |
+| `BACKGROUND=SOLID` | Solid background, without the see-through veil: uses less CPU. |
+| `COLOR=16,24,32` | Background colour, in red, green and blue (0 to 255). |
+| `CX_POPUP=NO` | Starts hidden. |
+| `CX_PRIORITY=0` | Priority of the commodity. |
+| `DONOTWAIT` | In `WBStartup`, the Workbench doesn't wait for it to finish. |
 
-## Cómo funciona
+## How it works
 
-El Workbench rellena su fondo con una función propia (un "gancho" de la capa). Trasfondo pone la suya:
-primero llama a la del Workbench, que pinta el fondo de siempre, y luego copia encima el panel. Los
-iconos los pinta el Workbench después, así que quedan por encima.
+The Workbench fills its backdrop with a function of its own (a layer "hook"). Trasfondo installs its own:
+first it calls the Workbench's, which paints the usual backdrop, and then it copies the panel on top. The
+icons are painted by the Workbench afterwards, so they stay on top.
 
-En cada medida se repintan solo las partes del panel que cambiaron, sin borrar los iconos: se lee la zona
-de la pantalla, lo que ha cambiado respecto al panel anterior es un icono, y el panel nuevo se copia solo
-fuera de eso. El velo transparente se mezcla con el fondo una sola vez, no en cada medida.
+On each measurement only the parts of the panel that changed are repainted, without erasing the icons: the area
+of the screen is read, whatever differs from the previous panel is an icon, and the new panel is copied only
+outside it. The see-through veil is blended with the backdrop only once, not on every measurement.
 
-Lo que gasta, medido en el emulador con el defecto de una medida cada 2 s: un 8 % de un A1200 y un 11 % de
-un 68030 con tarjeta gráfica (antes de la 0.10, midiendo cada segundo, un 21 % y casi todo el 68030). Se mide
-con `tests/medir_cpu.py`.
+What it costs, measured in the emulator with the default of one measurement every 2 s: 8% of an A1200 and 11% of
+a 68030 with a graphics card (before 0.10, measuring every second, 21% and nearly all of the 68030). It is measured
+with `tests/medir_cpu.py`.
 
-La CPU de cada tarea se mide con los ganchos de cambio de tarea de exec, como hace PM. No es una
-estimación: es el tiempo real que cada tarea pasa en la CPU.
+The CPU of each task is measured with exec's task-switch hooks, as PM does. It is not an
+estimate: it is the real time each task spends on the CPU.
 
-## Límites conocidos
+## Known limitations
 
-- En pantallas de 256 colores o menos (AGA, ECS, RTG de 8 bits) el panel lleva siempre fondo fijo: el
-  velo semitransparente solo se puede imitar con una trama de puntos, que sobre un fondo claro no se lee.
-  La transparencia queda para RTG de 15 bits o más.
-- Con una tarjeta gráfica en el bus Zorro cada repintado lee y escribe la memoria de la tarjeta, que por ese
-  bus es lenta: ahí se nota más lo que gasta. Medir cada más segundos y el fondo fijo lo bajan.
-- La posición aún no se puede cambiar.
-- Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
-  panel lo pisa hasta que el Workbench vuelva a pintar el icono.
+- On screens with 256 colours or fewer (AGA, ECS, 8-bit RTG) the panel always has a solid background: the
+  semi-transparent veil can only be imitated with a dot pattern, which can't be read over a light background.
+  Transparency is for RTG at 15 bits or more.
+- With a graphics card on the Zorro bus, every repaint reads and writes the card's memory, which is slow over that
+  bus: that is where its cost is most noticeable. Measuring less often and the solid background bring it down.
+- The position can't be changed yet.
+- If a pixel of an icon matches the colour of the previous panel at that point, it is taken for background and the
+  panel paints over it until the Workbench repaints the icon.
 
-## Compilar
+## Building
 
-Hace falta Dash y su compilador cruzado (`m68k-amigaos-gcc`). Desde la raíz de este repositorio:
+You need Dash and its cross compiler (`m68k-amigaos-gcc`). From the root of this repository:
 
 ```bash
 DASH=/ruta/a/dash
 PYTHONPATH=$DASH $DASH/dash src/trasfondo.dash -o build/trasfondo
 ```
 
-El icono se genera con `tools/icono.py`, que usa el generador de iconos de dashweb.
+The icon is generated with `tools/icono.py`, which uses dashweb's icon generator.
 
 ## Plan
 
-Lo que viene (más paneles, posición y colores por tooltypes, paquete para Aminet) está en [docs/PLAN.md](docs/PLAN.md).
+What's coming (more panels, position and colours through tooltypes, an Aminet package) is in [docs/PLAN.md](docs/PLAN.md).
 
-## Licencia
+## Licence
 
-MIT (ver [LICENSE](LICENSE)).
+MIT (see [LICENSE](LICENSE)).

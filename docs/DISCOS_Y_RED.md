@@ -1,5 +1,7 @@
 # Discos, red y WiFi
 
+*[English](DISCOS_Y_RED.en.md) | Castellano*
+
 Hecho en Trasfondo 0.2 con los builtins `disks_*`, `net_if*` y `wifi_*` de Dash (PR #17). Discos probado en el
 emulador; red y WiFi, sin probar con Roadshow ni con WiFi de verdad.
 

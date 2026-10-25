@@ -1,0 +1,206 @@
+# Trasfondo
+
+*[English](README.md) | Castellano*
+
+Monitor de recursos para el Workbench de **Commodore Amiga** (AmigaOS 3.x): un "top" gráfico pintado en el
+propio fondo de pantalla, detrás de los iconos y las ventanas. No se puede pulsar: solo está ahí, de fondo.
+
+Arriba a la derecha del escritorio enseña:
+
+- La fecha y la hora, en el idioma del sistema.
+- La CPU en uso y su historia: las últimas 60 medidas (dos minutos, midiendo cada 2 s).
+- En una PiStorm (Emu68), la temperatura de su Raspberry Pi; en naranja desde 70 °C.
+- La memoria Chip y Fast libre.
+- Las seis tareas que más CPU toman.
+- Los discos montados: cuánto está lleno cada uno y su tamaño.
+- La red: lo que entra y sale por segundo (en KB/s si la pila o el driver dan los bytes; si no, en paquetes), y la señal de la WiFi si la tarjeta la da. Con cualquier pila
+  TCP/IP (Roadshow, MiamiDx, AmiTCP...).
+- Si se pide (TrasfondoPrefs, o `MEMGRAPH` y `NETGRAPH`), la gráfica de la memoria en uso y la de la red: lo que entra hacia arriba y lo que sale hacia
+  abajo, a la escala del máximo de la historia.
+
+Mide y se actualiza cada 2 segundos, o cada 1, 5 o 10 si se prefiere (menos a menudo, menos CPU). Los iconos quedan por encima del panel, como siempre.
+
+Habla inglés de serie y castellano con su catálogo (`Trasfondo.catalog`, que pone el instalador): sale en el
+idioma que tengas elegido en las Preferencias de idioma del sistema.
+
+![Trasfondo en Coffin R65, sobre un fondo de pantalla con imagen](docs/captura-coffin.png)
+
+En AmigaOS 3.2.3, pantalla AGA de 640x256:
+
+![Trasfondo en el Workbench de AmigaOS 3.2, pantalla AGA de 640x256](docs/captura-aga.png)
+
+En una tarjeta gráfica (RTG), a 1024x768 y 32 bits de color (parte de arriba de la pantalla):
+
+![Trasfondo en el Workbench de AmigaOS 3.2 con RTG a 1024x768](docs/captura-rtg.png)
+
+**Vídeo** (5 min): Trasfondo 0.11 en Coffin R65 con tarjeta gráfica: cómo se instala, todo lo que enseña, cómo se
+pone al día solo con un clic, TrasfondoPrefs y Exchange. En [YouTube](https://youtu.be/QyzxsXAyeg4) (también
+[en inglés](https://youtu.be/asdHx5MZsJA)).
+
+[![Vídeo: Trasfondo 0.11, un monitor de recursos en el fondo del Workbench](docs/video.jpg)](https://youtu.be/QyzxsXAyeg4)
+
+## Escrito en Dash
+
+Trasfondo está escrito entero en [Dash](https://github.com/FreeMEM/dash), un lenguaje de alto nivel para
+Amiga que se traduce a C y se compila a un ejecutable nativo de 68k. No lleva C a mano: el panel son unas 1.100
+líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash), y todo el programa, con TrasfondoPrefs, el
+actualizador y los textos, unas 2.200.
+
+Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (builtins):
+
+- `desktop_canvas`, `desktop_canvas_on_draw`, `desktop_canvas_update`, `desktop_canvas_update_area`: pintar en
+  el fondo del Workbench, y repintar solo lo que cambia.
+- `desktop_canvas_veil`, `desktop_canvas_veil_rect`, `desktop_canvas_drawing`: el velo del panel, mezclado
+  con el fondo una sola vez, y saltarse lo que no se repinta.
+- `cpu_start`, `cpu_sample`, `cpu_total`, `cpu_task_name`, `cpu_task_load`: la CPU total y la de cada tarea.
+- `single_instance` y `break_check`: una sola copia en marcha, y pararla con Ctrl-C.
+- `tooltype`, `cx_broker`, `cx_hotkey`, `cx_wait`: una commodity con sus tooltypes.
+- `disks_read`, `disk_kb`, `disk_free_kb`: los discos, sin esperar a uno lento.
+- `net_ifs_read`, `net_if_bytes_in`, `net_drivers_read`, `net_driver_read`, `wifi_read`, `wifi_read_device`: la red
+  y la WiFi, con un tiempo máximo para cada pregunta.
+- `pistorm_temperature`: la temperatura de la Raspberry Pi de una PiStorm, preguntada a su firmware por Emu68.
+
+Así, cualquier otro programa en Dash puede usarlas también.
+
+## Requisitos
+
+- **AmigaOS 3.0 o posterior** (Kickstart 39). Usa funciones de `graphics.library` y `layers.library` que
+  llegaron con la versión 39.
+- **Workbench en marcha**: el panel se pinta en su fondo.
+- **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
+- **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
+  `Picasso96API.library` si están.
+- **Memoria**: el ejecutable ocupa 138 KB.
+- **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
+  interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
+  `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
+  WiFi la tiene que dar el driver (`wifipi.device` de Emu68, `prism2.device` y otros de Neil Cafferkey la dan).
+  Ninguna pregunta espera más de un tercio de segundo: un driver que no contesta no cuelga el sistema.
+
+Dónde se ha probado:
+
+| Sistema | Máquina | Pantalla |
+|---|---|---|
+| AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68020 | AGA, 640x256, 4 colores |
+| AmigaOS 3.2.3 | A1200 emulado (FS-UAE), 68040 | RTG (uaegfx), 1024x768, 32 bits |
+| Coffin R65 | Amiberry, 68040 | RTG, 1024x768, fondo con imagen |
+
+La parte de red y WiFi se ha probado en el emulador con un driver de red falso (señal y paquetes); no aún
+con Roadshow, MiamiDx ni una tarjeta WiFi de verdad.
+
+Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workbench sin ventana de fondo
+(backdrop).
+
+## Instalación y uso
+
+1. Descomprime `trasfondo-0.11.lha` (de la página de
+   [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
+2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
+   a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
+   `SYS:Prefs`, y el catálogo en castellano en `LOCALE:Catalogs`.
+3. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
+4. Para pararlo, lánzalo otra vez, usa Eliminar en Exchange o pulsa Ctrl-C en su Shell. El fondo queda
+   como estaba.
+
+Sin instalador también vale: copia `trasfondo` y `trasfondo.info` a donde quieras, y el cajón `Catalogs`
+a su lado para tenerlo en castellano. En `SYS:WBStartup`
+arranca solo; su icono lleva el tooltype `DONOTWAIT`, para que el Workbench no se quede esperando a que
+acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco más?").
+
+### Preferencias
+
+**TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida, cada cuánto mide, el
+fondo (transparente o fijo) y su color, y si arranca oculto.
+**Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
+Trasfondo, si está en marcha, cambia al momento, sin reiniciarlo (el sistema le avisa cuando cambian). Lo
+que pone TrasfondoPrefs manda sobre los tooltypes del icono.
+
+### Ponerse al día solo
+
+Desde la 0.8, Trasfondo mira en GitHub si hay una versión nueva: un minuto después de arrancar y luego cada
+seis horas, sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
+«Trasfondo». En TrasfondoPrefs, **Actualizar** la baja (los dos ejecutables sueltos de la release),
+comprueba que llegó entera y que es la versión que dice, deja los de ahora como `.old` y Trasfondo vuelve a
+arrancar con la nueva. Desde la 0.9 baja también el catálogo en castellano; y si tu sistema está en
+castellano y falta, lo baja él solo al minuto de arrancar (le pasa a quien llega a la 0.9 desde la 0.8 con
+el botón).
+
+Necesita una pila TCP/IP en marcha y AmiSSL; sin ellas no hace nada (y no pone en marcha la red: si no hay pila, espera a que la haya). Al acabar cada consulta suelta la red. Solo pregunta a `api.github.com`, y la casilla
+**Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
+para llegar a la 0.8 hay que instalarla a mano una vez.
+
+### Desde Exchange
+
+Trasfondo es una commodity: sale en Exchange (`SYS:Tools/Commodities/Exchange`).
+
+| Botón | Qué hace |
+|---|---|
+| Ocultar | Quita el panel. Sigue midiendo: al mostrarlo, la historia de la CPU está completa. |
+| Mostrar | Vuelve a poner el panel. |
+| Desactivar | Quita el panel y deja de medir. No gasta nada mientras tanto. |
+| Activar | Vuelve a medir, con la historia vacía. |
+| Eliminar | Lo cierra y deja el fondo como estaba. |
+
+### Tooltypes
+
+Se cambian en el icono (Información, en el menú Iconos) o se dan como argumentos en el Shell
+(`run trasfondo CX_POPKEY="ctrl alt t"`).
+
+| Tooltype | Qué hace |
+|---|---|
+| `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora; TEMP, la temperatura de la PiStorm, que sin Emu68 no sale). Se pueden añadir `MEMGRAPH` y `NETGRAPH`, las gráficas de la memoria y de la red, que no salen de serie. Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
+| `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
+| `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
+| `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
+| `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |
+| `COLOR=16,24,32` | Color del fondo, en rojo, verde y azul (de 0 a 255). |
+| `CX_POPUP=NO` | Arranca oculto. |
+| `CX_PRIORITY=0` | Prioridad de la commodity. |
+| `DONOTWAIT` | En `WBStartup`, el Workbench no espera a que acabe. |
+
+## Cómo funciona
+
+El Workbench rellena su fondo con una función propia (un "gancho" de la capa). Trasfondo pone la suya:
+primero llama a la del Workbench, que pinta el fondo de siempre, y luego copia encima el panel. Los
+iconos los pinta el Workbench después, así que quedan por encima.
+
+En cada medida se repintan solo las partes del panel que cambiaron, sin borrar los iconos: se lee la zona
+de la pantalla, lo que ha cambiado respecto al panel anterior es un icono, y el panel nuevo se copia solo
+fuera de eso. El velo transparente se mezcla con el fondo una sola vez, no en cada medida.
+
+Lo que gasta, medido en el emulador con el defecto de una medida cada 2 s: un 8 % de un A1200 y un 11 % de
+un 68030 con tarjeta gráfica (antes de la 0.10, midiendo cada segundo, un 21 % y casi todo el 68030). Se mide
+con `tests/medir_cpu.py`.
+
+La CPU de cada tarea se mide con los ganchos de cambio de tarea de exec, como hace PM. No es una
+estimación: es el tiempo real que cada tarea pasa en la CPU.
+
+## Límites conocidos
+
+- En pantallas de 256 colores o menos (AGA, ECS, RTG de 8 bits) el panel lleva siempre fondo fijo: el
+  velo semitransparente solo se puede imitar con una trama de puntos, que sobre un fondo claro no se lee.
+  La transparencia queda para RTG de 15 bits o más.
+- Con una tarjeta gráfica en el bus Zorro cada repintado lee y escribe la memoria de la tarjeta, que por ese
+  bus es lenta: ahí se nota más lo que gasta. Medir cada más segundos y el fondo fijo lo bajan.
+- La posición aún no se puede cambiar.
+- Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
+  panel lo pisa hasta que el Workbench vuelva a pintar el icono.
+
+## Compilar
+
+Hace falta Dash y su compilador cruzado (`m68k-amigaos-gcc`). Desde la raíz de este repositorio:
+
+```bash
+DASH=/ruta/a/dash
+PYTHONPATH=$DASH $DASH/dash src/trasfondo.dash -o build/trasfondo
+```
+
+El icono se genera con `tools/icono.py`, que usa el generador de iconos de dashweb.
+
+## Plan
+
+Lo que viene (más paneles, posición y colores por tooltypes, paquete para Aminet) está en [docs/PLAN.md](docs/PLAN.md).
+
+## Licencia
+
+MIT (ver [LICENSE](LICENSE)).

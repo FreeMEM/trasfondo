@@ -1,5 +1,7 @@
 # Trasfondo como commodity
 
+*[English](COMMODITY.en.md) | Castellano*
+
 Hecho en Trasfondo 0.2 con los builtins `tooltype`, `cx_broker`, `cx_hotkey`, `cx_command` y `cx_wait` de
 Dash (PR #16). Prueba: `tests/prueba_commodity.py`.
 

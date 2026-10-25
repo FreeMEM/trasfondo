@@ -43,7 +43,7 @@ def main():
     (caj / "Instalar.info").write_bytes(
         situar(info(instalador(), WBPROJECT, herramienta="Installer",
                     tooltypes=["APPNAME=Trasfondo", "MINUSER=AVERAGE", "DEFUSER=AVERAGE"]), 10, 6))
-    (caj / "LEEME").write_bytes((raiz / "README.md").read_text().encode("latin-1", "replace"))
+    (caj / "LEEME").write_bytes((raiz / "README.es.md").read_text().encode("latin-1", "replace"))
     (caj / "LEEME.info").write_bytes(situar(info(documento(), WBPROJECT, herramienta="SYS:Utilities/MultiView"), 250, 6))
     shutil.copy(raiz / "LICENSE", caj / "LICENSE")
     # los catálogos (tools/catalogos.py), con el nombre del idioma en Latin-1: Catalogs/español/Trasfondo.catalog.
