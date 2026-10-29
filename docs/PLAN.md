@@ -81,3 +81,10 @@ estilo de `mui_canvas` (decidido el 2026-10-20): un lienzo de escritorio (`deskt
 dos mejoras para gastar menos CPU al pintar: encolar el blitter en vez de esperarlo, y repintar solo lo que
 cambia (y medir si en una CPU rápida conviene más la CPU que el blitter). Sprites descartados. Las pruebas en C de `tests/`
 son su referencia: `prueba_fondo.dash` está medida; `prueba_cpu.dash` no se ha compilado nunca.
+
+## Ideas pendientes
+
+- Ordenar las secciones en TrasfondoPrefs (sugerencia de un usuario por Telegram, 2026-10-29). Hoy el orden solo se
+  elige con el tooltype `MOSTRAR=FECHA,CPU,DISCOS` (qué secciones salen y en qué orden); en Prefs las casillas
+  marcan cuáles salen, pero no su orden. Propuesta: una lista que se pueda reordenar arrastrando y soltando. Si
+  GadTools no da para arrastrar, botones de subir y bajar junto a la lista.
