@@ -92,3 +92,9 @@ son su referencia: `prueba_fondo.dash` está medida; `prueba_cpu.dash` no se ha 
   Aminet, hace algo parecido a Trasfondo y deja mandar Ctrl-C, Ctrl-D, Ctrl-E y Ctrl-F a un proceso (con `Signal()`
   de exec, `SIGBREAKF_CTRL_C`...), lo que sirve para pararlo. En Trasfondo podría ser un menú sobre la tarea en la
   lista de tareas. Mirar `atop` antes de diseñarlo, y avisar antes de mandar la señal: un proceso puede no atenderla.
+  Decidido con el usuario (2026-10-29): en AmigaOS no hay forma segura de matar un proceso desde fuera (el sistema
+  no sabe qué memoria, ficheros, ventanas y librerías tiene; `RemTask` lo deja todo sin liberar y puede colgar el
+  Amiga). Así que Trasfondo pide que se cierre: (1) manda Ctrl-C y espera unos segundos; (2) si la tarea sigue,
+  avisa de que no ha hecho caso; (3) el cierre forzado, fuera, o detrás de un aviso claro de que puede colgar el
+  sistema. Otras formas limpias que valen la pena: `QUIT` por ARexx a los que tienen puerto, y la orden de cerrar
+  de Exchange a los commodities.
