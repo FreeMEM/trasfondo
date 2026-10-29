@@ -88,3 +88,7 @@ son su referencia: `prueba_fondo.dash` está medida; `prueba_cpu.dash` no se ha 
   elige con el tooltype `MOSTRAR=FECHA,CPU,DISCOS` (qué secciones salen y en qué orden); en Prefs las casillas
   marcan cuáles salen, pero no su orden. Propuesta: una lista que se pueda reordenar arrastrando y soltando. Si
   GadTools no da para arrastrar, botones de subir y bajar junto a la lista.
+- Mandar señales a las tareas desde Trasfondo (sugerencia de David Martínez por Telegram, 2026-10-29): `atop`, de
+  Aminet, hace algo parecido a Trasfondo y deja mandar Ctrl-C, Ctrl-D, Ctrl-E y Ctrl-F a un proceso (con `Signal()`
+  de exec, `SIGBREAKF_CTRL_C`...), lo que sirve para pararlo. En Trasfondo podría ser un menú sobre la tarea en la
+  lista de tareas. Mirar `atop` antes de diseñarlo, y avisar antes de mandar la señal: un proceso puede no atenderla.
