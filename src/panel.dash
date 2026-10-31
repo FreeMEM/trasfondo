@@ -1,0 +1,291 @@
+# TrasfondoPanel: el panel de resumen que abre la barra al pulsar la hora. Un reloj grande, el tiempo, el
+# calendario del mes y los avisos.
+#
+# Un programa aparte: la barra lo lanza y, si ya estaba abierto, lanzarlo otra vez lo cierra. Se cierra
+# también con Esc. Solo con RTG.
+
+@workbench_output "NIL:"
+@version "TrasfondoPanel 0.1"
+
+import "dibujo.dash"
+
+const ANCHO = 560
+const ALTO = 340
+const ALTO_BARRA = 24        # el de la barra: el panel sale justo debajo
+const M = 12                 # margen
+const R = 10                 # radio de las tarjetas
+
+const C_FONDO = 0x16191d
+const C_BORDE = 0x30353d
+const C_TARJETA = 0x23272e
+const C_BOTON = 0x30353d
+const C_TEXTO = 0xe8eaed
+const C_SUAVE = 0x9aa0a6
+const C_TENUE = 0x5f6368
+const C_HOY = 0xf1f3f4
+const C_HOY_TEXTO = 0x16191d
+
+const MESES = "January|February|March|April|May|June|July|August|September|October|November|December"
+const DIAS = "Mo|Tu|We|Th|Fr|Sa|Su"
+
+var f_normal: Int = 0
+var f_grande: Int = 0
+var f_media: Int = 0
+var anio: Int = 2026         # el mes que enseña el calendario
+var mes: Int = 1
+var hoy_anio: Int = 0
+var hoy_mes: Int = 0
+var hoy_dia: Int = 0
+var minuto: Int = -1         # el de la hora pintada
+var t_temp: Int = -9999      # el tiempo, de ENV:Trasfondo.tiempo (lo deja la barra)
+var t_codigo: Int = 0
+var t_de_dia: Bool = true
+var t_lugar: String = ""
+
+# zonas que se pueden pulsar
+const CAL_X = M
+const CAL_Y = 104
+const CAL_W = 280
+const CAL_H = ALTO - CAL_Y - M
+var ant_x: Int = 0           # las flechas del mes anterior y el siguiente
+var sig_x: Int = 0
+var flecha_y: Int = 0
+
+func bisiesto(a: Int) -> Bool
+    return (a % 4 == 0 and a % 100 != 0) or a % 400 == 0
+end
+
+func dias_mes(a: Int, m: Int) -> Int
+    if m == 2
+        if bisiesto(a)
+            return 29
+        end
+        return 28
+    end
+    if m == 4 or m == 6 or m == 9 or m == 11
+        return 30
+    end
+    return 31
+end
+
+# el día de la semana del día 1 de ese mes: 0 lunes ... 6 domingo (Zeller)
+func primer_dia(a: Int, m: Int) -> Int
+    y = a
+    mm = m
+    if mm < 3
+        mm = mm + 12
+        y = y - 1
+    end
+    h = (1 + (13 * (mm + 1)) / 5 + y + y / 4 - y / 100 + y / 400) % 7   # 0 sábado
+    return (h + 5) % 7
+end
+
+func pintar_reloj()
+    redondo(M, M, M + 184, M + 84, R, C_TARJETA)
+    font_use(f_grande)
+    font_style(2)
+    centrado(M + 92, M + 42 + font_baseline() - font_height() / 2, date_text("%H:%M"), C_TEXTO)
+    font_style(0)
+end
+
+func leer_tiempo()
+    texto = file_read_text("ENV:Trasfondo.tiempo")
+    if texto == nil
+        return
+    end
+    for l in str_split(texto, "\n")
+        if str_starts(l, "lugar=")
+            t_lugar = l[6:l.length]
+        elif str_starts(l, "ahora=")
+            v = str_split(l[6:l.length], ",")
+            if v.length >= 3
+                t_temp = Int(v[0])
+                t_codigo = Int(v[1])
+                t_de_dia = v[2] == "1"
+            end
+        end
+    end
+end
+
+func pintar_tiempo()
+    x = M + 192
+    cx = x + (M + CAL_W - x) / 2
+    redondo(x, M, M + CAL_W - 1, M + 84, R, C_TARJETA)
+    if t_temp == -9999
+        font_use(f_media)
+        centrado(cx, M + 44, "--", C_SUAVE)
+        return
+    end
+    icono_tiempo(cx, M + 26, 30, t_codigo, t_de_dia, C_TARJETA)
+    font_use(f_media)
+    centrado(cx, M + 52 + font_baseline() - font_height() / 2, grados(t_temp), C_TEXTO)
+    font_use(f_normal)
+    centrado(cx, M + 76, t_lugar, C_SUAVE)
+end
+
+func pintar_calendario()
+    redondo(CAL_X, CAL_Y, CAL_X + CAL_W - 1, CAL_Y + CAL_H - 1, R, C_TARJETA)
+    font_use(f_normal)
+    meses = str_split(MESES, "|")
+    dias = str_split(DIAS, "|")
+    linea = font_height()
+    # la cabecera: < mes año >
+    flecha_y = CAL_Y + 10
+    ant_x = CAL_X + 14
+    sig_x = CAL_X + CAL_W - 22
+    base = flecha_y + font_baseline()
+    centrado(ant_x + 4, base, "<", C_SUAVE)
+    centrado(sig_x + 4, base, ">", C_SUAVE)
+    centrado(CAL_X + CAL_W / 2, base, meses[mes - 1] + " #{anio}", C_TEXTO)
+    # la rejilla: 7 columnas, la cabecera y 6 semanas
+    celda_w = (CAL_W - 16) / 7
+    celda_h = (CAL_H - 40 - linea) / 6
+    x0 = CAL_X + 8
+    y0 = CAL_Y + 32
+    for c in (0..6)
+        centrado(x0 + c * celda_w + celda_w / 2, y0 + font_baseline(), dias[c], C_SUAVE)
+    end
+    y0 = y0 + linea + 4
+    primero = primer_dia(anio, mes)
+    n = dias_mes(anio, mes)
+    pa = anio
+    pm = mes - 1
+    if pm == 0
+        pm = 12
+        pa = pa - 1
+    end
+    n_ant = dias_mes(pa, pm)
+    for k in (0..41)
+        c = k % 7
+        f = k / 7
+        d = k - primero + 1
+        x = x0 + c * celda_w
+        y = y0 + f * celda_h
+        texto = ""
+        color = C_TEXTO
+        if d < 1
+            texto = "#{n_ant + d}"
+            color = C_TENUE
+        elif d > n
+            texto = "#{d - n}"
+            color = C_TENUE
+        else
+            texto = "#{d}"
+            if anio == hoy_anio and mes == hoy_mes and d == hoy_dia
+                redondo(x + 2, y + 1, x + celda_w - 3, y + celda_h - 2, 6, C_HOY)
+                color = C_HOY_TEXTO
+            end
+        end
+        centrado(x + celda_w / 2, y + (celda_h - linea) / 2 + font_baseline(), texto, color)
+    end
+end
+
+func pintar_avisos()
+    x1 = M + CAL_W + 8
+    x2 = ANCHO - M - 1
+    redondo(x1, M, x2, ALTO - M - 1, R, C_TARJETA)
+    font_use(f_normal)
+    pluma(C_TEXTO)
+    gfx_text_at(x1 + 14, M + 14 + font_baseline(), "Notifications")
+    centrado((x1 + x2) / 2, ALTO / 2, "No notifications", C_TENUE)
+    # el botón de limpiar
+    by = ALTO - M - 44
+    redondo(x1 + 12, by, x2 - 12, by + 30, 15, C_BOTON)
+    centrado((x1 + x2) / 2, by + 15 - font_height() / 2 + font_baseline(), "Clear all", C_TEXTO)
+end
+
+func pintar_todo()
+    pluma(C_BORDE)
+    gfx_rect(0, 0, ANCHO - 1, ALTO - 1)
+    pluma(C_FONDO)
+    gfx_rect(1, 1, ANCHO - 2, ALTO - 2)
+    pintar_reloj()
+    pintar_tiempo()
+    pintar_calendario()
+    pintar_avisos()
+end
+
+func cambiar_mes(paso: Int)
+    mes = mes + paso
+    if mes < 1
+        mes = 12
+        anio = anio - 1
+    elif mes > 12
+        mes = 1
+        anio = anio + 1
+    end
+    pintar_calendario()
+end
+
+func abrir_fuente(tam: Int) -> Int
+    f = font_open("CGTriumvirate.font", tam)
+    if f == 0
+        f = font_open("helvetica.font", tam)
+    end
+    return f
+end
+
+Window Panel
+    title ""
+    width 560
+    height 340
+    left 0
+    top 24
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+end
+
+Main
+    if not single_instance("TrasfondoPanel")
+        # ya estaba abierto: se cierra (lo hace el otro, con el Ctrl-C de single_instance)
+    elif rtg_get_depth() < 15
+        Print "TrasfondoPanel needs an RTG screen (15 bits or more)"
+    else
+        clock_read()
+        hoy_anio = clock_year()
+        hoy_mes = clock_month()
+        hoy_dia = clock_day()
+        minuto = clock_minute()
+        anio = hoy_anio
+        leer_tiempo()
+        mes = hoy_mes
+        f_normal = abrir_fuente(13)
+        f_media = abrir_fuente(24)
+        f_grande = abrir_fuente(44)
+        Panel.open
+        gfx_mode(0)                  # el texto sin fondo: encima de las tarjetas
+        window_move(0, (rtg_get_width() - ANCHO) / 2, ALTO_BARRA + 4)
+        pintar_todo()
+        EventLoop
+            On Timer 500
+                if break_check()
+                    Stop
+                end
+                clock_read()
+                if clock_minute() != minuto
+                    minuto = clock_minute()
+                    pintar_reloj()
+                end
+            end
+            On Click
+                x = click_x()
+                y = click_y()
+                if y >= flecha_y - 4 and y <= flecha_y + 16
+                    if x >= ant_x - 6 and x <= ant_x + 14
+                        cambiar_mes(-1)
+                    elif x >= sig_x - 6 and x <= sig_x + 14
+                        cambiar_mes(1)
+                    end
+                end
+            end
+            On Key "ESC"
+                Stop
+            end
+            On Close
+                Stop
+            end
+        end
+    end
+end

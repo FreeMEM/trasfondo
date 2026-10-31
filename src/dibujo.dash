@@ -1,0 +1,173 @@
+# Lo que dibujan igual la barra, el panel y las demás piezas de Trasfondo 2.0: colores RGB, rectángulos con las
+# esquinas redondas y suavizadas, textos centrados y los iconos del tiempo. Todo para RTG (15 bits o más).
+
+const C_SOL = 0xfdd663
+const C_NUBE = 0xbdc1c6
+const C_LLUVIA = 0x8ab4f8
+const C_NIEVE = 0xf1f3f4
+
+var esquina: [Int] = []      # lo que cubre el redondeo de cada píxel de una esquina (0-255), r * r
+var radio_esquina: Int = 0   # el radio para el que está calculada
+
+func pluma(rgb: Int)
+    gfx_pen(color_pen((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255))
+end
+
+# cuánto tapa un arco de radio r cada píxel de la esquina de arriba a la izquierda: 4x4 muestras por píxel
+func calcular_esquina(r: Int)
+    esquina = []
+    r8 = 8 * r
+    for j in (0..r - 1)
+        for i in (0..r - 1)
+            dentro = 0
+            for t in (0..3)
+                dy = r8 - (8 * j + 2 * t + 1)
+                for s in (0..3)
+                    dx = r8 - (8 * i + 2 * s + 1)
+                    if dx * dx + dy * dy <= r8 * r8
+                        dentro = dentro + 1
+                    end
+                end
+            end
+            esquina.push(dentro * 255 / 16)
+        end
+    end
+    radio_esquina = r
+end
+
+# un rectángulo relleno con las esquinas redondas y suavizadas (mezcladas con lo que haya debajo)
+func redondo(x1: Int, y1: Int, x2: Int, y2: Int, r: Int, rgb: Int)
+    if r != radio_esquina
+        calcular_esquina(r)
+    end
+    pluma(rgb)
+    gfx_rect(x1 + r, y1, x2 - r, y2)
+    if y2 - r >= y1 + r
+        gfx_rect(x1, y1 + r, x1 + r - 1, y2 - r)
+        gfx_rect(x2 - r + 1, y1 + r, x2, y2 - r)
+    end
+    for j in (0..r - 1)
+        for i in (0..r - 1)
+            a = esquina[j * r + i]
+            if a > 0
+                # el mismo píxel en las cuatro esquinas
+                xi = x1 + i
+                xd = x2 - i
+                ya = y1 + j
+                yb = y2 - j
+                if a >= 255
+                    gfx_pixel(xi, ya)
+                    gfx_pixel(xd, ya)
+                    gfx_pixel(xi, yb)
+                    gfx_pixel(xd, yb)
+                else
+                    gfx_blend_rect(xi, ya, xi, ya, rgb, a)
+                    gfx_blend_rect(xd, ya, xd, ya, rgb, a)
+                    gfx_blend_rect(xi, yb, xi, yb, rgb, a)
+                    gfx_blend_rect(xd, yb, xd, yb, rgb, a)
+                    pluma(rgb)
+                end
+            end
+        end
+    end
+end
+
+# un texto centrado en x, con la línea de base en y
+func centrado(x: Int, y: Int, texto: String, rgb: Int)
+    pluma(rgb)
+    gfx_text_at(x - font_text_width(texto) / 2, y, texto)
+end
+
+# --- iconos del tiempo: centrados en (cx, cy), de unos s píxeles de lado; fondo: el color de debajo ---
+
+func icono_sol(cx: Int, cy: Int, s: Int)
+    r = s * 22 / 100
+    l1 = s * 32 / 100
+    l2 = s * 46 / 100
+    d1 = l1 * 7 / 10
+    d2 = l2 * 7 / 10
+    pluma(C_SOL)
+    gfx_circle_fill(cx, cy, r)
+    gfx_line(cx, cy - l1, cx, cy - l2)
+    gfx_line(cx, cy + l1, cx, cy + l2)
+    gfx_line(cx - l1, cy, cx - l2, cy)
+    gfx_line(cx + l1, cy, cx + l2, cy)
+    gfx_line(cx - d1, cy - d1, cx - d2, cy - d2)
+    gfx_line(cx + d1, cy - d1, cx + d2, cy - d2)
+    gfx_line(cx - d1, cy + d1, cx - d2, cy + d2)
+    gfx_line(cx + d1, cy + d1, cx + d2, cy + d2)
+end
+
+func icono_luna(cx: Int, cy: Int, s: Int, fondo: Int)
+    r = s * 38 / 100
+    pluma(C_SOL)
+    gfx_circle_fill(cx, cy, r)
+    pluma(fondo)
+    gfx_circle_fill(cx + r * 6 / 10, cy - r * 4 / 10, r * 85 / 100)
+end
+
+func icono_nube(cx: Int, cy: Int, s: Int, rgb: Int)
+    pluma(rgb)
+    gfx_circle_fill(cx - s * 24 / 100, cy + s * 6 / 100, s * 18 / 100)
+    gfx_circle_fill(cx + s * 2 / 100, cy - s * 6 / 100, s * 26 / 100)
+    gfx_circle_fill(cx + s * 26 / 100, cy + s * 8 / 100, s * 16 / 100)
+    gfx_rect(cx - s * 24 / 100, cy + s * 8 / 100, cx + s * 26 / 100, cy + s * 24 / 100)
+end
+
+# el icono de un código WMO del tiempo (el de Open-Meteo)
+func icono_tiempo(cx: Int, cy: Int, s: Int, codigo: Int, de_dia: Bool, fondo: Int)
+    if codigo <= 1
+        if de_dia
+            icono_sol(cx, cy, s)
+        else
+            icono_luna(cx, cy, s, fondo)
+        end
+        return
+    end
+    if codigo == 2
+        # entre nubes: el sol o la luna detrás, arriba a la derecha
+        if de_dia
+            icono_sol(cx + s * 16 / 100, cy - s * 14 / 100, s * 75 / 100)
+        else
+            icono_luna(cx + s * 16 / 100, cy - s * 14 / 100, s * 75 / 100, fondo)
+        end
+        icono_nube(cx - s * 6 / 100, cy + s * 10 / 100, s * 85 / 100, C_NUBE)
+        return
+    end
+    if codigo == 45 or codigo == 48
+        pluma(C_NUBE)
+        for k in (0..2)
+            y = cy - s * 20 / 100 + k * s * 20 / 100
+            gfx_rect(cx - s * 36 / 100, y, cx + s * 36 / 100, y + s / 14)
+        end
+        return
+    end
+    icono_nube(cx, cy - s * 10 / 100, s, C_NUBE)
+    abajo = cy + s * 22 / 100
+    if (codigo >= 51 and codigo <= 67) or (codigo >= 80 and codigo <= 82)
+        pluma(C_LLUVIA)
+        for k in (0..2)
+            x = cx - s * 20 / 100 + k * s * 20 / 100
+            gfx_line(x, abajo, x - s / 10, abajo + s * 20 / 100)
+        end
+    elif (codigo >= 71 and codigo <= 77) or codigo == 85 or codigo == 86
+        pluma(C_NIEVE)
+        for k in (0..2)
+            x = cx - s * 20 / 100 + k * s * 20 / 100
+            gfx_circle_fill(x, abajo + s * 10 / 100, s / 16 + 1)
+        end
+    elif codigo >= 95
+        pluma(C_SOL)
+        gfx_line(cx + s / 20, abajo, cx - s / 10, abajo + s / 10)
+        gfx_line(cx - s / 10, abajo + s / 10, cx + s / 10, abajo + s / 10)
+        gfx_line(cx + s / 10, abajo + s / 10, cx - s / 20, abajo + s / 4)
+    end
+end
+
+# la temperatura en décimas, redondeada a grados: "17°C"
+func grados(decimas: Int) -> String
+    if decimas >= 0
+        return "#{(decimas + 5) / 10}°C"
+    end
+    return "#{-((-decimas + 5) / 10)}°C"
+end

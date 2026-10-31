@@ -1,0 +1,199 @@
+# TrasfondoBarra: la barra de arriba del Workbench, en lugar de la barra de título de la pantalla.
+#
+# Un prototipo: en el centro la hora, la fecha y el tiempo; a la derecha la CPU, la memoria y la temperatura de
+# la PiStorm, cada cosa en su píldora. Solo con RTG (15 bits o más): en una pantalla de paleta no se ve bien.
+# Al pulsar la hora, la fecha o el tiempo se abre el panel de resumen (TrasfondoPanel, en el mismo cajón).
+# Se para lanzándola otra vez, o con Ctrl-C.
+#
+# Tooltypes: CIUDAD (el lugar del tiempo, "Málaga"), o LAT y LON (36.72, -4.42); sin ellos no hay tiempo.
+
+@workbench_output "NIL:"
+@version "TrasfondoBarra 0.1"
+
+import "dibujo.dash"
+import "tiempo.dash"
+
+const ALTO = 24              # alto de la barra
+const ALTO_PILDORA = 18
+const MARGEN = 6             # entre el borde de la pantalla y la primera píldora
+const HUECO = 6              # entre dos píldoras
+const RELLENO = 10           # dentro de la píldora, a cada lado del texto
+const ICONO = 16             # lo que ocupa un icono dentro de su píldora
+
+const C_FONDO = 0x101317
+const C_PILDORA = 0x262b33
+const C_TEXTO = 0xe8eaed
+const C_SUAVE = 0x9aa0a6
+const C_ACENTO = 0x8ab4f8
+const C_CALIENTE = 0xf28b82
+
+var ancho: Int = 640
+var fuente: Int = 0
+var cpu: Int = -1            # CPU de la última medida, en tantos por mil; -1 antes de la primera
+var temp: Int = -1           # la de la PiStorm, en décimas de grado; -1 sin Emu68
+var panel: String = "TrasfondoPanel"   # la orden que lo abre: con la ruta del cajón de la barra
+var reloj_x1: Int = 0        # dónde están la hora, la fecha y el tiempo: al pulsarlos se abre el panel
+var reloj_x2: Int = 0
+var tic: Int = 0             # vueltas del temporizador (5 por segundo)
+
+# el ancho de una píldora con ese texto (y un icono delante, si icono)
+func ancho_pildora(texto: String, icono: Bool) -> Int
+    w = font_text_width(texto) + 2 * RELLENO
+    if icono
+        w = w + ICONO + 2
+    end
+    return w
+end
+
+# una píldora con su texto, en x; devuelve dónde acaba
+func pildora_texto(x: Int, texto: String, rgb: Int) -> Int
+    w = ancho_pildora(texto, false)
+    y = (ALTO - ALTO_PILDORA) / 2
+    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    pluma(rgb)
+    gfx_text_at(x + RELLENO, (ALTO - font_height()) / 2 + font_baseline(), texto)
+    return x + w
+end
+
+# la píldora del tiempo: el icono y la temperatura
+func pildora_tiempo(x: Int) -> Int
+    texto = grados(t_temp)
+    w = ancho_pildora(texto, true)
+    y = (ALTO - ALTO_PILDORA) / 2
+    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    icono_tiempo(x + RELLENO - 2 + ICONO / 2, ALTO / 2, ICONO, t_codigo, t_de_dia, C_PILDORA)
+    pluma(C_TEXTO)
+    gfx_text_at(x + RELLENO + ICONO + 2, (ALTO - font_height()) / 2 + font_baseline(), texto)
+    return x + w
+end
+
+func por_ciento(milesimas: Int) -> String
+    return "#{(milesimas + 5) / 10}%"
+end
+
+func pintar()
+    pluma(C_FONDO)
+    gfx_rect(0, 0, ancho - 1, ALTO - 1)
+
+    # izquierda
+    pildora_texto(MARGEN, "Trasfondo", C_ACENTO)
+
+    # centro: la hora, la fecha y el tiempo
+    hora = date_text("%H:%M")
+    fecha = date_text("%A, %d %B")
+    hay_tiempo = t_temp != -9999
+    w = ancho_pildora(hora, false) + HUECO + ancho_pildora(fecha, false)
+    if hay_tiempo
+        w = w + HUECO + ancho_pildora(grados(t_temp), true)
+    end
+    x = (ancho - w) / 2
+    reloj_x1 = x
+    x = pildora_texto(x, hora, C_TEXTO) + HUECO
+    x = pildora_texto(x, fecha, C_TEXTO)
+    if hay_tiempo
+        x = pildora_tiempo(x + HUECO)
+    end
+    reloj_x2 = x
+
+    # derecha, de derecha a izquierda
+    total = mem_chip_total() + mem_fast_total()
+    usada = 0
+    if total > 0
+        usada = (total - mem_total()) / (total / 1000)
+    end
+    var textos: [String] = []
+    var colores: [Int] = []
+    if temp >= 0
+        textos.push(grados(temp))
+        if temp >= 700
+            colores.push(C_CALIENTE)
+        else
+            colores.push(C_TEXTO)
+        end
+    end
+    textos.push("MEM " + por_ciento(usada))
+    colores.push(C_TEXTO)
+    if cpu >= 0
+        textos.push("CPU " + por_ciento(cpu))
+        colores.push(C_TEXTO)
+    end
+    x = ancho - MARGEN
+    i = 0
+    while i < textos.length
+        x = x - ancho_pildora(textos[i], false)
+        pildora_texto(x, textos[i], colores[i])
+        x = x - HUECO
+        i = i + 1
+    end
+end
+
+Window Barra
+    title ""
+    width 640
+    height 24
+    left 0
+    top 0
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+    activate false
+end
+
+Main
+    if not single_instance("TrasfondoBarra")
+        Print "TrasfondoBarra was already running: stopping it"
+    elif rtg_get_depth() < 15
+        Print "TrasfondoBarra needs an RTG screen (15 bits or more)"
+    else
+        ancho = rtg_get_width()
+        # PROGDIR: no vale en la orden: es de cada proceso, y el de run_program es otro
+        if dir_change("PROGDIR:")
+            carpeta = dir_current()
+            if not str_ends(carpeta, ":")
+                carpeta = carpeta + "/"
+            end
+            panel = "\"" + carpeta + "TrasfondoPanel\""
+        end
+        tiempo_iniciar(tooltype("CIUDAD", ""), tooltype("LAT", ""), tooltype("LON", ""))
+        Barra.open
+        window_resize(0, ancho, ALTO)
+        gfx_mode(0)                  # el texto sin fondo: encima de las píldoras
+        fuente = font_open("CGTriumvirate.font", 13)
+        if fuente == 0
+            fuente = font_open("helvetica.font", 13)
+        end
+        if fuente != 0
+            font_use(fuente)
+        end
+        cpu_start()
+        temp = pistorm_temperature()
+        pintar()
+        EventLoop
+            On Timer 200
+                if break_check()
+                    Stop
+                end
+                tiempo_paso()
+                tic = tic + 1
+                if tic >= 5
+                    tic = 0
+                    cpu_sample()
+                    cpu = cpu_total()
+                    pintar()
+                elif t_cambio
+                    t_cambio = false
+                    pintar()
+                end
+            end
+            On Click
+                if click_x() >= reloj_x1 and click_x() < reloj_x2
+                    run_program(panel)
+                end
+            end
+            On Close
+                Stop
+            end
+        end
+    end
+end

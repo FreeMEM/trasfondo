@@ -1,0 +1,211 @@
+# El tiempo, de Open-Meteo (open-meteo.com: gratis, sin clave). Lo pide la barra cada 30 minutos y lo deja en
+# ENV:Trasfondo.tiempo para el panel. El lugar, por latitud y longitud o por el nombre de una ciudad (que se
+# busca una vez en su geocodificador).
+#
+# ENV:Trasfondo.tiempo, una cosa por línea (temperaturas en décimas de grado):
+#   lugar=Málaga
+#   ahora=173,0,1          temperatura, código WMO, 1 de día / 0 de noche
+#   dia=20261031,0,215,121 fecha, código, máxima, mínima (uno por día, hoy el primero)
+
+import "https.dash"
+
+const T_CADA = 1800000             # ms entre dos consultas
+const T_REINTENTO = 300000         # si falló, se vuelve a probar a los 5 minutos
+const T_TOPE = 32768
+const T_FICHERO = "ENV:Trasfondo.tiempo"
+
+var t_ciudad: String = ""
+var t_lat: String = ""             # tal cual van en la URL ("36.72")
+var t_lon: String = ""
+var t_lugar: String = ""
+var t_fase: Int = 0                # 0 esperando, 1 buscando la ciudad, 2 pidiendo el tiempo
+var t_proxima: Int = 0             # time_ms de la próxima consulta
+var t_temp: Int = -9999            # la de ahora, en décimas de grado (-9999: no se sabe)
+var t_codigo: Int = -1
+var t_de_dia: Bool = true
+var t_cambio: Bool = false         # llegó un tiempo nuevo: hay que repintar
+var t_error: String = ""
+
+# un número de un JSON ("temperature_2m":17.3) en décimas; -9999 si no está
+func json_decimas(j: String, clave: String, desde: Int) -> Int
+    i = str_find_from(j, "\"" + clave + "\":", desde)
+    if i < 0
+        return -9999
+    end
+    i = i + clave.length + 3
+    signo = 1
+    if i < j.length and j[i:i + 1] == "-"
+        signo = -1
+        i = i + 1
+    end
+    entero = 0
+    decima = 0
+    while i < j.length and str_contains("0123456789", j[i:i + 1])
+        entero = entero * 10 + Int(j[i:i + 1])
+        i = i + 1
+    end
+    if i + 1 < j.length and j[i:i + 1] == "." and str_contains("0123456789", j[i + 1:i + 2])
+        decima = Int(j[i + 1:i + 2])
+        if i + 2 < j.length and str_contains("56789", j[i + 2:i + 3])     # redondeo
+            decima = decima + 1
+        end
+    end
+    return signo * (entero * 10 + decima)
+end
+
+# un número tal cual viene ("-4.42"), para ponerlo en otra URL
+func json_crudo(j: String, clave: String, desde: Int) -> String
+    i = str_find_from(j, "\"" + clave + "\":", desde)
+    if i < 0
+        return ""
+    end
+    i = i + clave.length + 3
+    f = i
+    while f < j.length and str_contains("-0123456789.", j[f:f + 1])
+        f = f + 1
+    end
+    return j[i:f]
+end
+
+# los valores de una lista de un JSON ("temperature_2m_max":[21.5,22.0]) en décimas
+func json_lista(j: String, clave: String, desde: Int) -> [Int]
+    var r: [Int] = []
+    i = str_find_from(j, "\"" + clave + "\":[", desde)
+    if i < 0
+        return r
+    end
+    f = str_find_from(j, "]", i)
+    trozo = j[i + clave.length + 4:f]
+    for v in str_split(trozo, ",")
+        r.push(json_decimas("\"x\":" + v, "x", 0))
+    end
+    return r
+end
+
+# un texto Latin-1 para una URL: UTF-8 con %XX
+func url(texto: String) -> String
+    r = ""
+    u = latin1_to_utf8(texto)
+    for i in (0..u.length - 1)
+        c = str_code(u, i)
+        if (c >= 48 and c <= 57) or (c >= 65 and c <= 90) or (c >= 97 and c <= 122) or c == 45 or c == 46 or c == 95
+            r = r + str_char(c)
+        else
+            h = str_upper(str_from_int(c, 16))
+            if h.length < 2
+                h = "0" + h
+            end
+            r = r + "%" + h
+        end
+    end
+    return r
+end
+
+func tiempo_iniciar(ciudad: String, lat: String, lon: String)
+    t_ciudad = ciudad
+    t_lat = lat
+    t_lon = lon
+    t_lugar = ciudad
+    t_proxima = time_ms() + 3000           # que la barra salga antes
+    s_agente = "TrasfondoBarra"
+end
+
+func tiempo_hay() -> Bool
+    return t_ciudad != "" or (t_lat != "" and t_lon != "")
+end
+
+func tiempo_pedir()
+    if t_lat == "" or t_lon == ""
+        t_fase = 1
+        https_empezar("geocoding-api.open-meteo.com", "/v1/search?count=1&format=json&name=" + url(t_ciudad), T_TOPE)
+    else
+        t_fase = 2
+        https_empezar("api.open-meteo.com", "/v1/forecast?latitude=" + t_lat + "&longitude=" + t_lon + "&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5", T_TOPE)
+    end
+end
+
+func tiempo_guardar(j: String)
+    c = str_find(j, "\"current\":{")
+    if c < 0
+        t_error = "no current weather"
+        return
+    end
+    t_temp = json_decimas(j, "temperature_2m", c)
+    t_codigo = json_decimas(j, "weather_code", c) / 10
+    t_de_dia = json_decimas(j, "is_day", c) != 0
+    t_cambio = true
+    t_error = ""
+    texto = "lugar=" + t_lugar + "\nahora=#{t_temp},#{t_codigo},"
+    if t_de_dia
+        texto = texto + "1\n"
+    else
+        texto = texto + "0\n"
+    end
+    d = str_find(j, "\"daily\":{")
+    if d >= 0
+        fechas = []
+        i = str_find_from(j, "\"time\":[", d)
+        if i >= 0
+            f = str_find_from(j, "]", i)
+            fechas = str_split(str_replace(str_replace(j[i + 8:f], "\"", ""), "-", ""), ",")
+        end
+        codigos = json_lista(j, "weather_code", d)
+        maximas = json_lista(j, "temperature_2m_max", d)
+        minimas = json_lista(j, "temperature_2m_min", d)
+        k = 0
+        while k < fechas.length and k < codigos.length and k < maximas.length and k < minimas.length
+            texto = texto + "dia=" + fechas[k] + ",#{codigos[k] / 10},#{maximas[k]},#{minimas[k]}\n"
+            k = k + 1
+        end
+    end
+    file_write_text(T_FICHERO, texto)
+end
+
+# desde el bucle de la barra, cada poco
+func tiempo_paso()
+    if not tiempo_hay()
+        return
+    end
+    if t_fase == 0
+        if time_ms() >= t_proxima
+            tiempo_pedir()
+        end
+        return
+    end
+    https_paso()
+    e = https_estado()
+    if e == HTTPS_FALLO
+        t_error = s_error
+        https_soltar()
+        t_fase = 0
+        t_proxima = time_ms() + T_REINTENTO
+    elif e == HTTPS_HECHO
+        j = utf8_to_latin1(https_texto())
+        https_soltar()
+        if t_fase == 1
+            r = str_find(j, "\"results\":[")
+            if r < 0
+                t_error = "place not found: " + t_ciudad
+                t_ciudad = ""                  # no se insiste
+                t_fase = 0
+                return
+            end
+            t_lat = json_crudo(j, "latitude", r)
+            t_lon = json_crudo(j, "longitude", r)
+            n = str_find_from(j, "\"name\":\"", r)
+            if n >= 0
+                t_lugar = j[n + 8:str_find_from(j, "\"", n + 8)]
+            end
+            tiempo_pedir()
+        else
+            tiempo_guardar(j)
+            t_fase = 0
+            t_proxima = time_ms() + T_CADA
+        end
+    end
+end
+
+# lo pendiente: true mientras hay una consulta en curso (el bucle va más rápido)
+func tiempo_ocupado() -> Bool
+    return t_fase != 0
+end

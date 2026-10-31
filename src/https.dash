@@ -1,0 +1,202 @@
+# Una petición HTTPS (GET, HTTP/1.0) paso a paso, sin esperar nunca: https_empezar() y luego https_paso()
+# desde el bucle del programa hasta que https_estado() sea HTTPS_HECHO o HTTPS_FALLO. Sigue las
+# redirecciones. Una sola petición a la vez. La misma idea que la de actualizar.dash, sin sus textos.
+
+const HTTPS_NADA = 0
+const HTTPS_EN_CURSO = 1
+const HTTPS_HECHO = 4
+const HTTPS_FALLO = 5
+
+const S_ESPERA = 30000             # lo más que se espera a cada paso de la red
+const S_MUESTRA = 8192             # lo que se recibe de una vez
+
+var s_host: String = ""
+var s_sock: Int = -1
+var s_tls: Int = -1
+var s_paso: Int = 0                # 0 nada, 1 conectando, 2 TLS, 3 recibiendo, 4 hecho, 5 error
+var s_buf: Int = 0
+var s_tope: Int = 0
+var s_n: Int = 0
+var s_tmp: Int = 0
+var s_desde: Int = 0
+var s_saltos: Int = 0
+var s_error: String = ""
+var s_peticion: String = ""
+var s_agente: String = "Trasfondo"
+var s_red: Bool = false            # se usó la red: https_soltar() suelta bsdsocket.library
+
+func https_cerrar()
+    if s_tls != -1
+        tls_close(s_tls)
+        s_tls = -1
+    end
+    if s_sock >= 0
+        net_close(s_sock)
+        s_sock = -1
+    end
+end
+
+func https_fallo(texto: String)
+    https_cerrar()
+    s_error = texto
+    s_paso = HTTPS_FALLO
+end
+
+func https_empezar(host: String, ruta: String, tope: Int)
+    https_cerrar()
+    if s_buf != 0
+        buffer_free(s_buf)
+        s_buf = 0
+    end
+    if s_tmp == 0
+        s_tmp = buffer_alloc(S_MUESTRA)
+    end
+    s_host = host
+    s_tope = tope
+    s_n = 0
+    s_buf = buffer_alloc(tope)
+    s_red = true
+    if s_buf == 0 or s_tmp == 0
+        https_fallo("out of memory")
+        return
+    end
+    s_sock = net_connect_start(host, 443, S_ESPERA)
+    if s_sock < 0
+        https_fallo("no network")
+        return
+    end
+    s_paso = 1
+    s_desde = time_ms()
+    s_peticion = "GET " + ruta + " HTTP/1.0\r\nHost: " + host + "\r\nUser-Agent: " + s_agente + "\r\nAccept: */*\r\nConnection: close\r\n\r\n"
+end
+
+# dónde empieza el cuerpo (después de la línea en blanco); -1 si no hay
+func https_cuerpo() -> Int
+    tope = s_n - 3
+    if tope > 16384
+        tope = 16384
+    end
+    i = 0
+    while i < tope
+        if buffer_get_byte(s_buf, i) == 13 and buffer_get_byte(s_buf, i + 1) == 10 and buffer_get_byte(s_buf, i + 2) == 13 and buffer_get_byte(s_buf, i + 3) == 10
+            return i + 4
+        end
+        i = i + 1
+    end
+    return -1
+end
+
+# la respuesta terminó: si es una redirección la sigue; si no, la da por hecha (200) o fallida
+func https_terminada()
+    c = https_cuerpo()
+    if c < 0
+        https_fallo("an answer without headers")
+        return
+    end
+    cab = str_from_buffer(s_buf, 0, c)
+    codigo = 0
+    if cab.length > 12
+        codigo = Int(cab[9:12])
+    end
+    if codigo == 200
+        s_paso = HTTPS_HECHO
+        return
+    end
+    if (codigo == 301 or codigo == 302 or codigo == 303 or codigo == 307) and s_saltos < 4
+        i = str_find(str_lower(cab), "\nlocation:")
+        if i >= 0
+            f = str_find_from(cab, "\r", i + 1)
+            destino = str_trim(cab[i + 10:f])
+            if str_starts(destino, "https://")
+                resto = destino[8:destino.length]
+                barra = str_find(resto, "/")
+                if barra > 0
+                    s_saltos = s_saltos + 1
+                    https_empezar(resto[0:barra], resto[barra:resto.length], s_tope)
+                    return
+                end
+            end
+        end
+    end
+    https_fallo(s_host + " answered #{codigo}")
+end
+
+func https_paso()
+    if s_paso == 1
+        r = net_connect_poll(s_sock)
+        if r == 1
+            s_tls = tls_connect_start(s_sock, s_host, S_ESPERA)
+            if s_tls == -1
+                https_fallo("no TLS (AmiSSL)")
+            else
+                s_paso = 2
+            end
+        elif r < 0
+            s_sock = -1                        # ya está cerrado
+            https_fallo("cannot connect to " + s_host)
+        end
+    elif s_paso == 2
+        r = tls_connect_poll(s_tls)
+        if r == 1
+            if tls_send(s_tls, s_peticion) < 0
+                https_fallo("cannot send the request")
+            else
+                s_paso = 3
+                s_desde = time_ms()
+            end
+        elif r < 0
+            s_tls = -1                         # ya está liberada
+            https_fallo("the certificate of " + s_host + " is not valid")
+        end
+    elif s_paso == 3
+        vueltas = 0                            # lo que haya ya, sin esperar
+        while vueltas < 16 and s_paso == 3
+            n = tls_recv_buffer(s_tls, s_tmp, S_MUESTRA, 0)
+            if n > 0
+                if s_n + n > s_tope
+                    https_fallo("the answer is too big")
+                else
+                    buffer_copy(s_buf, s_n, s_tmp, 0, n)
+                    s_n = s_n + n
+                    s_desde = time_ms()
+                end
+            elif n < 0
+                https_cerrar()
+                https_terminada()
+            else
+                vueltas = 16
+            end
+            vueltas = vueltas + 1
+        end
+        if s_paso == 3 and time_ms() - s_desde > S_ESPERA
+            https_fallo(s_host + " does not answer")
+        end
+    end
+end
+
+func https_estado() -> Int
+    if s_paso == 1 or s_paso == 2 or s_paso == 3
+        return HTTPS_EN_CURSO
+    end
+    return s_paso
+end
+
+# el cuerpo de la respuesta, como texto ("" si no hay)
+func https_texto() -> String
+    c = https_cuerpo()
+    if c < 0
+        return ""
+    end
+    return str_from_buffer(s_buf, c, s_n - c)
+end
+
+# deja la petición lista para otra y suelta la red
+func https_soltar()
+    https_cerrar()
+    s_paso = HTTPS_NADA
+    s_saltos = 0
+    if s_red
+        net_release()
+        s_red = false
+    end
+end
