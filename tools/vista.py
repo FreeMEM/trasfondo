@@ -14,7 +14,10 @@ RAIZ = Path(__file__).resolve().parent.parent
 DASH = Path(os.environ.get("DASH", Path.home() / "Projects/FreeMEMLang"))
 KS = os.environ.get("KS") or os.environ.get("DASH_KICKSTART_32")   # un Kickstart 3.2 de A1200
 SYS = Path(os.environ.get("DASH_EMU_SYS_32_RTG", Path.home() / ".cache/dash-emu/sys32rtg32"))   # Workbench 3.2 con uaegfx
-PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa", "rapido": "TrasfondoRapido"}
+ICONOS = [str(Path.home() / p) for p in ("Amiberry/LHA/Tachyon.info", "Amiberry/LHA/dashweb.info",
+          ".cache/dash-mui/x/MUI/Demos/Clock.info", "m68k-amigaos-gcc/projects/NDK3.2/MuManual/Manual.info",
+          "m68k-amigaos-gcc/projects/NDK3.2/Examples/ARexx.info")]
+PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa", "rapido": "TrasfondoRapido", "dock": "TrasfondoDock"}
 
 
 def compilar(nombre):
@@ -51,6 +54,7 @@ def main():
     ap.add_argument("--orden", action="append", dest="pasos", type=lambda v: ("orden", v),
                     help="SEGUNDOS:orden (Avisa TITULO=...), desde el paso anterior")
     ap.add_argument("--barra", default="CIUDAD=Mijas", help="argumentos de la barra")
+    ap.add_argument("--dock", default=None, help="arranca el dock con estos argumentos (POSICION=ABAJO)")
     a = ap.parse_args()
     for n in PROGRAMAS:
         compilar(n)
@@ -74,7 +78,22 @@ def main():
             shutil.copy(RAIZ / "build" / n, hd / nombre)
         ss = hd / "S" / "Startup-Sequence"
         t = ss.read_text()
-        t = t.replace("C:LoadWB\n", f"C:LoadWB\nRun >NIL: DH0:TrasfondoBarra {a.barra}\n", 1)
+        extra = f"Run >NIL: DH0:TrasfondoBarra {a.barra}\n"
+        if a.dock is not None:
+            # unos lanzadores de prueba: iconos de verdad (los que haya en ICONOS) con un programa cualquiera
+            apps = hd / "Apps"
+            apps.mkdir(exist_ok=True)
+            lista = ""
+            for ico in ICONOS:
+                if Path(ico).exists():
+                    n = Path(ico).stem
+                    shutil.copy(ico, apps / f"{n}.info")
+                    shutil.copy(RAIZ / "build" / "avisa", apps / n)
+                    lista += f"DH0:Apps/{n}\n"
+            lista += "SYS:System/Shell\nSYS:Prefs\n"
+            (hd / "dock.txt").write_text(lista)
+            extra += f"Copy DH0:dock.txt ENV:Trasfondo.dock QUIET\nRun >NIL: DH0:TrasfondoDock {a.dock}\n"
+        t = t.replace("C:LoadWB\n", "C:LoadWB\n" + extra, 1)
         ss.write_text(t)
 
     if not KS:

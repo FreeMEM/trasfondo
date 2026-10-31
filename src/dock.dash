@@ -1,0 +1,220 @@
+# TrasfondoDock: un dock de lanzadores en un borde de la pantalla, horizontal o vertical. Cada lanzador es un
+# programa con su icono (.info, por icon.datatype); al pulsarlo se lanza como desde el Workbench (C:WBRun, de
+# 3.2) o, sin WBRun, como desde la Shell. Solo con RTG.
+#
+# Los lanzadores, uno por línea (la ruta del programa), en ENV:Trasfondo.dock; sin él, unos de serie.
+# Tooltypes: POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) y ICONO (el lado de un icono, 40).
+# Se para lanzándolo otra vez, o con Ctrl-C.
+
+@workbench_output "NIL:"
+@version "TrasfondoDock 0.1"
+
+import "dibujo.dash"
+
+const LISTA = "ENV:Trasfondo.dock"
+const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
+const ALTO_BARRA = 24        # la barra de arriba: el dock de arriba o de los lados sale debajo
+const MARGEN = 6             # entre el dock y el borde de la pantalla
+const RELLENO = 8            # dentro del dock, alrededor de los iconos
+const HUECO = 8              # entre dos iconos
+const R = 14                 # radio del dock
+
+const C_DOCK = 0x1b1e23
+const C_BORDE = 0x30353d
+const C_TEXTO = 0xe8eaed
+const C_TESELA = 0x3c414a
+const C_PUNTO = 0x9aa0a6
+
+var ruta: [String] = []      # los programas
+var icono: [Int] = []        # su imagen (0: sin icono, se pinta una tesela con la inicial)
+var lado: Int = 40           # lo que ocupa cada icono
+var vertical: Bool = false
+var posicion: String = "ABAJO"
+var ancho: Int = 0           # el del dock
+var alto: Int = 0
+var fondo: Int = 0xaaaaaa    # el color del escritorio, para suavizar las esquinas
+var wbrun: Bool = false
+var f_inicial: Int = 0
+
+func leer_lista()
+    texto = file_read_text(LISTA)
+    if texto == nil
+        texto = DE_SERIE
+    end
+    for l in str_split(texto, "\n")
+        l = str_trim(l)
+        if l != "" and not str_starts(l, ";")
+            ruta.push(l)
+        end
+    end
+end
+
+# el icono de un programa, a lo más lado x lado sin deformarlo; 0 si no tiene
+func cargar_icono(r: String) -> Int
+    im = image_load(r + ".info")
+    if im == 0
+        return 0
+    end
+    w = image_width(im)
+    h = image_height(im)
+    if w <= lado and h <= lado
+        return im
+    end
+    nw = lado
+    nh = h * lado / w
+    if h > w
+        nh = lado
+        nw = w * lado / h
+    end
+    esc = image_scale(im, nw, nh)
+    image_free(im)
+    return esc
+end
+
+# lo de después de la última / o los dos puntos: el nombre del programa
+func nombre(r: String) -> String
+    i = r.length - 1
+    while i >= 0 and r[i:i + 1] != "/" and r[i:i + 1] != ":"
+        i = i - 1
+    end
+    return r[i + 1:r.length]
+end
+
+# dónde va el icono i, dentro de la ventana
+func icono_x(i: Int) -> Int
+    if vertical
+        return RELLENO
+    end
+    return RELLENO + i * (lado + HUECO)
+end
+
+func icono_y(i: Int) -> Int
+    if vertical
+        return RELLENO + i * (lado + HUECO)
+    end
+    return RELLENO
+end
+
+func pintar()
+    pluma(fondo)
+    gfx_rect(0, 0, ancho - 1, alto - 1)
+    redondo(0, 0, ancho - 1, alto - 1, R, C_BORDE)
+    redondo(1, 1, ancho - 2, alto - 2, R - 1, C_DOCK)
+    for i in (0..ruta.length - 1)
+        x = icono_x(i)
+        y = icono_y(i)
+        if icono[i] != 0
+            image_draw(icono[i], x + (lado - image_width(icono[i])) / 2, y + (lado - image_height(icono[i])) / 2)
+        else
+            redondo(x + 2, y + 2, x + lado - 3, y + lado - 3, 8, C_TESELA)
+            font_use(f_inicial)
+            font_style(2)
+            centrado(x + lado / 2, y + lado / 2 - font_height() / 2 + font_baseline(), str_upper(nombre(ruta[i])[0:1]), C_TEXTO)
+            font_style(0)
+        end
+    end
+end
+
+# el icono que hay en (x, y) de la ventana; -1 si ninguno
+func icono_en(x: Int, y: Int) -> Int
+    for i in (0..ruta.length - 1)
+        if x >= icono_x(i) and x < icono_x(i) + lado and y >= icono_y(i) and y < icono_y(i) + lado
+            return i
+        end
+    end
+    return -1
+end
+
+func lanzar(i: Int)
+    if wbrun
+        run_program("C:WBRun \"" + ruta[i] + "\"")
+    else
+        run_program("\"" + ruta[i] + "\"")
+    end
+end
+
+Window Dock
+    title ""
+    width 100
+    height 60
+    left 0
+    top 300
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+    activate false
+end
+
+Main
+    if not single_instance("TrasfondoDock")
+        Print "TrasfondoDock was already running: stopping it"
+    elif rtg_get_depth() < 15
+        Print "TrasfondoDock needs an RTG screen (15 bits or more)"
+    else
+        posicion = str_upper(tooltype("POSICION", "ABAJO"))
+        vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
+        lado = Int(tooltype("ICONO", "40"))
+        if lado < 16
+            lado = 16
+        end
+        wbrun = file_exists("C:WBRun")
+        leer_lista()
+        for r in ruta
+            icono.push(cargar_icono(r))
+        end
+        n = ruta.length
+        if n == 0
+            n = 1
+        end
+        largo = 2 * RELLENO + n * lado + (n - 1) * HUECO
+        corto = 2 * RELLENO + lado
+        ancho = largo
+        alto = corto
+        if vertical
+            ancho = corto
+            alto = largo
+        end
+        sw = rtg_get_width()
+        sh = rtg_get_height()
+        x = (sw - ancho) / 2
+        y = sh - alto - MARGEN
+        if posicion == "ARRIBA"
+            y = ALTO_BARRA + MARGEN
+        elif posicion == "IZQUIERDA"
+            x = MARGEN
+            y = (sh - alto) / 2
+        elif posicion == "DERECHA"
+            x = sw - ancho - MARGEN
+            y = (sh - alto) / 2
+        end
+        f_inicial = font_open("CGTriumvirate.font", lado / 2)
+        Dock.open
+        # (ChangeWindowBox no espera: se mueve después de que haya cambiado el tamaño)
+        window_resize(0, ancho, alto)
+        time_delay(2)
+        window_move(0, x, y)
+        time_delay(2)
+        # recién abierta, la ventana tiene el color del escritorio (sin imagen de fondo): con él se
+        # suavizan las esquinas
+        fondo = gfx_pixel_rgb(0, 0)
+        gfx_mode(0)
+        pintar()
+        EventLoop
+            On Timer 500
+                if break_check()
+                    Stop
+                end
+            end
+            On Click
+                i = icono_en(click_x(), click_y())
+                if i >= 0
+                    lanzar(i)
+                end
+            end
+            On Close
+                Stop
+            end
+        end
+    end
+end
