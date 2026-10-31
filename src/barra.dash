@@ -2,7 +2,8 @@
 #
 # Un prototipo: en el centro la hora, la fecha y el tiempo; a la derecha la CPU, la memoria y la temperatura de
 # la PiStorm, cada cosa en su píldora. Solo con RTG (15 bits o más): en una pantalla de paleta no se ve bien.
-# Al pulsar la hora, la fecha o el tiempo se abre el panel de resumen (TrasfondoPanel, en el mismo cajón).
+# Al pulsar la hora, la fecha o el tiempo se abre el panel de resumen (TrasfondoPanel, en el mismo cajón); al
+# pulsar la derecha, los ajustes rápidos (TrasfondoRapido).
 # Se para lanzándola otra vez, o con Ctrl-C.
 #
 # Tooltypes: CIUDAD (el lugar del tiempo, "Málaga"), o LAT y LON (36.72, -4.42); sin ellos no hay tiempo.
@@ -35,6 +36,8 @@ var temp: Int = -1           # la de la PiStorm, en décimas de grado; -1 sin Em
 var panel: String = "TrasfondoPanel"   # la orden que lo abre: con la ruta del cajón de la barra
 var reloj_x1: Int = 0        # dónde están la hora, la fecha y el tiempo: al pulsarlos se abre el panel
 var reloj_x2: Int = 0
+var rapido: String = "TrasfondoRapido"   # la orden de los ajustes rápidos
+var derecha_x: Int = 0       # dónde empieza el grupo de la derecha: al pulsarlo se abren los ajustes rápidos
 var tic: Int = 0             # vueltas del temporizador (5 por segundo)
 var aviso: String = "TrasfondoAviso"   # la orden que enseña el último aviso
 var avisos_tam: Int = -1     # el tamaño de ENV:Trasfondo.avisos la última vez que se miró
@@ -69,6 +72,15 @@ func pildora_tiempo(x: Int) -> Int
     pluma(C_TEXTO)
     gfx_text_at(x + RELLENO + ICONO + 2, (ALTO - font_height()) / 2 + font_baseline(), texto)
     return x + w
+end
+
+# dos interruptores, el icono de los ajustes rápidos
+func interruptores(cx: Int, cy: Int)
+    redondo(cx - 6, cy - 5, cx + 6, cy - 1, 2, C_TEXTO)
+    redondo(cx - 6, cy + 1, cx + 6, cy + 5, 2, C_TEXTO)
+    pluma(C_PILDORA)
+    gfx_circle_fill(cx + 3, cy - 3, 1)
+    gfx_circle_fill(cx - 3, cy + 3, 1)
 end
 
 # una campana pequeña, centrada en (cx, cy)
@@ -178,7 +190,12 @@ func pintar()
         textos.push("CPU " + por_ciento(cpu))
         colores.push(C_TEXTO)
     end
-    x = ancho - MARGEN
+    # el botón de los ajustes rápidos, del todo a la derecha
+    x = ancho - MARGEN - (ICONO + RELLENO + 4)
+    y = (ALTO - ALTO_PILDORA) / 2
+    redondo(x, y, x + ICONO + RELLENO + 3, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    interruptores(x + (ICONO + RELLENO + 4) / 2, ALTO / 2)
+    x = x - HUECO
     i = 0
     while i < textos.length
         x = x - ancho_pildora(textos[i], false)
@@ -186,6 +203,7 @@ func pintar()
         x = x - HUECO
         i = i + 1
     end
+    derecha_x = x
 end
 
 Window Barra
@@ -216,6 +234,7 @@ Main
             end
             panel = "\"" + carpeta + "TrasfondoPanel\""
             aviso = "\"" + carpeta + "TrasfondoAviso\""
+            rapido = "\"" + carpeta + "TrasfondoRapido\""
         end
         tiempo_iniciar(tooltype("CIUDAD", ""), tooltype("LAT", ""), tooltype("LON", ""))
         Barra.open
@@ -257,6 +276,8 @@ Main
             On Click
                 if click_x() >= reloj_x1 and click_x() < reloj_x2
                     run_program(panel)
+                elif click_x() >= derecha_x
+                    run_program(rapido)
                 end
             end
             On Close

@@ -14,7 +14,7 @@ RAIZ = Path(__file__).resolve().parent.parent
 DASH = Path(os.environ.get("DASH", Path.home() / "Projects/FreeMEMLang"))
 KS = os.environ.get("KS") or os.environ.get("DASH_KICKSTART_32")   # un Kickstart 3.2 de A1200
 SYS = Path(os.environ.get("DASH_EMU_SYS_32_RTG", Path.home() / ".cache/dash-emu/sys32rtg32"))   # Workbench 3.2 con uaegfx
-PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa"}
+PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa", "rapido": "TrasfondoRapido"}
 
 
 def compilar(nombre):

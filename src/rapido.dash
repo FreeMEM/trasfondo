@@ -1,0 +1,286 @@
+# TrasfondoRapido: el panel de ajustes rápidos que abre la barra desde su derecha. Arriba la máquina (memoria) con
+# los botones de Prefs y de reiniciar; en medio la red, los discos y la memoria; abajo, los Prefs del sistema a
+# un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc también. Solo con RTG.
+
+@workbench_output "NIL:"
+@version "TrasfondoRapido 0.1"
+
+import "dibujo.dash"
+
+const ANCHO = 360
+const ALTO = 300            # = PREFS_Y + dos filas de Prefs + el margen
+const ALTO_BARRA = 24
+const M = 12
+const R = 10
+
+const C_FONDO = 0x16191d
+const C_BORDE = 0x30353d
+const C_TARJETA = 0x23272e
+const C_BOTON = 0x30353d
+const C_CLARO = 0xf1f3f4
+const C_TEXTO = 0xe8eaed
+const C_SUAVE = 0x9aa0a6
+const C_TENUE = 0x5f6368
+const C_ACENTO = 0x8ab4f8
+const C_PELIGRO = 0xf28b82
+
+# los Prefs del sistema de la rejilla de abajo: el nombre en pantalla y el programa de SYS:Prefs
+const PREFS = "Screen|Locale|Font|Pattern|Palette|Time|Input|Network"
+const PREFS_PROG = "ScreenMode|Locale|Font|WBPattern|Palette|Time|Input|Network"
+
+const BOTON = 36             # los botones redondos de arriba
+const CABECERA_Y = M
+const CABECERA_ALTO = 64
+const TARJETAS_Y = CABECERA_Y + CABECERA_ALTO + 8
+const TARJETA_ALTO = 56
+const PREFS_Y = TARJETAS_Y + 2 * (TARJETA_ALTO + 8)
+
+var f_normal: Int = 0
+var f_negrita: Int = 0
+var b_prefs_x: Int = 0       # dónde están los botones de arriba
+var b_reiniciar_x: Int = 0
+var confirmar: Bool = false  # se pulsó reiniciar una vez: la segunda reinicia
+
+func abrir_fuente(tam: Int) -> Int
+    f = font_open("CGTriumvirate.font", tam)
+    if f == 0
+        f = font_open("helvetica.font", tam)
+    end
+    return f
+end
+
+func mb(bytes: Int) -> String
+    if bytes >= 10485760
+        return "#{bytes / 1048576} MB"
+    end
+    k = bytes / 1024
+    if k >= 1024
+        d = k * 10 / 1024
+        return "#{d / 10}.#{d % 10} MB"
+    end
+    return "#{k} KB"
+end
+
+# un engranaje pequeño
+func engranaje(cx: Int, cy: Int, rgb: Int, fondo: Int)
+    pluma(rgb)
+    gfx_circle_fill(cx, cy, 6)
+    gfx_rect(cx - 1, cy - 9, cx + 1, cy + 9)
+    gfx_rect(cx - 9, cy - 1, cx + 9, cy + 1)
+    gfx_line(cx - 6, cy - 6, cx + 6, cy + 6)
+    gfx_line(cx - 6, cy + 6, cx + 6, cy - 6)
+    gfx_line(cx - 5, cy - 6, cx + 6, cy + 5)
+    gfx_line(cx - 6, cy + 5, cx + 5, cy - 6)
+    pluma(fondo)
+    gfx_circle_fill(cx, cy, 3)
+end
+
+# el símbolo de encender
+func encendido(cx: Int, cy: Int, rgb: Int, fondo: Int)
+    pluma(rgb)
+    gfx_circle_fill(cx, cy + 1, 8)
+    pluma(fondo)
+    gfx_circle_fill(cx, cy + 1, 6)
+    gfx_rect(cx - 3, cy - 8, cx + 3, cy)
+    pluma(rgb)
+    gfx_rect(cx - 1, cy - 9, cx + 1, cy + 1)
+end
+
+func pintar_cabecera()
+    redondo(M, CABECERA_Y, ANCHO - M - 1, CABECERA_Y + CABECERA_ALTO - 1, R, C_TARJETA)
+    # el "logo": un círculo con la A
+    pluma(C_ACENTO)
+    gfx_circle_fill(M + 32, CABECERA_Y + 32, 20)
+    font_use(f_negrita)
+    font_style(2)
+    centrado(M + 32, CABECERA_Y + 32 - font_height() / 2 + font_baseline(), "A", C_FONDO)
+    pluma(C_TEXTO)
+    gfx_text_at(M + 62, CABECERA_Y + 16 + font_baseline(), "Amiga")
+    font_style(0)
+    font_use(f_normal)
+    pluma(C_SUAVE)
+    texto = "Chip " + mb(mem_chip_total())
+    if mem_fast_total() > 0
+        texto = texto + " · Fast " + mb(mem_fast_total())
+    end
+    gfx_text_at(M + 62, CABECERA_Y + 36 + font_baseline(), texto)
+    # los botones: Prefs y reiniciar
+    y = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
+    b_reiniciar_x = ANCHO - M - 12 - BOTON
+    b_prefs_x = b_reiniciar_x - 8 - BOTON
+    redondo(b_prefs_x, y, b_prefs_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
+    engranaje(b_prefs_x + BOTON / 2, y + BOTON / 2, C_TEXTO, C_BOTON)
+    color = C_BOTON
+    if confirmar
+        color = C_PELIGRO
+    end
+    redondo(b_reiniciar_x, y, b_reiniciar_x + BOTON - 1, y + BOTON - 1, BOTON / 2, color)
+    simbolo = C_PELIGRO
+    if confirmar
+        simbolo = C_FONDO
+    end
+    encendido(b_reiniciar_x + BOTON / 2, y + BOTON / 2, simbolo, color)
+end
+
+# una tarjeta de dos líneas en la columna c (0, 1) y la fila f (0, 1)
+func tarjeta(c: Int, f: Int, titulo: String, texto: String, activa: Bool)
+    w = (ANCHO - 2 * M - 8) / 2
+    x = M + c * (w + 8)
+    y = TARJETAS_Y + f * (TARJETA_ALTO + 8)
+    fondo = C_TARJETA
+    t1 = C_TEXTO
+    t2 = C_SUAVE
+    if activa
+        fondo = C_CLARO
+        t1 = C_FONDO
+        t2 = 0x5f6368
+    end
+    redondo(x, y, x + w - 1, y + TARJETA_ALTO - 1, R, fondo)
+    font_use(f_negrita)
+    font_style(2)
+    pluma(t1)
+    gfx_text_at(x + 14, y + 12 + font_baseline(), titulo)
+    font_style(0)
+    font_use(f_normal)
+    pluma(t2)
+    gfx_text_at(x + 14, y + 32 + font_baseline(), texto)
+end
+
+func pintar_tarjetas()
+    # la red: los interfaces de Roadshow que están arriba
+    n = net_ifs_read()
+    if n < 0
+        tarjeta(0, 0, "Network", "no Roadshow", false)
+    else
+        arriba = 0
+        nombre = ""
+        for i in (0..n - 1)
+            if net_if_name(i) != "lo0" and net_if_up(i)
+                arriba = arriba + 1
+                if nombre == ""
+                    nombre = net_if_name(i)
+                end
+            end
+        end
+        if arriba > 0
+            tarjeta(0, 0, "Network", nombre + " up", true)
+        else
+            tarjeta(0, 0, "Network", "offline", false)
+        end
+    end
+    # la temperatura de la PiStorm, si la hay; si no, el procesador libre
+    t = pistorm_temperature()
+    if t >= 0
+        tarjeta(1, 0, "PiStorm", grados(t), t >= 700)
+    else
+        tarjeta(1, 0, "PiStorm", "not found", false)
+    end
+    # la memoria libre
+    tarjeta(0, 1, "Chip free", mb(mem_chip_free()), false)
+    tarjeta(1, 1, "Fast free", mb(mem_fast_free()), false)
+end
+
+func pintar_prefs()
+    nombres = str_split(PREFS, "|")
+    w = (ANCHO - 2 * M - 3 * 8) / 4
+    h = 34
+    for i in (0..nombres.length - 1)
+        x = M + (i % 4) * (w + 8)
+        y = PREFS_Y + (i / 4) * (h + 8)
+        redondo(x, y, x + w - 1, y + h - 1, h / 2, C_TARJETA)
+        font_use(f_normal)
+        centrado(x + w / 2, y + h / 2 - font_height() / 2 + font_baseline(), nombres[i], C_TEXTO)
+    end
+end
+
+func pintar_todo()
+    pluma(C_BORDE)
+    gfx_rect(0, 0, ANCHO - 1, ALTO - 1)
+    pluma(C_FONDO)
+    gfx_rect(1, 1, ANCHO - 2, ALTO - 2)
+    pintar_cabecera()
+    pintar_tarjetas()
+    pintar_prefs()
+end
+
+# lo que se pulsó; true si hay que cerrar el panel
+func pulsar(x: Int, y: Int) -> Bool
+    by = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
+    if y >= by and y < by + BOTON
+        if x >= b_prefs_x and x < b_prefs_x + BOTON
+            run_program("C:WBRun SYS:Prefs")
+            return true
+        end
+        if x >= b_reiniciar_x and x < b_reiniciar_x + BOTON
+            if confirmar
+                run_program("C:Reboot")
+                return true
+            end
+            confirmar = true                 # se vuelve rojo: otra pulsación reinicia
+            pintar_cabecera()
+            return false
+        end
+    end
+    w = (ANCHO - 2 * M - 3 * 8) / 4
+    h = 34
+    if y >= PREFS_Y and x >= M
+        c = (x - M) / (w + 8)
+        f = (y - PREFS_Y) / (h + 8)
+        i = f * 4 + c
+        progs = str_split(PREFS_PROG, "|")
+        if c < 4 and i < progs.length and (x - M) % (w + 8) < w and (y - PREFS_Y) % (h + 8) < h
+            run_program("SYS:Prefs/" + progs[i])
+            return true
+        end
+    end
+    if confirmar
+        confirmar = false
+        pintar_cabecera()
+    end
+    return false
+end
+
+Window Rapido
+    title ""
+    width 360
+    height 300
+    left 0
+    top 28
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+end
+
+Main
+    if not single_instance("TrasfondoRapido")
+        # ya estaba abierto: se cierra (lo hace el otro, con el Ctrl-C de single_instance)
+    elif rtg_get_depth() < 15
+        Print "TrasfondoRapido needs an RTG screen (15 bits or more)"
+    else
+        f_normal = abrir_fuente(12)
+        f_negrita = abrir_fuente(14)
+        Rapido.open
+        window_move(0, rtg_get_width() - ANCHO - 6, ALTO_BARRA + 4)
+        gfx_mode(0)
+        pintar_todo()
+        EventLoop
+            On Timer 250
+                if break_check()
+                    Stop
+                end
+            end
+            On Click
+                if pulsar(click_x(), click_y())
+                    Stop
+                end
+            end
+            On Key "ESC"
+                Stop
+            end
+            On Close
+                Stop
+            end
+        end
+    end
+end
