@@ -140,7 +140,8 @@
 ; el catálogo en castellano, en LOCALE:Catalogs con el nombre que tenga el idioma en este sistema (el 3.1 y el
 ; 3.9 lo llaman "español"; el 3.2, "spanish"). Solo se usa si el castellano está en las Preferencias de idioma
 (procedure P_CATALOGO
-    (if (exists (cat "LOCALE:Languages/" #idioma ".language") (noreq))
+    (if (AND (exists (cat "LOCALE:Languages/" #idioma ".language") (noreq))
+             (exists (cat "Catalogs/" #idioma "/Trasfondo.catalog") (noreq)))
         (
             (if (not (exists "LOCALE:Catalogs" (noreq)))
                 (makedir "LOCALE:Catalogs" (safe)))
