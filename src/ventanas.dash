@@ -9,13 +9,15 @@
 #   Alt + botón izq.     mover la ventana de debajo del puntero, desde cualquier punto
 #   Alt + botón der.     cambiar su tamaño
 #
-# Las teclas, por tooltypes: TECLA_MAXIMIZAR, TECLA_IZQUIERDA, TECLA_DERECHA, TECLA_RESTAURAR, TECLA_MOSAICO y
+# Las teclas, en TrasfondoPrefs o por tooltypes: TECLA_MAXIMIZAR, TECLA_IZQUIERDA, TECLA_DERECHA, TECLA_RESTAURAR, TECLA_MOSAICO y
 # TECLA_AUTOMATICO, en el formato de Commodities ("ctrl alt up"); MOSAICO=SI arranca en automático; HUECO, los
 # píxeles entre ventanas (4). Deja libres la barra y el dock de Trasfondo si están.
 # Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
 
 @workbench_output "NIL:"
 @version "TrasfondoVentanas 0.1"
+
+import "ajustes.dash"
 
 const K_MAXIMIZAR = 1        # las teclas de cx_key_add: cx_command da 100 + n
 const K_IZQUIERDA = 2
@@ -312,7 +314,7 @@ func arrastrar(tamano: Bool)
 end
 
 func tecla(nombre: String, defecto: String, n: Int)
-    d = tooltype(nombre, defecto)
+    d = ajuste("VENTANAS_" + nombre, nombre, defecto)
     if d != "" and not cx_key_add(d, n)
         Print "TrasfondoVentanas: the hotkey " + nombre + " is not valid: " + d
     end
@@ -324,8 +326,8 @@ Main
     elif not cx_broker("TrasfondoVentanas", "TrasfondoVentanas 0.1", "Tiles, moves and sizes windows", 0)
         Print "TrasfondoVentanas: no commodities.library"
     else
-        hueco = Int(tooltype("HUECO", "4"))
-        automatico = str_upper(tooltype("MOSAICO", "NO")) == "SI"
+        hueco = Int(ajuste("VENTANAS_HUECO", "HUECO", "4"))
+        automatico = str_upper(ajuste("VENTANAS_MOSAICO", "MOSAICO", "NO")) == "SI"
         tecla("TECLA_MAXIMIZAR", "ctrl alt up", K_MAXIMIZAR)
         tecla("TECLA_IZQUIERDA", "ctrl alt left", K_IZQUIERDA)
         tecla("TECLA_DERECHA", "ctrl alt right", K_DERECHA)

@@ -228,3 +228,84 @@ Show the memory graph
 ; MSG_EN_USO
 MSG_110 (110//)
 %s in use
+; MSG_SECCION
+MSG_111 (111//)
+Section
+; MSG_SECCIONES
+MSG_112 (112//)
+Background|Bar|Dock|Windows|Startup
+; MSG_CIUDAD
+MSG_113 (113//)
+City
+; MSG_LAT
+MSG_114 (114//)
+Latitude
+; MSG_LON
+MSG_115 (115//)
+Longitude
+; MSG_CIUDAD_AYUDA
+MSG_116 (116//)
+The weather: a city, or latitude and longitude
+; MSG_POSICION
+MSG_117 (117//)
+Position
+; MSG_POSICIONES
+MSG_118 (118//)
+Bottom|Top|Left|Right
+; MSG_TAMANO_ICONO
+MSG_119 (119//)
+Icon size
+; MSG_LANZADORES
+MSG_120 (120//)
+Launchers...
+; MSG_HUECO
+MSG_121 (121//)
+Gap
+; MSG_MOSAICO
+MSG_122 (122//)
+Tile new windows automatically
+; MSG_T_MAXIMIZAR
+MSG_123 (123//)
+Maximize
+; MSG_T_IZQUIERDA
+MSG_124 (124//)
+Left half
+; MSG_T_DERECHA
+MSG_125 (125//)
+Right half
+; MSG_T_RESTAURAR
+MSG_126 (126//)
+Restore
+; MSG_T_MOSAICO
+MSG_127 (127//)
+Tile
+; MSG_T_AUTOMATICO
+MSG_128 (128//)
+Auto tile
+; MSG_T_MOVER
+MSG_129 (129//)
+Move
+; MSG_T_TAMANO
+MSG_130 (130//)
+Resize
+; MSG_ARR_FONDO
+MSG_131 (131//)
+Start the background with the Workbench
+; MSG_ARR_BARRA
+MSG_132 (132//)
+Start the bar with the Workbench
+; MSG_ARR_DOCK
+MSG_133 (133//)
+Start the dock with the Workbench
+; MSG_ARR_VENTANAS
+MSG_134 (134//)
+Start the window keys with the Workbench
+; MSG_SIN_CAJON
+MSG_135 (135//)
+Install Trasfondo with its installer to choose this
+; MSG_RTG
+MSG_136 (136//)
+The bar, the dock and their panels need an RTG screen
+; MSG_DOCK_AYUDA
+MSG_137 (137//)
+One program per line

@@ -3,13 +3,14 @@
 # 3.2) o, sin WBRun, como desde la Shell. Solo con RTG.
 #
 # Los lanzadores, uno por línea (la ruta del programa), en ENV:Trasfondo.dock; sin él, unos de serie.
-# Tooltypes: POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) y ICONO (el lado de un icono, 40).
+# Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) y ICONO (el lado de un icono, 40).
 # Se para lanzándolo otra vez, o con Ctrl-C.
 
 @workbench_output "NIL:"
 @version "TrasfondoDock 0.1"
 
 import "dibujo.dash"
+import "ajustes.dash"
 
 const LISTA = "ENV:Trasfondo.dock"
 const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
@@ -152,9 +153,9 @@ Main
     elif rtg_get_depth() < 15
         Print "TrasfondoDock needs an RTG screen (15 bits or more)"
     else
-        posicion = str_upper(tooltype("POSICION", "ABAJO"))
+        posicion = str_upper(ajuste("DOCK_POSICION", "POSICION", "ABAJO"))
         vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
-        lado = Int(tooltype("ICONO", "40"))
+        lado = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
         if lado < 16
             lado = 16
         end

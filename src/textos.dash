@@ -94,6 +94,35 @@ const MSG_VER_GRED = 108
 const MSG_VER_GMEM = 109
 const MSG_EN_USO = 110
 
+# TrasfondoPrefs 2.0: las secciones y lo de cada pieza
+const MSG_SECCION = 111
+const MSG_SECCIONES = 112
+const MSG_CIUDAD = 113
+const MSG_LAT = 114
+const MSG_LON = 115
+const MSG_CIUDAD_AYUDA = 116
+const MSG_POSICION = 117
+const MSG_POSICIONES = 118
+const MSG_TAMANO_ICONO = 119
+const MSG_LANZADORES = 120
+const MSG_HUECO = 121
+const MSG_MOSAICO = 122
+const MSG_T_MAXIMIZAR = 123
+const MSG_T_IZQUIERDA = 124
+const MSG_T_DERECHA = 125
+const MSG_T_RESTAURAR = 126
+const MSG_T_MOSAICO = 127
+const MSG_T_AUTOMATICO = 128
+const MSG_T_MOVER = 129
+const MSG_T_TAMANO = 130
+const MSG_ARR_FONDO = 131
+const MSG_ARR_BARRA = 132
+const MSG_ARR_DOCK = 133
+const MSG_ARR_VENTANAS = 134
+const MSG_SIN_CAJON = 135
+const MSG_RTG = 136
+const MSG_DOCK_AYUDA = 137
+
 # un texto del catálogo con sus huecos rellenos: %s o %1 con a, %2 con b, %3 con c
 func con(texto: String, a: String) -> String
     return str_replace(str_replace(texto, "%s", a), "%1", a)

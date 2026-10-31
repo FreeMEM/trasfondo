@@ -1,24 +1,74 @@
-# TrasfondoPrefs: las preferencias de Trasfondo en una ventana, como las de SYS:Prefs. Qué secciones se ven,
-# cuántas tareas, la tecla rápida, cada cuánto mide, el fondo (con velo o fijo) y su color, y si arranca oculto. Usar las deja en ENV:Trasfondo.prefs (hasta
-# reiniciar); Guardar, también en ENVARC:. Trasfondo, si está en marcha, las nota en un segundo.
-# Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de Trasfondo.
+# TrasfondoPrefs: las preferencias de Trasfondo en una ventana, como las de SYS:Prefs, por secciones:
+# - Fondo: qué secciones se ven, cuántas tareas, la tecla rápida, cada cuánto mide, el fondo (con velo o fijo) y
+#   su color, si arranca oculto y si busca versiones nuevas.
+# - Barra: el lugar del tiempo (una ciudad, o latitud y longitud).
+# - Dock: en qué borde, el tamaño de los iconos y sus lanzadores (ENVARC:Trasfondo.dock, en Ed).
+# - Ventanas: el hueco entre ventanas, el mosaico automático y las teclas.
+# - Arranque: qué piezas arrancan con el Workbench (sus iconos de proyecto en SYS:WBStartup).
+# Usar las deja en ENV:Trasfondo.prefs (hasta reiniciar); Guardar, también en ENVARC:. El fondo las nota en un
+# segundo; la barra, el dock y las ventanas, si están en marcha y cambió lo suyo, se vuelven a arrancar.
+# Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de cada pieza.
+# Las piezas están en el cajón que dice ENV:Trasfondo.cajon (lo escribe el instalador).
+#
+#   TrasfondoPrefs ARRANCAR    arranca (o vuelve a arrancar) las piezas que arrancan con el Workbench
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 0.11"
+@version "TrasfondoPrefs 0.20"
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
 
 const SECCIONES = "fecha,cpu,temperatura,memoria,tareas,discos,red"
 const COLORES = "16,24,32|0,0,0|48,48,48|16,40,96|16,56,32|72,16,24|48,24,72"   # los de MSG_COLORES, en su orden
+const DOCK_DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
+const PIEZAS = "Trasfondo|TrasfondoBarra|TrasfondoDock|TrasfondoVentanas"
+
+# los gadgets de cada clase
+const G_CASILLA = 0
+const G_NUMERO = 1
+const G_TEXTO = 2
+const G_CICLO = 3
 
 var prefs: String = ""
+var cajon: String = ""                 # donde están las piezas ("" si no se sabe)
+var valores: {String: String} = {}     # cada ajuste, como irá al fichero
+var antes_v: {String: String} = {}     # y como estaba al abrir
+var antes: [String] = []               # las secciones del fondo, en su orden
+var claves: [String] = ["fecha", "cpu", "temperatura", "memoria", "grafica_memoria", "tareas", "discos", "red", "grafica_red"]
+var dock_editado: Bool = false
+
+# los gadgets de la página que se ve: su número, su ajuste, su clase y, los ciclos, sus valores (con |)
+var g_num: [Int] = []
+var g_clave: [String] = []
+var g_clase: [Int] = []
+var g_opciones: [String] = []
+
+# medidas de la ventana
+var f: Int = 8
+var fila: Int = 16
+var m: Int = 12
+var hueco: Int = 8
+var ancho: Int = 400
+var alto: Int = 300
+var x_campo: Int = 0
+var filas_s: Int = 5
+var columna: Int = 0
+var alto_boton: Int = 14
+
+# gadgets fijos
+var g_seccion: Int = -1
+var g_guardar: Int = -1
+var g_usar: Int = -1
+var g_cancelar: Int = -1
+var g_actualizar: Int = -1
+var g_estado: Int = -1
+var g_lanzadores: Int = -1
+var seccion: Int = 0
 
 # un ajuste de las preferencias (NOMBRE=valor), o el defecto
 func conf(nombre: String, defecto: String) -> String
     var lineas: [String] = str_split(str_replace(prefs, "\r", ""), "\n")
-    for i in (0..lineas.length - 1)
-        l = str_trim(lineas[i])
+    for l in lineas
         igual = str_find(l, "=")
         if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
             return str_trim(l[igual + 1:l.length])
@@ -31,8 +81,8 @@ end
 func secciones_de(texto: String) -> [String]
     var r: [String] = []
     var nombres: [String] = str_split(str_replace(str_lower(texto), ",", " "), " ")
-    for i in (0..nombres.length - 1)
-        s = str_trim(nombres[i])
+    for n in nombres
+        s = str_trim(n)
         if s == "memory" or s == "mem"
             s = "memoria"
         elif s == "tasks"
@@ -58,15 +108,383 @@ func secciones_de(texto: String) -> [String]
 end
 
 func esta(lista: [String], s: String) -> Bool
-    for i in (0..lista.length - 1)
-        if lista[i] == s
+    for x in lista
+        if x == s
             return true
         end
     end
     return false
 end
 
+# el número de la opción de un ciclo que tiene ese valor (0 si ninguna)
+func opcion(opciones: String, valor: String) -> Int
+    var l: [String] = str_split(opciones, "|")
+    i = 0
+    while i < l.length
+        if l[i] == valor
+            return i
+        end
+        i = i + 1
+    end
+    return 0
+end
+
+func si(b: Bool) -> String
+    if b
+        return "SI"
+    end
+    return "NO"
+end
+
+# ¿está en marcha esa pieza? (su puerto de single_instance)
+func corriendo(nombre: String) -> Bool
+    n = ports_read()
+    i = 0
+    while i < n
+        if port_name(i) == nombre
+            return true
+        end
+        i = i + 1
+    end
+    return false
+end
+
+# arranca una pieza; si ya estaba en marcha, la para antes (lanzarla otra vez la para)
+func arrancar(nombre: String)
+    if cajon == ""
+        return
+    end
+    orden = "Run >NIL: \"" + cajon + nombre + "\""
+    if corriendo(nombre)
+        run_command(orden)
+        vueltas = 0
+        while corriendo(nombre) and vueltas < 100
+            time_delay(5)
+            vueltas = vueltas + 1
+        end
+    end
+    run_command(orden)
+end
+
+# solo si está en marcha (para que tome sus ajustes nuevos)
+func rearrancar(nombre: String)
+    if corriendo(nombre)
+        arrancar(nombre)
+    end
+end
+
+func en_arranque(nombre: String) -> Bool
+    return file_exists("SYS:WBStartup/" + nombre + ".info")
+end
+
+# ---- la ventana ----
+
+func casilla(x: Int, y: Int, texto: String, clave: String)
+    g_num.push(gt_checkbox(x, y, 26, f + 3, texto, valores[clave] == "SI"))
+    g_clave.push(clave)
+    g_clase.push(G_CASILLA)
+    g_opciones.push("")
+end
+
+func numero(y: Int, texto: String, clave: String, ancho_n: Int)
+    g_num.push(gt_integer(x_campo, y, ancho_n, f + 6, texto, Int(valores[clave])))
+    g_clave.push(clave)
+    g_clase.push(G_NUMERO)
+    g_opciones.push("")
+end
+
+func campo(y: Int, texto: String, clave: String)
+    g_num.push(gt_string(x_campo, y, ancho - x_campo - m, f + 6, texto, valores[clave], 60))
+    g_clave.push(clave)
+    g_clase.push(G_TEXTO)
+    g_opciones.push("")
+end
+
+# un ciclo: nombres (lo que se ve) y opciones (lo que va al fichero), con |
+func ciclo(y: Int, texto: String, clave: String, nombres: String, opciones: String)
+    g_num.push(gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, texto, nombres))
+    g_clave.push(clave)
+    g_clase.push(G_CICLO)
+    g_opciones.push(opciones)
+end
+
+# lo que dicen los gadgets de la página, a valores
+func recoger()
+    i = 0
+    while i < g_num.length
+        c = g_clase[i]
+        if c == G_CASILLA
+            valores[g_clave[i]] = si(gt_get_value(g_num[i]) != 0)
+        elif c == G_NUMERO
+            n = gt_get_value(g_num[i])
+            valores[g_clave[i]] = "#{n}"
+        elif c == G_TEXTO
+            valores[g_clave[i]] = str_trim(gt_get_string(g_num[i]))
+        else
+            var l: [String] = str_split(g_opciones[i], "|")
+            k = gt_get_value(g_num[i])
+            if k >= 0 and k < l.length
+                valores[g_clave[i]] = l[k]
+            end
+        end
+        i = i + 1
+    end
+end
+
+# la página n (0 fondo, 1 barra, 2 dock, 3 ventanas, 4 arranque), con la fila de arriba y los botones
+func pagina(n: Int, linea_version: String)
+    gt_init()
+    gfx_clear()
+    g_num = []
+    g_clave = []
+    g_clase = []
+    g_opciones = []
+    g_actualizar = -1
+    g_estado = -1
+    g_lanzadores = -1
+    seccion = n
+    y = m
+    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Startup"))
+    y = y + fila + hueco
+    x = m
+    ancho_n = screen_font_text_width("000") + 24
+    if n == 0
+        var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_TEMP, "Show the Pi temperature"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_GMEM, "Show the memory graph"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi"), tr(MSG_VER_GRED, "Show the network graph")]
+        i = 0
+        while i < claves.length
+            x_s = x
+            if i >= filas_s
+                x_s = x + columna
+            end
+            casilla(x_s, y + (i % filas_s) * fila, etiquetas[i], "VER_" + claves[i])
+            i = i + 1
+        end
+        y = y + filas_s * fila + 4
+        numero(y, tr(MSG_CUANTAS, "Tasks shown"), "TAREAS", ancho_n)
+        casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_OCULTO, "Start hidden"), "OCULTO")
+        y = y + fila + 2
+        campo(y, tr(MSG_TECLA, "Hotkey"), "CX_POPKEY")
+        y = y + fila + 2
+        ciclo(y, tr(MSG_CADA, "Measure every"), "CADA", "1 s|2 s|5 s|10 s", "1|2|5|10")
+        y = y + fila + 2
+        ciclo(y, tr(MSG_FONDO, "Background"), "FONDO", tr(MSG_FONDOS, "See-through|Solid"), "VELO|FIJO")
+        y = y + fila + 2
+        # los colores de la lista; uno puesto a mano (tooltype o prefs) sale al final, para no perderlo
+        nombres = tr(MSG_COLORES, "Night blue|Black|Grey|Blue|Green|Wine|Purple")
+        opciones = COLORES
+        if not esta(str_split(COLORES, "|"), valores["COLOR"])
+            nombres = nombres + "|" + con(tr(MSG_OTRO, "Other (%s)"), valores["COLOR"])
+            opciones = opciones + "|" + valores["COLOR"]
+        end
+        ciclo(y, tr(MSG_COLOR, "Colour"), "COLOR", nombres, opciones)
+        y = y + fila + 2
+        casilla(x, y, tr(MSG_BUSCAR, "Look for new versions on GitHub"), "BUSCAR")
+        y = y + fila + 2
+        t_actualizar = tr(MSG_ACTUALIZAR, "Update")
+        ancho_act = screen_font_text_width(t_actualizar) + 24
+        g_estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
+        g_actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, t_actualizar)
+    elif n == 1
+        campo(y, tr(MSG_CIUDAD, "City"), "BARRA_CIUDAD")
+        y = y + fila + 2
+        campo(y, tr(MSG_LAT, "Latitude"), "BARRA_LAT")
+        y = y + fila + 2
+        campo(y, tr(MSG_LON, "Longitude"), "BARRA_LON")
+        y = y + fila + 2
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_CIUDAD_AYUDA, "The weather: a city, or latitude and longitude"))
+        y = y + fila + 2
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen"))
+    elif n == 2
+        ciclo(y, tr(MSG_POSICION, "Position"), "DOCK_POSICION", tr(MSG_POSICIONES, "Bottom|Top|Left|Right"), "ABAJO|ARRIBA|IZQUIERDA|DERECHA")
+        y = y + fila + 2
+        numero(y, tr(MSG_TAMANO_ICONO, "Icon size"), "DOCK_ICONO", ancho_n)
+        y = y + fila + 2
+        t_lanz = tr(MSG_LANZADORES, "Launchers...")
+        ancho_l = screen_font_text_width(t_lanz) + 24
+        g_lanzadores = gt_button(x_campo, y, ancho_l, alto_boton, t_lanz)
+        y = y + fila + 2
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_DOCK_AYUDA, "One program per line"))
+    elif n == 3
+        numero(y, tr(MSG_HUECO, "Gap"), "VENTANAS_HUECO", ancho_n)
+        casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_MOSAICO, "Tile new windows automatically"), "VENTANAS_MOSAICO")
+        y = y + fila + 2
+        var teclas: [String] = ["TECLA_MAXIMIZAR", "TECLA_IZQUIERDA", "TECLA_DERECHA", "TECLA_RESTAURAR", "TECLA_MOSAICO", "TECLA_AUTOMATICO", "RATON_MOVER", "RATON_TAMANO"]
+        var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+        i = 0
+        while i < teclas.length
+            campo(y, nombres_t[i], "VENTANAS_" + teclas[i])
+            y = y + fila + 2
+            i = i + 1
+        end
+    else
+        var piezas: [String] = str_split(PIEZAS, "|")
+        var textos_a: [String] = [tr(MSG_ARR_FONDO, "Start the background with the Workbench"), tr(MSG_ARR_BARRA, "Start the bar with the Workbench"), tr(MSG_ARR_DOCK, "Start the dock with the Workbench"), tr(MSG_ARR_VENTANAS, "Start the window keys with the Workbench")]
+        i = 0
+        while i < piezas.length
+            casilla(x, y, textos_a[i], "ARR_" + piezas[i])
+            y = y + fila
+            i = i + 1
+        end
+        if cajon == ""
+            y = y + 4
+            gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_SIN_CAJON, "Install Trasfondo with its installer to choose this"))
+        end
+    end
+    y = alto - m - alto_boton
+    boton = (ancho - m * 2 - 16) / 3
+    g_guardar = gt_button(m, y, boton, alto_boton, tr(MSG_GUARDAR, "Save"))
+    g_usar = gt_button(m + boton + 8, y, boton, alto_boton, tr(MSG_USAR, "Use"))
+    g_cancelar = gt_button(m + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CANCELAR, "Cancel"))
+    gt_attach()
+    gt_set_value(g_seccion, n)
+    i = 0
+    while i < g_num.length
+        if g_clase[i] == G_CICLO
+            gt_set_value(g_num[i], opcion(g_opciones[i], valores[g_clave[i]]))
+        end
+        if cajon == "" and str_starts(g_clave[i], "ARR_")
+            gt_disable(g_num[i])
+        end
+        i = i + 1
+    end
+end
+
+# el alto de dentro de la ventana: el de la página más alta (el fondo o las ventanas, como las pone pagina) y los botones
+func alto_ventana() -> Int
+    fondo = m + fila + hueco + filas_s * fila + 4 + 6 * (fila + 2) + alto_boton
+    ventanas = m + fila + hueco + 9 * (fila + 2)
+    if ventanas > fondo
+        fondo = ventanas
+    end
+    return fondo + hueco * 2 + alto_boton + m
+end
+
+# las secciones marcadas del fondo, en el orden que tenían; las nuevas, detrás (cada gráfica bajo la suya)
+func mostrar_texto() -> String
+    var mostrar: [String] = []
+    for s in antes
+        if valores["VER_" + s] == "SI"
+            mostrar.push(s)
+        end
+    end
+    for c in claves
+        if valores["VER_" + c] == "SI" and not esta(mostrar, c)
+            madre = ""
+            if c == "grafica_red"
+                madre = "red"
+            elif c == "grafica_memoria"
+                madre = "memoria"
+            end
+            if madre != "" and esta(mostrar, madre)
+                var con_g: [String] = []
+                for k in mostrar
+                    con_g.push(k)
+                    if k == madre
+                        con_g.push(c)
+                    end
+                end
+                mostrar = con_g
+            else
+                mostrar.push(c)
+            end
+        end
+    end
+    texto = ""
+    for s in mostrar
+        if texto != ""
+            texto = texto + ","
+        end
+        texto = texto + str_upper(s)
+    end
+    return texto
+end
+
+# el fichero de ajustes, con todo
+func fichero() -> String
+    n = Int(valores["TAREAS"])
+    if n < 1
+        n = 1
+    elif n > 20
+        n = 20
+    end
+    popup = "YES"
+    if valores["OCULTO"] == "SI"
+        popup = "NO"
+    end
+    # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
+    texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
+    texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nCOLOR=" + valores["COLOR"] + "\n"
+    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    for k in mas
+        texto = texto + k + "=" + valores[k] + "\n"
+    end
+    return texto
+end
+
+# ¿cambió algún ajuste que empieza así?
+func cambio(prefijo: String) -> Bool
+    for k in valores.keys()
+        if str_starts(k, prefijo) and valores[k] != antes_v[k]
+            return true
+        end
+    end
+    return false
+end
+
+# los iconos de SYS:WBStartup como dice la sección Arranque (una pieza que se marca, además, arranca ya)
+func poner_arranque()
+    if cajon == ""
+        return
+    end
+    var piezas: [String] = str_split(PIEZAS, "|")
+    for p in piezas
+        quiere = valores["ARR_" + p] == "SI"
+        if quiere and not en_arranque(p)
+            file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+            if not corriendo(p)
+                arrancar(p)                  # y ya, sin esperar a reiniciar
+            end
+        elif not quiere and en_arranque(p)
+            file_delete("SYS:WBStartup/" + p + ".info")
+        end
+    end
+end
+
+# la lista de lanzadores del dock, en Ed (la de ENVARC:, que se copia luego a ENV:)
+func editar_lanzadores()
+    if not file_exists("ENVARC:Trasfondo.dock")
+        lista = file_read_text("ENV:Trasfondo.dock")
+        if lista == nil or str_trim(lista) == ""
+            lista = DOCK_DE_SERIE
+        end
+        file_write_text("ENVARC:Trasfondo.dock", lista)
+    end
+    run_command("C:Ed \"ENVARC:Trasfondo.dock\"")
+    file_copy("ENVARC:Trasfondo.dock", "ENV:Trasfondo.dock")
+    dock_editado = true
+end
+
 Main
+    cajon = ""
+    t_cajon = file_read_text("ENV:Trasfondo.cajon")
+    if t_cajon != nil
+        cajon = str_trim(str_replace(t_cajon, "\n", ""))
+        if cajon != "" and not str_ends(cajon, ":") and not str_ends(cajon, "/")
+            cajon = cajon + "/"
+        end
+    end
+
+    # TrasfondoPrefs ARRANCAR: las piezas que arrancan con el Workbench, ya (el instalador)
+    if arg_count() > 0 and str_upper(arg(0)) == "ARRANCAR"
+        var piezas_a: [String] = str_split(PIEZAS, "|")
+        for p in piezas_a
+            if en_arranque(p)
+                arrancar(p)
+            end
+        end
+        return
+    end
+
     prefs = file_read_text("ENV:Trasfondo.prefs")
     if prefs == nil
         prefs = file_read_text("ENVARC:Trasfondo.prefs")
@@ -74,21 +492,21 @@ Main
     if prefs == nil
         prefs = ""
     end
-    var antes: [String] = secciones_de(conf("MOSTRAR", SECCIONES))
+    antes = secciones_de(conf("MOSTRAR", SECCIONES))
     # unas de antes de la 0.7 (sin PREFS=) no conocían la fecha: sale marcada, arriba, como en Trasfondo
     if conf("MOSTRAR", "") != "" and conf("PREFS", "") == "" and not esta(antes, "fecha")
         var con_fecha: [String] = ["fecha"]
-        for i in (0..antes.length - 1)
-            con_fecha.push(antes[i])
+        for s in antes
+            con_fecha.push(s)
         end
         antes = con_fecha
     end
     # y las de antes de la 0.11 (PREFS menor que 3) no conocían la temperatura: marcada, tras la CPU, como en Trasfondo
     if Int(conf("PREFS", "0")) < 3 and not esta(antes, "temperatura")
         var con_temp: [String] = []
-        for i in (0..antes.length - 1)
-            con_temp.push(antes[i])
-            if antes[i] == "cpu"
+        for s in antes
+            con_temp.push(s)
+            if s == "cpu"
                 con_temp.push("temperatura")
             end
         end
@@ -97,6 +515,48 @@ Main
         end
         antes = con_temp
     end
+    for c in claves
+        valores["VER_" + c] = si(esta(antes, c))
+    end
+    valores["TAREAS"] = conf("TAREAS", "6")
+    valores["OCULTO"] = si(str_upper(conf("CX_POPUP", "YES")) == "NO")
+    valores["CX_POPKEY"] = conf("CX_POPKEY", "")
+    cada = Int(conf("CADA", "2"))
+    valores["CADA"] = "1"
+    for s in [2, 5, 10]
+        if s <= cada
+            valores["CADA"] = "#{s}"
+        end
+    end
+    valores["FONDO"] = "VELO"
+    f_puesto = str_upper(conf("FONDO", "VELO"))
+    if f_puesto == "FIJO" or f_puesto == "SOLID"
+        valores["FONDO"] = "FIJO"
+    end
+    valores["COLOR"] = str_replace(conf("COLOR", "16,24,32"), " ", "")
+    valores["BUSCAR"] = si(str_upper(conf("BUSCAR", "SI")) != "NO")
+    valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
+    valores["BARRA_LAT"] = conf("BARRA_LAT", "")
+    valores["BARRA_LON"] = conf("BARRA_LON", "")
+    valores["DOCK_POSICION"] = str_upper(conf("DOCK_POSICION", "ABAJO"))
+    valores["DOCK_ICONO"] = conf("DOCK_ICONO", "40")
+    valores["VENTANAS_HUECO"] = conf("VENTANAS_HUECO", "4")
+    valores["VENTANAS_MOSAICO"] = si(str_upper(conf("VENTANAS_MOSAICO", "NO")) == "SI")
+    valores["VENTANAS_TECLA_MAXIMIZAR"] = conf("VENTANAS_TECLA_MAXIMIZAR", "ctrl alt up")
+    valores["VENTANAS_TECLA_IZQUIERDA"] = conf("VENTANAS_TECLA_IZQUIERDA", "ctrl alt left")
+    valores["VENTANAS_TECLA_DERECHA"] = conf("VENTANAS_TECLA_DERECHA", "ctrl alt right")
+    valores["VENTANAS_TECLA_RESTAURAR"] = conf("VENTANAS_TECLA_RESTAURAR", "ctrl alt down")
+    valores["VENTANAS_TECLA_MOSAICO"] = conf("VENTANAS_TECLA_MOSAICO", "ctrl alt t")
+    valores["VENTANAS_TECLA_AUTOMATICO"] = conf("VENTANAS_TECLA_AUTOMATICO", "ctrl alt a")
+    valores["VENTANAS_RATON_MOVER"] = conf("VENTANAS_RATON_MOVER", "rawmouse lalt mouse_leftpress")
+    valores["VENTANAS_RATON_TAMANO"] = conf("VENTANAS_RATON_TAMANO", "rawmouse lalt mouse_rightpress")
+    var piezas: [String] = str_split(PIEZAS, "|")
+    for p in piezas
+        valores["ARR_" + p] = si(en_arranque(p))
+    end
+    for k in valores.keys()
+        antes_v[k] = valores[k]
+    end
 
     # medido con la fuente de la pantalla, la que usan los gadgets (en Coffin, más grande que la Topaz 8)
     f = screen_font_height()
@@ -104,52 +564,53 @@ Main
     if fila < 16
         fila = 16
     end
-    m = 12                                   # el margen, por dentro de los bordes
-    var etiquetas: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_TEMP, "Show the Pi temperature"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_GMEM, "Show the memory graph"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi"), tr(MSG_VER_GRED, "Show the network graph")]
-    t_cuantas = tr(MSG_CUANTAS, "Tasks shown")
-    t_tecla = tr(MSG_TECLA, "Hotkey")
-    t_cada = tr(MSG_CADA, "Measure every")
-    t_fondo = tr(MSG_FONDO, "Background")
-    t_color = tr(MSG_COLOR, "Colour")
-    t_oculto = tr(MSG_OCULTO, "Start hidden")
-    t_buscar = tr(MSG_BUSCAR, "Look for new versions on GitHub")
-    t_actualizar = tr(MSG_ACTUALIZAR, "Update")
-    x_campo = 0                                                 # los campos, con su texto a la izquierda
-    var campos: [String] = [t_cuantas, t_tecla, t_cada, t_fondo, t_color]
-    for i in (0..campos.length - 1)
-        if x_campo < m + screen_font_text_width(campos[i]) + 10
-            x_campo = m + screen_font_text_width(campos[i]) + 10
+    alto_boton = f + 6
+    # el ancho de las etiquetas de la izquierda: el de la más larga de todas las páginas
+    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+    for t in izquierdas
+        if x_campo < m + screen_font_text_width(t) + 10
+            x_campo = m + screen_font_text_width(t) + 10
         end
     end
-    largo = screen_font_text_width(t_buscar)                    # las casillas, con el texto a la derecha
-    if largo < screen_font_text_width(t_oculto)
-        largo = screen_font_text_width(t_oculto)
-    end
-    largo_s = 0                                                 # las de las secciones, en dos columnas
-    for i in (0..etiquetas.length - 1)
-        if largo_s < screen_font_text_width(etiquetas[i])
-            largo_s = screen_font_text_width(etiquetas[i])
+    # lo que va a la derecha de una casilla: el más largo
+    var derechas: [String] = [tr(MSG_BUSCAR, "Look for new versions on GitHub"), tr(MSG_ARR_FONDO, "Start the background with the Workbench"), tr(MSG_ARR_BARRA, "Start the bar with the Workbench"), tr(MSG_ARR_DOCK, "Start the dock with the Workbench"), tr(MSG_ARR_VENTANAS, "Start the window keys with the Workbench"), tr(MSG_SIN_CAJON, "Install Trasfondo with its installer to choose this"), tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen")]
+    largo = 0
+    for t in derechas
+        if largo < screen_font_text_width(t)
+            largo = screen_font_text_width(t)
         end
     end
-    filas_s = (etiquetas.length + 1) / 2
-    columna = 26 + 8 + largo_s + 12          # dónde empieza la segunda
+    var etiquetas_s: [String] = [tr(MSG_VER_FECHA, "Show the date and time"), tr(MSG_VER_CPU, "Show the CPU graph"), tr(MSG_VER_TEMP, "Show the Pi temperature"), tr(MSG_VER_MEMORIA, "Show the free memory"), tr(MSG_VER_GMEM, "Show the memory graph"), tr(MSG_VER_TAREAS, "Show the tasks"), tr(MSG_VER_DISCOS, "Show the disks"), tr(MSG_VER_RED, "Show the network and WiFi"), tr(MSG_VER_GRED, "Show the network graph")]
+    largo_s = 0                                                 # las secciones del fondo, en dos columnas
+    for t in etiquetas_s
+        if largo_s < screen_font_text_width(t)
+            largo_s = screen_font_text_width(t)
+        end
+    end
+    filas_s = (claves.length + 1) / 2
+    columna = 26 + 8 + largo_s + 12
     if m * 2 + columna * 2 > screen_width() - 8
-        filas_s = etiquetas.length           # no caben dos: una
+        filas_s = claves.length                                 # no caben dos: una
         columna = 0
     end
     ancho = m + 26 + 8 + largo + m
-    if ancho < x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t_oculto) + m
-        ancho = x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t_oculto) + m
+    t_oculto = tr(MSG_OCULTO, "Start hidden")
+    t_mosaico = tr(MSG_MOSAICO, "Tile new windows automatically")
+    for t in [t_oculto, t_mosaico]
+        if ancho < x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t) + m
+            ancho = x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t) + m
+        end
     end
     if ancho < m * 2 + columna + 26 + 8 + largo_s
         ancho = m * 2 + columna + 26 + 8 + largo_s
     end
-    if ancho < x_campo + 200
-        ancho = x_campo + 200
+    if ancho < x_campo + 220
+        ancho = x_campo + 220
     end
-    alto_boton = f + 6
-    hueco = 8                                # lo que separa los grupos (el doble, antes de los botones)
-    alto = m * 2 + fila * (filas_s + 6) + 4 + 10 + hueco * 3 + alto_boton * 2
+    if ancho > screen_width() - 8
+        ancho = screen_width() - 8
+    end
+    alto = alto_ventana()
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
     cabe = screen_height() - (f + 3) - 4
@@ -160,7 +621,7 @@ Main
         end
         hueco = 4
         m = 6
-        alto = m * 2 + fila * (filas_s + 6) + 4 + 10 + hueco * 3 + alto_boton * 2
+        alto = alto_ventana()
     end
     izquierda = 60                           # y la ventana, más a la izquierda y más arriba si hace falta
     if izquierda + ancho + 8 > screen_width()
@@ -187,168 +648,63 @@ Main
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
     if window_create(tr(MSG_TITULO, "Trasfondo Preferences"), izquierda, arriba, ancho, alto, 8) == 0
         Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
-    else
-        gt_init()
-        y = m
-        x = m
-        var claves: [String] = ["fecha", "cpu", "temperatura", "memoria", "grafica_memoria", "tareas", "discos", "red", "grafica_red"]
-        var casillas: [Int] = []
-        for i in (0..claves.length - 1)
-            x_s = x
-            if i >= filas_s
-                x_s = x + columna
-            end
-            casillas.push(gt_checkbox(x_s, y + (i % filas_s) * fila, 26, f + 3, etiquetas[i], esta(antes, claves[i])))
-        end
-        y = y + filas_s * fila
-        y = y + 4
-        ancho_n = screen_font_text_width("000") + 24
-        tareas = gt_integer(x_campo, y, ancho_n, f + 6, t_cuantas, Int(conf("TAREAS", "6")))
-        # arrancar oculto, en la misma fila (en una pantalla de 640x256 no sobra ni una)
-        oculto = gt_checkbox(x_campo + ancho_n + 16, y + 1, 26, f + 3, t_oculto, str_upper(conf("CX_POPUP", "YES")) == "NO")
-        y = y + fila + 2
-        tecla = gt_string(x_campo, y, ancho - x_campo - m, f + 6, t_tecla, conf("CX_POPKEY", ""), 40)
-        y = y + fila + 2
-        var segundos: [Int] = [1, 2, 5, 10]
-        medir = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_cada, "1 s|2 s|5 s|10 s")
-        y = y + fila + 2
-        fondo = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_fondo, tr(MSG_FONDOS, "See-through|Solid"))
-        y = y + fila + 2
-        # los colores de la lista; uno puesto a mano (tooltype o prefs) sale al final, para no perderlo
-        var rgb: [String] = str_split(COLORES, "|")
-        nombres = tr(MSG_COLORES, "Night blue|Black|Grey|Blue|Green|Wine|Purple")
-        puesto = str_replace(conf("COLOR", rgb[0]), " ", "")
-        n_color = -1
-        for i in (0..rgb.length - 1)
-            if rgb[i] == puesto
-                n_color = i
-            end
-        end
-        if n_color < 0
-            n_color = rgb.length
-            rgb.push(puesto)
-            nombres = nombres + "|" + con(tr(MSG_OTRO, "Other (%s)"), puesto)
-        end
-        g_color = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, t_color, nombres)
-        y = y + fila + 2
-        buscar = gt_checkbox(x, y, 26, f + 3, t_buscar, str_upper(conf("BUSCAR", "SI")) != "NO")
-        y = y + fila + hueco
-        ancho_act = screen_font_text_width(t_actualizar) + 24
-        estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
-        actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, t_actualizar)
-        y = y + alto_boton + hueco * 2
-        boton = (ancho - m * 2 - 16) / 3
-        guardar = gt_button(x, y, boton, alto_boton, tr(MSG_GUARDAR, "Save"))
-        usar = gt_button(x + boton + 8, y, boton, alto_boton, tr(MSG_USAR, "Use"))
-        cancelar = gt_button(x + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CANCELAR, "Cancel"))
-        gt_attach()
-        cada = Int(conf("CADA", "2"))
-        n_cada = 0
-        for i in (0..segundos.length - 1)
-            if segundos[i] <= cada
-                n_cada = i
-            end
-        end
-        gt_set_value(medir, n_cada)
-        f_puesto = str_upper(conf("FONDO", "VELO"))
-        if f_puesto == "FIJO" or f_puesto == "SOLID"
-            gt_set_value(fondo, 1)
-        end
-        gt_set_value(g_color, n_color)
-
-        ultimo = ""
-        pedido = 0                           # time_ms de cuando se pidió actualizar (0: no se ha pedido)
-        while true
-            e = gt_event()
-            if e == -1                       # nada: mira cómo va lo que se pidió a Trasfondo
-                time_delay(10)
-                if pedido != 0
-                    est = file_read_text("ENV:Trasfondo.estado")
-                    if est != nil and str_trim(est) != "" and str_trim(est) != ultimo
-                        ultimo = str_trim(est)
-                        gt_set_text(estado, ultimo)
-                        pedido = time_ms()
-                    elif ultimo == "" and time_ms() - pedido > 8000
-                        ultimo = tr(MSG_NO_ESTA, "Trasfondo is not running: start it and try again")
-                        gt_set_text(estado, ultimo)
-                    end
-                end
-            elif e == actualizar
-                file_delete("ENV:Trasfondo.estado")
-                file_write_text("ENV:Trasfondo.orden", "actualizar\n")
-                gt_set_text(estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
-                ultimo = ""
-                pedido = time_ms()
-            elif e == -2 or e == cancelar
-                break
-            elif e == guardar or e == usar
-                # las marcadas, en el orden que tenían; las nuevas, detrás
-                var mostrar: [String] = []
-                for i in (0..antes.length - 1)
-                    for j in (0..claves.length - 1)
-                        if claves[j] == antes[i] and gt_get_value(casillas[j]) != 0
-                            mostrar.push(antes[i])
-                        end
-                    end
-                end
-                for j in (0..claves.length - 1)
-                    if gt_get_value(casillas[j]) != 0 and not esta(mostrar, claves[j])
-                        # cada gráfica, debajo de su sección si está
-                        madre = ""
-                        if claves[j] == "grafica_red"
-                            madre = "red"
-                        elif claves[j] == "grafica_memoria"
-                            madre = "memoria"
-                        end
-                        if madre != "" and esta(mostrar, madre)
-                            var con_g: [String] = []
-                            for k in (0..mostrar.length - 1)
-                                con_g.push(mostrar[k])
-                                if mostrar[k] == madre
-                                    con_g.push(claves[j])
-                                end
-                            end
-                            mostrar = con_g
-                        else
-                            mostrar.push(claves[j])
-                        end
-                    end
-                end
-                n = gt_get_value(tareas)
-                if n < 1
-                    n = 1
-                elif n > 20
-                    n = 20
-                end
-                texto = "PREFS=3\nMOSTRAR="     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
-                for i in (0..mostrar.length - 1)
-                    if i > 0
-                        texto = texto + ","
-                    end
-                    texto = texto + str_upper(mostrar[i])
-                end
-                popup = "YES"
-                if gt_get_value(oculto) != 0
-                    popup = "NO"
-                end
-                busca = "SI"
-                if gt_get_value(buscar) == 0
-                    busca = "NO"
-                end
-                capa = "VELO"
-                if gt_get_value(fondo) == 1
-                    capa = "FIJO"
-                end
-                texto = texto + "\nTAREAS=#{n}\nCX_POPKEY=" + str_trim(gt_get_string(tecla)) + "\nCX_POPUP=" + popup + "\nBUSCAR=" + busca
-                s_cada = segundos[gt_get_value(medir)]
-                texto = texto + "\nCADA=#{s_cada}\nFONDO=" + capa + "\nCOLOR=" + rgb[gt_get_value(g_color)] + "\n"
-                file_write_text("ENV:Trasfondo.prefs", texto)
-                if e == guardar
-                    file_write_text("ENVARC:Trasfondo.prefs", texto)
-                end
-                break
-            end
-        end
-        gt_cleanup()
+        return
     end
+    pagina(0, linea_version)
+
+    ultimo = ""
+    pedido = 0                               # time_ms de cuando se pidió actualizar (0: no se ha pedido)
+    while true
+        e = gt_event()
+        if e == -1                           # nada: mira cómo va lo que se pidió a Trasfondo
+            time_delay(10)
+            if pedido != 0 and g_estado >= 0
+                est = file_read_text("ENV:Trasfondo.estado")
+                if est != nil and str_trim(est) != "" and str_trim(est) != ultimo
+                    ultimo = str_trim(est)
+                    gt_set_text(g_estado, ultimo)
+                    pedido = time_ms()
+                elif ultimo == "" and time_ms() - pedido > 8000
+                    ultimo = tr(MSG_NO_ESTA, "Trasfondo is not running: start it and try again")
+                    gt_set_text(g_estado, ultimo)
+                end
+            end
+        elif e == g_seccion
+            nueva = gt_get_value(g_seccion)
+            if nueva != seccion
+                recoger()
+                pagina(nueva, linea_version)
+            end
+        elif e == g_actualizar and g_actualizar >= 0
+            file_delete("ENV:Trasfondo.estado")
+            file_write_text("ENV:Trasfondo.orden", "actualizar\n")
+            gt_set_text(g_estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
+            ultimo = ""
+            pedido = time_ms()
+        elif e == g_lanzadores and g_lanzadores >= 0
+            editar_lanzadores()
+        elif e == -2 or e == g_cancelar
+            break
+        elif e == g_guardar or e == g_usar
+            recoger()
+            texto = fichero()
+            file_write_text("ENV:Trasfondo.prefs", texto)
+            if e == g_guardar
+                file_write_text("ENVARC:Trasfondo.prefs", texto)
+            end
+            poner_arranque()
+            # las piezas en marcha cuyos ajustes cambiaron, otra vez (el fondo los lee él solo)
+            if cambio("BARRA_")
+                rearrancar("TrasfondoBarra")
+            end
+            if cambio("DOCK_") or dock_editado
+                rearrancar("TrasfondoDock")
+            end
+            if cambio("VENTANAS_")
+                rearrancar("TrasfondoVentanas")
+            end
+            break
+        end
+    end
+    gt_cleanup()
 end

@@ -6,7 +6,8 @@
 # pulsar la derecha, los ajustes rápidos (TrasfondoRapido).
 # Se para lanzándola otra vez, o con Ctrl-C.
 #
-# Tooltypes: CIUDAD (el lugar del tiempo, "Málaga"), o LAT y LON (36.72, -4.42); sin ellos no hay tiempo.
+# Ajustes (TrasfondoPrefs, o los tooltypes): CIUDAD (el lugar del tiempo, "Málaga"), o LAT y LON (36.72, -4.42);
+# sin ellos no hay tiempo.
 
 @workbench_output "NIL:"
 @version "TrasfondoBarra 0.1"
@@ -14,6 +15,7 @@
 import "dibujo.dash"
 import "tiempo.dash"
 import "avisos.dash"
+import "ajustes.dash"
 
 const ALTO = 24              # alto de la barra
 const ALTO_PILDORA = 18
@@ -236,7 +238,7 @@ Main
             aviso = "\"" + carpeta + "TrasfondoAviso\""
             rapido = "\"" + carpeta + "TrasfondoRapido\""
         end
-        tiempo_iniciar(tooltype("CIUDAD", ""), tooltype("LAT", ""), tooltype("LON", ""))
+        tiempo_iniciar(ajuste("BARRA_CIUDAD", "CIUDAD", ""), ajuste("BARRA_LAT", "LAT", ""), ajuste("BARRA_LON", "LON", ""))
         Barra.open
         window_resize(0, ancho, ALTO)
         gfx_mode(0)                  # el texto sin fondo: encima de las píldoras

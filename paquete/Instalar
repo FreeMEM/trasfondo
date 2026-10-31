@@ -1,6 +1,8 @@
-; Instalador de Trasfondo para el Installer del sistema (AmigaOS 3.0 a 3.2).
-; Copia Trasfondo donde se elija (o a SYS:WBStartup, para que arranque con el Workbench), sus
-; preferencias, TrasfondoPrefs, a SYS:Prefs, y el catálogo en castellano a LOCALE:Catalogs.
+; Instalador de Trasfondo 2.0 para el Installer del sistema (AmigaOS 3.0 a 3.2).
+; Copia el cajón Trasfondo (el fondo, la barra y sus paneles, el dock y las ventanas) donde se elija, sus
+; preferencias, TrasfondoPrefs, a SYS:Prefs, la orden Avisa a C: y el catálogo en castellano a LOCALE:Catalogs.
+; Quita el Trasfondo de antes (1.x: un solo programa, "trasfondo") de donde lo dejaba su instalador, y pone en
+; SYS:WBStartup un icono de proyecto por cada pieza que tiene que arrancar con el Workbench.
 ; Habla en inglés, o en castellano si el sistema lo está (@language). Este fichero se escribe en UTF-8 y
 ; tools/paquete.py lo pasa a ISO-8859-1, que es lo que lee el Amiga.
 
@@ -9,8 +11,8 @@
 (set #avisos "")
 
 (welcome
-    (if #es "Este programa instala Trasfondo, un monitor de recursos pintado en el fondo del Workbench, escrito en Dash."
-            "This program installs Trasfondo, a resource monitor painted on the Workbench backdrop, written in Dash."))
+    (if #es "Este programa instala Trasfondo 2.0, escrito en Dash: el monitor de recursos en el fondo del Workbench, una barra arriba con sus paneles, un dock y teclas para las ventanas."
+            "This program installs Trasfondo 2.0, written in Dash: the resource monitor on the Workbench backdrop, a bar at the top with its panels, a dock and keys for the windows."))
 
 ; --- Lo que necesita (solo avisa: se instala igual) ---
 (if (< (/ (getversion "exec.library" (resident)) 65536) 39)
@@ -20,47 +22,123 @@
 (if (not (exists "LIBS:commodities.library"))
     (if (not (exists "SYS:Libs/commodities.library"))
         (set #avisos (cat #avisos
-            (if #es "- No se encuentra commodities.library: Trasfondo funcionará, pero no saldrá en Exchange.\n"
-                    "- commodities.library is missing: Trasfondo will work, but it will not show up in Exchange.\n")))))
-(if (<> #avisos "")
-    (message (cat (if #es "Se instalará igual, pero ojo:\n\n" "It will be installed anyway, but note:\n\n") #avisos)))
+            (if #es "- No se encuentra commodities.library: el fondo funcionará, pero no saldrá en Exchange, y las teclas de las ventanas no.\n"
+                    "- commodities.library is missing: the backdrop will work, but it will not show up in Exchange, and the window keys will not work.\n")))))
+(set #avisos (cat #avisos
+    (if #es "- La barra, sus paneles y el dock necesitan una pantalla RTG (tarjeta gráfica, 15 bits o más). Sin ella, el fondo y las ventanas funcionan igual.\n"
+            "- The bar, its panels and the dock need an RTG screen (graphics card, 15 bits or more). Without one, the backdrop and the windows work all the same.\n")))
+(message (cat (if #es "Antes de empezar:\n\n" "Before starting:\n\n") #avisos))
 
 ; --- Dónde ---
-(set #arranque
-    (askbool
-        (prompt (if #es "¿Quieres que Trasfondo arranque solo cada vez que se abre el Workbench?\n\nSí: se copia a SYS:WBStartup.\nNo: se copia al cajón que elijas."
-                        "Should Trasfondo start by itself every time the Workbench opens?\n\nYes: it is copied to SYS:WBStartup.\nNo: it is copied to the drawer you choose."))
-        (help (if #es "Lo que hay en SYS:WBStartup se pone en marcha solo al abrirse el Workbench. Si dices que no, Trasfondo se arranca cuando quieras con doble clic en su icono."
-                      "What is in SYS:WBStartup starts by itself when the Workbench opens. If you say no, start Trasfondo whenever you like with a double click on its icon."))
-        (choices (if #es "Sí" "Yes") "No")
-        (default 1)))
-(if #arranque
-    (set #destino "SYS:WBStartup")
-    (set #destino
-        (askdir
-            (prompt (if #es "¿Dónde copio Trasfondo?" "Where should Trasfondo go?"))
-            (help @askdir-help)
-            (default "SYS:Utilities"))))
-(set @default-dest #destino)
+(set #donde
+    (askdir
+        (prompt (if #es "¿Dónde pongo el cajón Trasfondo?" "Where should the Trasfondo drawer go?"))
+        (help @askdir-help)
+        (default "SYS:Utilities")))
+(set #cajon (tackon #donde "Trasfondo"))
+(set @default-dest #donde)
+
+; --- El Trasfondo de antes: un programa "trasfondo" suelto (1.x), en SYS:WBStartup o donde se eligió ---
+; (exists: 1 es un fichero, 2 un cajón; el de antes es un fichero, y un cajón Trasfondo es una instalación 2.0)
+(procedure P_QUITAR_VIEJO
+    (if (= (exists (tackon #viejo "trasfondo") (noreq)) 1)
+        (
+            (delete (tackon #viejo "trasfondo") (optional "force"))
+            (if (exists (tackon #viejo "trasfondo.info") (noreq))
+                (delete (tackon #viejo "trasfondo.info") (optional "force")))
+            (set #quitado (cat #quitado "  " (tackon #viejo "trasfondo") "\n")))))
+(set #quitado "")
+(set #viejo "SYS:WBStartup")
+(P_QUITAR_VIEJO)
+(set #viejo "SYS:Utilities")
+(P_QUITAR_VIEJO)
+(set #viejo "SYS:Tools")
+(P_QUITAR_VIEJO)
+(set #viejo #donde)
+(P_QUITAR_VIEJO)
+(if (<> #quitado "")
+    (message (cat (if #es "Quitado el Trasfondo de antes (sus preferencias se quedan y valen para este):\n\n"
+                          "Removed the previous Trasfondo (its preferences stay, and this one uses them):\n\n")
+                  #quitado)))
 
 ; --- Copiar (los iconos, sin la posición que traen del paquete: cada cajón coloca los suyos) ---
+(if (not (exists #cajon (noreq)))
+    (makedir #cajon (infos)))
+(procedure P_COPIAR
+    (copyfiles
+        (prompt (if #es "Copiando Trasfondo" "Copying Trasfondo"))
+        (help @copyfiles-help)
+        (source #pieza)
+        (dest #cajon)
+        (optional "force")
+        (infos)))
+(set #pieza "Trasfondo")
+(P_COPIAR)
+(set #pieza "TrasfondoBarra")
+(P_COPIAR)
+(set #pieza "TrasfondoPanel")
+(P_COPIAR)
+(set #pieza "TrasfondoAviso")
+(P_COPIAR)
+(set #pieza "TrasfondoRapido")
+(P_COPIAR)
+(set #pieza "TrasfondoDock")
+(P_COPIAR)
+(set #pieza "TrasfondoVentanas")
+(P_COPIAR)
+(set #pieza "LEEME")
+(P_COPIAR)
+(set #pieza "LICENSE")
+(P_COPIAR)
 (copyfiles
-    (prompt (if #es "Copiando Trasfondo" "Copying Trasfondo"))
+    (prompt (if #es "Copiando los catálogos" "Copying the catalogs"))
     (help @copyfiles-help)
-    (source "trasfondo")
-    (dest #destino)
-    (infos))
-(tooltype (dest (tackon #destino "trasfondo")) (noposition))
+    (source "Catalogs")
+    (dest (tackon #cajon "Catalogs"))
+    (all))
+; los iconos de arranque, con la ruta de su pieza
+(copyfiles
+    (prompt (if #es "Copiando los iconos de arranque" "Copying the startup icons"))
+    (help @copyfiles-help)
+    (source "Arranque")
+    (dest (tackon #cajon "Arranque"))
+    (all))
+(procedure P_HERRAMIENTA
+    (tooltype (dest (tackon #cajon (cat "Arranque/" #pieza))) (setdefaulttool (tackon #cajon #pieza)) (noposition)))
+(set #pieza "Trasfondo")
+(P_HERRAMIENTA)
+(set #pieza "TrasfondoBarra")
+(P_HERRAMIENTA)
+(set #pieza "TrasfondoDock")
+(P_HERRAMIENTA)
+(set #pieza "TrasfondoVentanas")
+(P_HERRAMIENTA)
+(tooltype (dest (tackon #cajon "Trasfondo")) (noposition))
+(tooltype (dest (tackon #cajon "TrasfondoBarra")) (noposition))
+(tooltype (dest (tackon #cajon "TrasfondoDock")) (noposition))
+(tooltype (dest (tackon #cajon "TrasfondoVentanas")) (noposition))
+(tooltype (dest (tackon #cajon "LEEME")) (noposition))
+
 (copyfiles
     (prompt (if #es "Copiando sus preferencias" "Copying its preferences"))
     (help @copyfiles-help)
     (source "TrasfondoPrefs")
     (dest "SYS:Prefs")
+    (optional "force")
     (infos))
 (tooltype (dest "SYS:Prefs/TrasfondoPrefs") (noposition))
+(copyfiles
+    (prompt (if #es "Copiando la orden Avisa" "Copying the Avisa command"))
+    (help @copyfiles-help)
+    (source "Avisa")
+    (dest "C:")
+    (optional "force"))
+; dónde están las piezas: TrasfondoPrefs las arranca y pone sus iconos de arranque
+(textfile (dest "ENVARC:Trasfondo.cajon") (append (cat #cajon "\n")))
+(textfile (dest "ENV:Trasfondo.cajon") (append (cat #cajon "\n")))
+
 ; el catálogo en castellano, en LOCALE:Catalogs con el nombre que tenga el idioma en este sistema (el 3.1 y el
 ; 3.9 lo llaman "español"; el 3.2, "spanish"). Solo se usa si el castellano está en las Preferencias de idioma
-; (el idioma va en #idioma: los argumentos de un procedure son del Installer 43, y este vale para el del 3.0)
 (procedure P_CATALOGO
     (if (exists (cat "LOCALE:Languages/" #idioma ".language") (noreq))
         (
@@ -78,19 +156,54 @@
 (set #idioma "spanish")
 (P_CATALOGO)
 
+; --- Qué arranca con el Workbench ---
+(set #arranque
+    (askoptions
+        (prompt (if #es "¿Qué piezas arrancan solas cada vez que se abre el Workbench?\n(Se cambia luego en TrasfondoPrefs, sección Arranque.)"
+                        "Which pieces start by themselves every time the Workbench opens?\n(It can be changed later in TrasfondoPrefs, Startup section.)"))
+        (help (if #es "Cada pieza marcada deja un icono en SYS:WBStartup que la arranca. La barra y el dock solo se ven con una pantalla RTG."
+                      "Each piece marked leaves an icon in SYS:WBStartup that starts it. The bar and the dock are only seen on an RTG screen."))
+        (choices (if #es "El fondo (Trasfondo)" "The backdrop (Trasfondo)")
+                 (if #es "La barra (TrasfondoBarra)" "The bar (TrasfondoBarra)")
+                 (if #es "El dock (TrasfondoDock)" "The dock (TrasfondoDock)")
+                 (if #es "Las ventanas (TrasfondoVentanas)" "The windows (TrasfondoVentanas)"))
+        (default 15)))
+(procedure P_ARRANQUE
+    (if (IN #arranque #bit)
+        (copyfiles
+            (prompt (if #es "Poniendo el arranque" "Setting the startup"))
+            (help @copyfiles-help)
+            (source (tackon #cajon (cat "Arranque/" #pieza ".info")))
+            (dest "SYS:WBStartup")
+            (optional "force"))
+        (if (exists (cat "SYS:WBStartup/" #pieza ".info") (noreq))
+            (delete (cat "SYS:WBStartup/" #pieza ".info") (optional "force")))))
+(set #pieza "Trasfondo")
+(set #bit 0)
+(P_ARRANQUE)
+(set #pieza "TrasfondoBarra")
+(set #bit 1)
+(P_ARRANQUE)
+(set #pieza "TrasfondoDock")
+(set #bit 2)
+(P_ARRANQUE)
+(set #pieza "TrasfondoVentanas")
+(set #bit 3)
+(P_ARRANQUE)
+
 ; --- Arrancarlo ya ---
 (if (askbool
-        (prompt (if #es "Trasfondo está instalado. ¿Lo pongo en marcha ahora?" "Trasfondo is installed. Start it now?"))
-        (help (if #es "Si ya estaba en marcha, lanzarlo otra vez lo para: en ese caso, di que no."
-                      "If it was already running, starting it again stops it: in that case, say no."))
+        (prompt (if #es "Trasfondo está instalado. ¿Arranco ya las piezas marcadas?" "Trasfondo is installed. Start the pieces marked now?"))
+        (help (if #es "Si alguna ya estaba en marcha (también el Trasfondo de antes), se para y arranca la nueva."
+                      "If one was already running (also the previous Trasfondo), it is stopped and the new one starts."))
         (choices (if #es "Sí" "Yes") "No")
         (default 1))
-    (run (cat "Run >NIL: \"" (tackon #destino "trasfondo") "\"")))
+    (run "SYS:Prefs/TrasfondoPrefs ARRANCAR"))
 
 (exit (if #es
-          (cat "Trasfondo está en " #destino ".\n\n"
-               "Qué se ve y cómo: SYS:Prefs/TrasfondoPrefs.\n"
-               "Para pararlo: doble clic otra vez en su icono, o Eliminar en Exchange.")
-          (cat "Trasfondo is in " #destino ".\n\n"
-               "What it shows and how: SYS:Prefs/TrasfondoPrefs.\n"
-               "To stop it: double click its icon again, or Remove in Exchange.")))
+          (cat "Trasfondo está en " #cajon ".\n\n"
+               "Sus preferencias (el fondo, la barra, el dock, las ventanas y qué arranca con el Workbench): SYS:Prefs/TrasfondoPrefs.\n"
+               "Para dejar un aviso desde el Shell: Avisa \"texto\".")
+          (cat "Trasfondo is in " #cajon ".\n\n"
+               "Its preferences (the backdrop, the bar, the dock, the windows and what starts with the Workbench): SYS:Prefs/TrasfondoPrefs.\n"
+               "To leave a notice from the Shell: Avisa \"text\".")))

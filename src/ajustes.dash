@@ -1,0 +1,25 @@
+# Los ajustes de las piezas de Trasfondo 2.0 (barra, dock, ventanas): de ENV:Trasfondo.prefs, el fichero que
+# escribe TrasfondoPrefs (NOMBRE=valor, una línea cada uno, el mismo del fondo); lo que no esté ahí, del tooltype
+# del icono, y si no, el de serie. Se leen al arrancar: TrasfondoPrefs vuelve a arrancar la pieza al cambiarlos.
+
+var ajustes_texto: String = ""
+var ajustes_leidos: Bool = false
+
+# NOMBRE en el fichero de ajustes; si no está, el tooltype TOOLTYPE; si tampoco, defecto
+func ajuste(nombre: String, tooltype_nombre: String, defecto: String) -> String
+    if not ajustes_leidos
+        ajustes_leidos = true
+        t = file_read_text("ENV:Trasfondo.prefs")
+        if t != nil
+            ajustes_texto = str_replace(t, "\r", "")
+        end
+    end
+    var lineas: [String] = str_split(ajustes_texto, "\n")
+    for l in lineas
+        igual = str_find(l, "=")
+        if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
+            return str_trim(l[igual + 1:l.length])
+        end
+    end
+    return tooltype(tooltype_nombre, defecto)
+end

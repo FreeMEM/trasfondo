@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (25.10.2026)
+## version $VER: Trasfondo.catalog 1.0 (31.10.2026)
 ## language español
 ## codeset 0
 ;
@@ -230,3 +230,84 @@ Ver la gráfica de la memoria
 MSG_110
 %s en uso
 ; %s in use
+MSG_111
+Sección
+; Section
+MSG_112
+Fondo|Barra|Dock|Ventanas|Arranque
+; Background|Bar|Dock|Windows|Startup
+MSG_113
+Ciudad
+; City
+MSG_114
+Latitud
+; Latitude
+MSG_115
+Longitud
+; Longitude
+MSG_116
+El tiempo: una ciudad, o latitud y longitud
+; The weather: a city, or latitude and longitude
+MSG_117
+Posición
+; Position
+MSG_118
+Abajo|Arriba|Izquierda|Derecha
+; Bottom|Top|Left|Right
+MSG_119
+Tamaño de los iconos
+; Icon size
+MSG_120
+Lanzadores...
+; Launchers...
+MSG_121
+Hueco
+; Gap
+MSG_122
+Mosaico automático de las ventanas nuevas
+; Tile new windows automatically
+MSG_123
+Maximizar
+; Maximize
+MSG_124
+Mitad izquierda
+; Left half
+MSG_125
+Mitad derecha
+; Right half
+MSG_126
+Restaurar
+; Restore
+MSG_127
+Mosaico
+; Tile
+MSG_128
+Mosaico automático
+; Auto tile
+MSG_129
+Mover
+; Move
+MSG_130
+Cambiar tamaño
+; Resize
+MSG_131
+Arrancar el fondo con el Workbench
+; Start the background with the Workbench
+MSG_132
+Arrancar la barra con el Workbench
+; Start the bar with the Workbench
+MSG_133
+Arrancar el dock con el Workbench
+; Start the dock with the Workbench
+MSG_134
+Arrancar las teclas de ventanas con el Workbench
+; Start the window keys with the Workbench
+MSG_135
+Instala Trasfondo con su instalador para elegir esto
+; Install Trasfondo with its installer to choose this
+MSG_136
+La barra, el dock y sus paneles necesitan una pantalla RTG
+; The bar, the dock and their panels need an RTG screen
+MSG_137
+Un programa por línea
+; One program per line
