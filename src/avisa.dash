@@ -1,0 +1,27 @@
+# Avisa: deja un aviso para Trasfondo (la barra lo enseña y el panel lo guarda hasta que se descarte).
+#
+#   Avisa "Copia terminada"
+#   Avisa TITULO="Copia terminada" TEXTO="12 ficheros a Work:Fotos" DE="Archivos"
+#
+# Desde ARexx: ADDRESS COMMAND 'Avisa TITULO="..." TEXTO="..."'.
+
+@version "Avisa 0.1"
+
+import "avisos.dash"
+
+Main
+    titulo = tooltype("TITULO", "")
+    texto = tooltype("TEXTO", "")
+    de = tooltype("DE", "")
+    if titulo == "" and texto == "" and arg_count() > 0 and not str_contains(arg(0), "=")
+        titulo = arg(0)
+    end
+    if titulo == "" and texto == ""
+        Print "Usage: Avisa TITULO=\"...\" [TEXTO=\"...\"] [DE=\"...\"]"
+    else
+        if de == ""
+            de = "Shell"
+        end
+        avisos_nuevo(de, titulo, texto)
+    end
+end

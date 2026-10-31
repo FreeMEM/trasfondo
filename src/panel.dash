@@ -8,6 +8,7 @@
 @version "TrasfondoPanel 0.1"
 
 import "dibujo.dash"
+import "avisos.dash"
 
 const ANCHO = 560
 const ALTO = 340
@@ -24,6 +25,8 @@ const C_SUAVE = 0x9aa0a6
 const C_TENUE = 0x5f6368
 const C_HOY = 0xf1f3f4
 const C_HOY_TEXTO = 0x16191d
+const C_AVISO = 0x2c3139
+const C_CIRCULO = 0x3c414a
 
 const MESES = "January|February|March|April|May|June|July|August|September|October|November|December"
 const DIAS = "Mo|Tu|We|Th|Fr|Sa|Su"
@@ -50,6 +53,13 @@ const CAL_H = ALTO - CAL_Y - M
 var ant_x: Int = 0           # las flechas del mes anterior y el siguiente
 var sig_x: Int = 0
 var flecha_y: Int = 0
+const AV_X1 = M + CAL_W + 8  # la tarjeta de los avisos
+const AV_X2 = ANCHO - M - 1
+const AV_Y = M + 40          # donde empieza la lista
+const AV_ALTO = 62           # lo que ocupa cada aviso
+const AV_VISIBLES = 3
+const LIMPIAR_Y = ALTO - M - 44   # el botón de limpiar
+var f_negrita: Int = 0
 
 func bisiesto(a: Int) -> Bool
     return (a % 4 == 0 and a % 100 != 0) or a % 400 == 0
@@ -180,18 +190,89 @@ func pintar_calendario()
     end
 end
 
+# lo que quepa de un texto en w píxeles, con "..." si no cabe entero
+func cortar(t: String, w: Int) -> String
+    if font_text_width(t) <= w
+        return t
+    end
+    n = t.length
+    while n > 0 and font_text_width(t[0:n] + "...") > w
+        n = n - 1
+    end
+    return t[0:n] + "..."
+end
+
+# el aviso i (de avisos.dash) en su hueco k de la lista, del más nuevo al más viejo
+func pintar_aviso(i: Int, k: Int)
+    x1 = AV_X1 + 10
+    x2 = AV_X2 - 10
+    y = AV_Y + k * AV_ALTO
+    redondo(x1, y, x2, y + AV_ALTO - 8, 8, C_AVISO)
+    pluma(C_CIRCULO)
+    gfx_circle_fill(x1 + 20, y + 20, 12)
+    font_use(f_negrita)
+    font_style(2)
+    centrado(x1 + 20, y + 20 - font_height() / 2 + font_baseline(), str_upper(av_de[i][0:1]), C_TEXTO)
+    font_style(0)
+    x = x1 + 40
+    w = x2 - x - 22
+    font_use(f_normal)
+    pluma(C_SUAVE)
+    gfx_text_at(x, y + 6 + font_baseline(), cortar(av_de[i] + " · " + av_hora[i], w))
+    centrado(x2 - 12, y + 6 + font_baseline(), "x", C_SUAVE)
+    font_use(f_negrita)
+    font_style(2)
+    pluma(C_TEXTO)
+    gfx_text_at(x, y + 22 + font_baseline(), cortar(av_titulo[i], w + 14))
+    font_style(0)
+    font_use(f_normal)
+    pluma(C_SUAVE)
+    gfx_text_at(x, y + 38 + font_baseline(), cortar(av_texto[i], w + 14))
+end
+
 func pintar_avisos()
-    x1 = M + CAL_W + 8
-    x2 = ANCHO - M - 1
-    redondo(x1, M, x2, ALTO - M - 1, R, C_TARJETA)
+    redondo(AV_X1, M, AV_X2, ALTO - M - 1, R, C_TARJETA)
     font_use(f_normal)
     pluma(C_TEXTO)
-    gfx_text_at(x1 + 14, M + 14 + font_baseline(), "Notifications")
-    centrado((x1 + x2) / 2, ALTO / 2, "No notifications", C_TENUE)
-    # el botón de limpiar
-    by = ALTO - M - 44
-    redondo(x1 + 12, by, x2 - 12, by + 30, 15, C_BOTON)
-    centrado((x1 + x2) / 2, by + 15 - font_height() / 2 + font_baseline(), "Clear all", C_TEXTO)
+    gfx_text_at(AV_X1 + 14, M + 14 + font_baseline(), "Notifications")
+    n = avisos_cuantos()
+    if n == 0
+        centrado((AV_X1 + AV_X2) / 2, ALTO / 2, "No notifications", C_TENUE)
+    else
+        k = 0
+        while k < AV_VISIBLES and k < n
+            pintar_aviso(n - 1 - k, k)
+            k = k + 1
+        end
+        if n > AV_VISIBLES
+            font_use(f_normal)
+            centrado((AV_X1 + AV_X2) / 2, AV_Y + AV_VISIBLES * AV_ALTO + 2, "+#{n - AV_VISIBLES} more", C_SUAVE)
+        end
+    end
+    redondo(AV_X1 + 12, LIMPIAR_Y, AV_X2 - 12, LIMPIAR_Y + 30, 15, C_BOTON)
+    font_use(f_normal)
+    centrado((AV_X1 + AV_X2) / 2, LIMPIAR_Y + 15 - font_height() / 2 + font_baseline(), "Clear all", C_TEXTO)
+end
+
+# un clic en la tarjeta de los avisos: la x de uno lo descarta; el botón, todos
+func pulsar_avisos(x: Int, y: Int)
+    n = avisos_cuantos()
+    if y >= LIMPIAR_Y and y <= LIMPIAR_Y + 30 and n > 0
+        av_hora = []
+        av_de = []
+        av_titulo = []
+        av_texto = []
+        avisos_guardar()
+        pintar_avisos()
+        return
+    end
+    if x >= AV_X2 - 34 and x <= AV_X2 - 10
+        k = (y - AV_Y) / AV_ALTO
+        if y >= AV_Y and k < AV_VISIBLES and k < n and y - AV_Y - k * AV_ALTO <= 22
+            avisos_quitar(n - 1 - k)
+            pintar_avisos()
+        end
+    end
 end
 
 func pintar_todo()
@@ -250,10 +331,12 @@ Main
         minuto = clock_minute()
         anio = hoy_anio
         leer_tiempo()
+        avisos_leer()
         mes = hoy_mes
         f_normal = abrir_fuente(13)
         f_media = abrir_fuente(24)
         f_grande = abrir_fuente(44)
+        f_negrita = abrir_fuente(13)
         Panel.open
         gfx_mode(0)                  # el texto sin fondo: encima de las tarjetas
         window_move(0, (rtg_get_width() - ANCHO) / 2, ALTO_BARRA + 4)
@@ -272,7 +355,9 @@ Main
             On Click
                 x = click_x()
                 y = click_y()
-                if y >= flecha_y - 4 and y <= flecha_y + 16
+                if x >= AV_X1
+                    pulsar_avisos(x, y)
+                elif y >= flecha_y - 4 and y <= flecha_y + 16
                     if x >= ant_x - 6 and x <= ant_x + 14
                         cambiar_mes(-1)
                     elif x >= sig_x - 6 and x <= sig_x + 14

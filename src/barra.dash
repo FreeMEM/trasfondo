@@ -12,6 +12,7 @@
 
 import "dibujo.dash"
 import "tiempo.dash"
+import "avisos.dash"
 
 const ALTO = 24              # alto de la barra
 const ALTO_PILDORA = 18
@@ -35,6 +36,9 @@ var panel: String = "TrasfondoPanel"   # la orden que lo abre: con la ruta del c
 var reloj_x1: Int = 0        # dónde están la hora, la fecha y el tiempo: al pulsarlos se abre el panel
 var reloj_x2: Int = 0
 var tic: Int = 0             # vueltas del temporizador (5 por segundo)
+var aviso: String = "TrasfondoAviso"   # la orden que enseña el último aviso
+var avisos_tam: Int = -1     # el tamaño de ENV:Trasfondo.avisos la última vez que se miró
+var n_avisos: Int = 0
 
 # el ancho de una píldora con ese texto (y un icono delante, si icono)
 func ancho_pildora(texto: String, icono: Bool) -> Int
@@ -67,6 +71,61 @@ func pildora_tiempo(x: Int) -> Int
     return x + w
 end
 
+# una campana pequeña, centrada en (cx, cy)
+func campana(cx: Int, cy: Int, rgb: Int)
+    pluma(rgb)
+    gfx_circle_fill(cx, cy - 2, 4)
+    gfx_rect(cx - 4, cy - 2, cx + 4, cy + 3)
+    gfx_rect(cx - 6, cy + 3, cx + 6, cy + 4)
+    gfx_rect(cx - 1, cy + 6, cx + 1, cy + 7)
+end
+
+func ancho_avisos() -> Int
+    if n_avisos == 0
+        return ICONO + RELLENO + 4
+    end
+    return ancho_pildora("#{n_avisos}", true) - RELLENO + 4
+end
+
+# la píldora de los avisos: la campana y cuántos hay; un punto rojo si hay alguno
+func pildora_avisos(x: Int) -> Int
+    texto = ""
+    if n_avisos > 0
+        texto = "#{n_avisos}"
+    end
+    w = ancho_avisos()
+    y = (ALTO - ALTO_PILDORA) / 2
+    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    cx = x + RELLENO - 2 + ICONO / 2
+    campana(cx, ALTO / 2, C_TEXTO)
+    if n_avisos > 0
+        pluma(C_CALIENTE)
+        gfx_circle_fill(cx + 5, ALTO / 2 - 6, 2)
+        pluma(C_TEXTO)
+        gfx_text_at(x + RELLENO + ICONO + 2, (ALTO - font_height()) / 2 + font_baseline(), texto)
+    end
+    return x + w
+end
+
+# mira si cambiaron los avisos; si llegó uno nuevo, lo enseña
+func mirar_avisos() -> Bool
+    tam = 0
+    if file_exists(AVISOS)
+        tam = file_size(AVISOS)
+    end
+    if tam == avisos_tam
+        return false
+    end
+    avisos_tam = tam
+    antes = n_avisos
+    avisos_leer()
+    n_avisos = avisos_cuantos()
+    if n_avisos > antes
+        run_program(aviso)
+    end
+    return true
+end
+
 func por_ciento(milesimas: Int) -> String
     return "#{(milesimas + 5) / 10}%"
 end
@@ -86,6 +145,7 @@ func pintar()
     if hay_tiempo
         w = w + HUECO + ancho_pildora(grados(t_temp), true)
     end
+    w = w + HUECO + ancho_avisos()
     x = (ancho - w) / 2
     reloj_x1 = x
     x = pildora_texto(x, hora, C_TEXTO) + HUECO
@@ -93,6 +153,7 @@ func pintar()
     if hay_tiempo
         x = pildora_tiempo(x + HUECO)
     end
+    x = pildora_avisos(x + HUECO)
     reloj_x2 = x
 
     # derecha, de derecha a izquierda
@@ -154,6 +215,7 @@ Main
                 carpeta = carpeta + "/"
             end
             panel = "\"" + carpeta + "TrasfondoPanel\""
+            aviso = "\"" + carpeta + "TrasfondoAviso\""
         end
         tiempo_iniciar(tooltype("CIUDAD", ""), tooltype("LAT", ""), tooltype("LON", ""))
         Barra.open
@@ -168,6 +230,12 @@ Main
         end
         cpu_start()
         temp = pistorm_temperature()
+        avisos_tam = 0
+        if file_exists(AVISOS)               # los que ya había no se enseñan otra vez
+            avisos_tam = file_size(AVISOS)
+            avisos_leer()
+            n_avisos = avisos_cuantos()
+        end
         pintar()
         EventLoop
             On Timer 200
@@ -181,7 +249,7 @@ Main
                     cpu_sample()
                     cpu = cpu_total()
                     pintar()
-                elif t_cambio
+                elif t_cambio or mirar_avisos()
                     t_cambio = false
                     pintar()
                 end

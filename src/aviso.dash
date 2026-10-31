@@ -1,0 +1,114 @@
+# TrasfondoAviso: enseña unos segundos el último aviso, arriba a la derecha, debajo de la barra. Lo lanza la
+# barra cuando llega uno (si llegan varios seguidos, el nuevo queda encima). Se cierra solo, o al pulsarlo.
+# Solo con RTG.
+
+@workbench_output "NIL:"
+@version "TrasfondoAviso 0.1"
+
+import "dibujo.dash"
+import "avisos.dash"
+
+const ANCHO = 340
+const ALTO = 78
+const ALTO_BARRA = 24
+const DURA = 6000            # ms que se ve
+
+const C_FONDO = 0x23272e
+const C_BORDE = 0x3c414a
+const C_TEXTO = 0xe8eaed
+const C_SUAVE = 0x9aa0a6
+const C_ACENTO = 0x8ab4f8
+const C_CIRCULO = 0x3c414a
+
+var f_normal: Int = 0
+var f_negrita: Int = 0
+
+func abrir_fuente(tam: Int) -> Int
+    f = font_open("CGTriumvirate.font", tam)
+    if f == 0
+        f = font_open("helvetica.font", tam)
+    end
+    return f
+end
+
+# lo que quepa de un texto en w píxeles, con "..." si no cabe entero
+func cortar(t: String, w: Int) -> String
+    if font_text_width(t) <= w
+        return t
+    end
+    n = t.length
+    while n > 0 and font_text_width(t[0:n] + "...") > w
+        n = n - 1
+    end
+    return t[0:n] + "..."
+end
+
+func pintar(i: Int)
+    pluma(C_BORDE)
+    gfx_rect(0, 0, ANCHO - 1, ALTO - 1)
+    pluma(C_FONDO)
+    gfx_rect(1, 1, ANCHO - 2, ALTO - 2)
+    # el círculo con la inicial de quien avisa
+    pluma(C_CIRCULO)
+    gfx_circle_fill(30, 30, 16)
+    font_use(f_negrita)
+    font_style(2)
+    inicial = str_upper(av_de[i][0:1])
+    centrado(30, 30 - font_height() / 2 + font_baseline(), inicial, C_TEXTO)
+    font_style(0)
+    x = 58
+    font_use(f_normal)
+    pluma(C_SUAVE)
+    gfx_text_at(x, 14 + font_baseline() - font_height() / 2, cortar(av_de[i] + " · " + av_hora[i], ANCHO - x - 12))
+    font_use(f_negrita)
+    font_style(2)
+    pluma(C_TEXTO)
+    gfx_text_at(x, 34 + font_baseline() - font_height() / 2, cortar(av_titulo[i], ANCHO - x - 14))
+    font_style(0)
+    font_use(f_normal)
+    pluma(C_SUAVE)
+    gfx_text_at(x, 54 + font_baseline() - font_height() / 2, cortar(av_texto[i], ANCHO - x - 12))
+end
+
+Window Aviso
+    title ""
+    width 340
+    height 78
+    left 0
+    top 30
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+    activate false
+end
+
+Main
+    avisos_leer()
+    if avisos_cuantos() == 0
+        # nada que enseñar
+    elif rtg_get_depth() < 15
+        Print "TrasfondoAviso needs an RTG screen (15 bits or more)"
+    else
+        f_normal = abrir_fuente(12)
+        f_negrita = abrir_fuente(13)
+        Aviso.open
+        window_move(0, rtg_get_width() - ANCHO - 8, ALTO_BARRA + 6)
+        gfx_mode(0)
+        pintar(avisos_cuantos() - 1)
+        hasta = time_ms() + DURA
+        EventLoop
+            On Timer 250
+                if break_check() or time_ms() >= hasta
+                    Stop
+                end
+            end
+            On Click
+                Stop
+            end
+            On Close
+                Stop
+            end
+        end
+    end
+end

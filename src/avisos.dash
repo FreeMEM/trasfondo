@@ -1,0 +1,78 @@
+# Los avisos de Trasfondo 2.0: una lista en ENV:Trasfondo.avisos, uno por línea, del más viejo al más nuevo:
+#   hora <tab> quién avisa <tab> título <tab> texto
+# Los deja la orden Avisa (o cualquiera que escriba ahí una línea así). La barra los cuenta y enseña el
+# último un momento; el panel los lista y los descarta.
+
+const AVISOS = "ENV:Trasfondo.avisos"
+const AVISOS_TOPE = 50       # los más viejos se tiran
+
+var av_hora: [String] = []
+var av_de: [String] = []
+var av_titulo: [String] = []
+var av_texto: [String] = []
+
+# un texto que se pueda guardar en una línea con tabuladores
+func av_limpio(t: String) -> String
+    return str_replace(str_replace(str_replace(t, "\t", " "), "\r", ""), "\n", " ")
+end
+
+func avisos_leer()
+    av_hora = []
+    av_de = []
+    av_titulo = []
+    av_texto = []
+    texto = file_read_text(AVISOS)
+    if texto == nil
+        return
+    end
+    for l in str_split(texto, "\n")
+        p = str_split(l, "\t")
+        if p.length >= 4
+            av_hora.push(p[0])
+            av_de.push(p[1])
+            av_titulo.push(p[2])
+            av_texto.push(p[3])
+        end
+    end
+end
+
+func avisos_guardar()
+    if av_hora.length == 0
+        file_delete(AVISOS)
+        return
+    end
+    texto = ""
+    for i in (0..av_hora.length - 1)
+        texto = texto + av_hora[i] + "\t" + av_de[i] + "\t" + av_titulo[i] + "\t" + av_texto[i] + "\n"
+    end
+    file_write_text(AVISOS, texto)
+end
+
+func avisos_nuevo(de: String, titulo: String, texto: String)
+    avisos_leer()
+    av_hora.push(date_text("%H:%M"))
+    av_de.push(av_limpio(de))
+    av_titulo.push(av_limpio(titulo))
+    av_texto.push(av_limpio(texto))
+    while av_hora.length > AVISOS_TOPE
+        av_hora.remove(0)
+        av_de.remove(0)
+        av_titulo.remove(0)
+        av_texto.remove(0)
+    end
+    avisos_guardar()
+end
+
+func avisos_quitar(i: Int)
+    if i >= 0 and i < av_hora.length
+        av_hora.remove(i)
+        av_de.remove(i)
+        av_titulo.remove(i)
+        av_texto.remove(i)
+        avisos_guardar()
+    end
+end
+
+func avisos_cuantos() -> Int
+    return av_hora.length
+end
