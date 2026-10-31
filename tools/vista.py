@@ -17,13 +17,13 @@ SYS = Path(os.environ.get("DASH_EMU_SYS_32_RTG", Path.home() / ".cache/dash-emu/
 ICONOS = [str(Path.home() / p) for p in ("Amiberry/LHA/Tachyon.info", "Amiberry/LHA/dashweb.info",
           ".cache/dash-mui/x/MUI/Demos/Clock.info", "m68k-amigaos-gcc/projects/NDK3.2/MuManual/Manual.info",
           "m68k-amigaos-gcc/projects/NDK3.2/Examples/ARexx.info")]
-PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa", "rapido": "TrasfondoRapido", "dock": "TrasfondoDock"}
+PROGRAMAS = {"barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso", "avisa": "Avisa", "rapido": "TrasfondoRapido", "dock": "TrasfondoDock", "ventanas": "TrasfondoVentanas"}
 
 
-def compilar(nombre):
+def compilar(nombre, fuente=None):
     env = dict(os.environ, PYTHONPATH=str(DASH))
-    subprocess.run([str(DASH / "dash"), f"src/{nombre}.dash", "-o", f"build/{nombre}", "-q"], cwd=RAIZ, env=env,
-                   check=True)
+    subprocess.run([str(DASH / "dash"), fuente or f"src/{nombre}.dash", "-o", f"build/{nombre}", "-q"], cwd=RAIZ,
+                   env=env, check=True)
 
 
 def guion(pasos):
@@ -37,6 +37,8 @@ def guion(pasos):
         lineas.append(f"    time_delay({int(p[-1] * 50)})")
         if p[0] == "clic":
             lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_click({p[1]}, {p[2]} - 500, 0)"]
+        elif p[0] == "tecla":
+            lineas += [f"    input_key({p[1]}, {p[2]})"]
         else:
             lineas.append("    run_program(" + '"' + p[1].replace('"', '\\"') + '"' + ")")
     lineas += ["    time_delay(100000)", "end"]
@@ -53,16 +55,25 @@ def main():
                     help="X,Y,SEGUNDOS desde el paso anterior")
     ap.add_argument("--orden", action="append", dest="pasos", type=lambda v: ("orden", v),
                     help="SEGUNDOS:orden (Avisa TITULO=...), desde el paso anterior")
+    ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
+                    help="CODIGO,CALIFICADORES,SEGUNDOS: una tecla en bruto (0x14 la T; 2 Ctrl + 4 Alt...)")
     ap.add_argument("--barra", default="CIUDAD=Mijas", help="argumentos de la barra")
+    ap.add_argument("--ventanas", default=None, help="arranca TrasfondoVentanas con estos argumentos, y tres "
+                    "ventanas de prueba (tools/ventanitas.dash)")
     ap.add_argument("--dock", default=None, help="arranca el dock con estos argumentos (POSICION=ABAJO)")
     a = ap.parse_args()
     for n in PROGRAMAS:
         compilar(n)
+    if a.ventanas is not None:
+        compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
         if tipo == "clic":
             x, y, seg = v.split(",")
             pasos.append(("clic", int(x), int(y), float(seg)))
+        elif tipo == "tecla":
+            c, q, seg = v.split(",")
+            pasos.append(("tecla", int(c, 0), int(q), float(seg)))
         else:
             seg, orden = v.split(":", 1)
             pasos.append(("orden", orden, float(seg)))
@@ -93,6 +104,9 @@ def main():
             lista += "SYS:System/Shell\nSYS:Prefs\n"
             (hd / "dock.txt").write_text(lista)
             extra += f"Copy DH0:dock.txt ENV:Trasfondo.dock QUIET\nRun >NIL: DH0:TrasfondoDock {a.dock}\n"
+        if a.ventanas is not None:
+            shutil.copy(RAIZ / "build" / "ventanitas", hd / "Ventanitas")
+            extra += f"Run >NIL: DH0:TrasfondoVentanas {a.ventanas}\nRun >NIL: DH0:Ventanitas\n"
         t = t.replace("C:LoadWB\n", "C:LoadWB\n" + extra, 1)
         ss.write_text(t)
 

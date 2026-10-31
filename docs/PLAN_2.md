@@ -144,9 +144,9 @@ arrastrando.
 
 Se añade a Dash como builtins, como siempre. A comprobar uno por uno, pero seguramente:
 
-- Ventanas de otros programas: listar las de una pantalla (título, posición, tamaño, tarea dueña), y
-  moverlas, redimensionarlas, traerlas delante o mandarlas atrás. Hoy `window_move` solo vale con las propias.
-- Eventos de entrada de toda la pantalla en una commodity (ratón y teclas, no solo una tecla rápida).
+- Hecho (2026-10-31): ventana sin barra de título; `On RightClick`, `On Inactive` y `rmbtrap`; `cx_key_add`
+  (varias teclas y botones del ratón por commodity); `wm_*` (listar las ventanas de la pantalla del Workbench
+  y moverlas, redimensionarlas, traerlas delante o detrás, activarlas). En dash1 y dashc.
 - Ventana siempre encima o, al menos, saber cuándo la tapan.
 - AppWindow y AppIcon: soltar iconos en el dock y en Archivos.
 - Menús emergentes (botón derecho), dibujados a mano: ReAction de 3.x no los trae (ver "Interfaz").
@@ -182,6 +182,22 @@ el dock, que ya se dibujan a mano.
 Directory Opus 4 y 5, Scalos (sustituye al Workbench), ToolManager (docks), AmiStart (menú de inicio),
 MCP y VisualPrefs (botones de ventana), PopupMenu (menús emergentes). Cada uno cubre un trozo; ninguno
 lo junta todo con un aspecto moderno. Esa es la diferencia que buscamos.
+
+## Estado (2026-10-31)
+
+En la rama `trasfondo-2`, probado solo en FS-UAE (68040, uaegfx, Workbench 3.2.3), con dash1 y dashc:
+
+- Hecho, primera versión: barra (`src/barra.dash`), panel de resumen (`panel.dash`), tiempo (`tiempo.dash`,
+  `https.dash`), avisos (`avisa.dash`, `aviso.dash`, `avisos.dash`), ajustes rápidos (`rapido.dash`), dock
+  (`dock.dash`) y ventanas (`ventanas.dash`: maximizar, mitades, restaurar, mosaico a mano y automático,
+  mover y redimensionar con Alt y el ratón).
+- Lo compartido, por ahora en `ENV:` (`Trasfondo.tiempo`, `Trasfondo.avisos`, `Trasfondo.dock`), no por un
+  puerto: el puerto `TRASFONDO` sigue pendiente.
+- Sabido que falla: la barra y el dock son ventanas normales (otra ventana las tapa); la barra se queda la
+  activación al pulsarla; la barra y Trasfondo miden la CPU a la vez y uno de los dos sale mal; los textos,
+  solo en inglés; el mosaico automático mira las ventanas cada medio segundo (se ve la nueva en su sitio un
+  momento).
+- Capturas: `tools/vista.py` (FS-UAE con RTG, clics, teclas y órdenes por guion).
 
 ## Orden propuesto
 

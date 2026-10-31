@@ -1,6 +1,6 @@
 # TrasfondoRapido: el panel de ajustes rápidos que abre la barra desde su derecha. Arriba la máquina (memoria) con
 # los botones de Prefs y de reiniciar; en medio la red, los discos y la memoria; abajo, los Prefs del sistema a
-# un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc también. Solo con RTG.
+# un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
 
 @workbench_output "NIL:"
 @version "TrasfondoRapido 0.1"
@@ -277,6 +277,9 @@ Main
             end
             On Key "ESC"
                 Stop
+            end
+            On Inactive
+                Stop                         # se pulsó fuera
             end
             On Close
                 Stop

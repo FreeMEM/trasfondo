@@ -2,7 +2,7 @@
 # calendario del mes y los avisos.
 #
 # Un programa aparte: la barra lo lanza y, si ya estaba abierto, lanzarlo otra vez lo cierra. Se cierra
-# también con Esc. Solo con RTG.
+# también con Esc o al pulsar fuera. Solo con RTG.
 
 @workbench_output "NIL:"
 @version "TrasfondoPanel 0.1"
@@ -367,6 +367,9 @@ Main
             end
             On Key "ESC"
                 Stop
+            end
+            On Inactive
+                Stop                         # se pulsó fuera
             end
             On Close
                 Stop

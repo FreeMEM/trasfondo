@@ -1,0 +1,375 @@
+# TrasfondoVentanas: maneja las ventanas de cualquier programa del Workbench con el teclado y el ratón, sin
+# parchear nada del sistema. Una commodity sin ventana.
+#
+#   Ctrl Alt arriba      maximizar la ventana activa (otra vez: como estaba)
+#   Ctrl Alt izquierda   a la mitad izquierda; derecha, a la derecha
+#   Ctrl Alt abajo       como estaba; si ya lo estaba, detrás de todas (lo más parecido a minimizar)
+#   Ctrl Alt T           mosaico, una vez: la primera a la izquierda, las demás apiladas a la derecha
+#   Ctrl Alt A           mosaico automático, sí o no: cada ventana nueva entra y las demás se reparten
+#   Alt + botón izq.     mover la ventana de debajo del puntero, desde cualquier punto
+#   Alt + botón der.     cambiar su tamaño
+#
+# Las teclas, por tooltypes: TECLA_MAXIMIZAR, TECLA_IZQUIERDA, TECLA_DERECHA, TECLA_RESTAURAR, TECLA_MOSAICO y
+# TECLA_AUTOMATICO, en el formato de Commodities ("ctrl alt up"); MOSAICO=SI arranca en automático; HUECO, los
+# píxeles entre ventanas (4). Deja libres la barra y el dock de Trasfondo si están.
+# Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
+
+@workbench_output "NIL:"
+@version "TrasfondoVentanas 0.1"
+
+const K_MAXIMIZAR = 1        # las teclas de cx_key_add: cx_command da 100 + n
+const K_IZQUIERDA = 2
+const K_DERECHA = 3
+const K_RESTAURAR = 4
+const K_MOSAICO = 5
+const K_AUTOMATICO = 6
+const K_MOVER = 7
+const K_TAMANO = 8
+const K_SOLTAR_MOVER = 9     # solo mientras se arrastra: el botón al soltarse
+const K_SOLTAR_TAMANO = 10
+
+const CADA = 500             # ms entre dos miradas a las ventanas, en automático
+
+var hueco: Int = 4
+var automatico: Bool = false
+var guardado_id: [Int] = []  # la caja de antes de maximizar o encajar, por ventana
+var guardado_caja: [String] = []
+var orden: [Int] = []        # el orden del mosaico automático: ids, la primera la grande
+var vistas: String = ""      # las ventanas del mosaico la última vez (para ver si cambiaron)
+
+# --- la zona útil: la pantalla sin la barra ni el dock de Trasfondo ---
+
+var z_x: Int = 0
+var z_y: Int = 0
+var z_w: Int = 640
+var z_h: Int = 256
+
+func calcular_zona()
+    n = wm_read()
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    arriba = wm_bar_height()
+    abajo = sh
+    izquierda = 0
+    derecha = sw
+    for i in (0..n - 1)
+        t = wm_task(i)
+        x = wm_box(i, 0)
+        y = wm_box(i, 1)
+        w = wm_box(i, 2)
+        h = wm_box(i, 3)
+        if t == "TrasfondoBarra" and y + h > arriba
+            arriba = y + h
+        elif t == "TrasfondoDock"
+            # en el borde más cerca
+            if y + h >= sh - 16 and w > h
+                abajo = y
+            elif y <= 40 and w > h
+                if y + h > arriba
+                    arriba = y + h
+                end
+            elif x <= 16
+                izquierda = x + w
+            elif x + w >= sw - 16
+                derecha = x
+            end
+        end
+    end
+    z_x = izquierda + hueco
+    z_y = arriba + hueco
+    z_w = derecha - izquierda - 2 * hueco
+    z_h = abajo - arriba - 2 * hueco
+end
+
+# --- la ventana activa y sus cajas de antes ---
+
+func buscar(id: Int) -> Int
+    for i in (0..wm_read() - 1)
+        if wm_id(i) == id
+            return i
+        end
+    end
+    return -1
+end
+
+# una ventana que se puede mover y redimensionar: con barra y botón de tamaño, ni de fondo ni sin bordes
+func manejable(i: Int) -> Bool
+    f = wm_flags(i)
+    return f & 1 != 0 and f & 16 != 0 and f & 2 == 0 and f & 4 == 0
+end
+
+func guardar(id: Int, i: Int)
+    caja = "#{wm_box(i, 0)},#{wm_box(i, 1)},#{wm_box(i, 2)},#{wm_box(i, 3)}"
+    for k in (0..guardado_id.length - 1)
+        if guardado_id[k] == id
+            guardado_caja[k] = caja
+            return
+        end
+    end
+    guardado_id.push(id)
+    guardado_caja.push(caja)
+end
+
+# la caja de antes ("" si no hay), y se olvida
+func recuperar(id: Int) -> String
+    for k in (0..guardado_id.length - 1)
+        if guardado_id[k] == id
+            c = guardado_caja[k]
+            guardado_id.remove(k)
+            guardado_caja.remove(k)
+            return c
+        end
+    end
+    return ""
+end
+
+func tiene_guardada(id: Int) -> Bool
+    for g in guardado_id
+        if g == id
+            return true
+        end
+    end
+    return false
+end
+
+func poner_caja(id: Int, caja: String)
+    p = str_split(caja, ",")
+    if p.length == 4
+        wm_set_box(id, Int(p[0]), Int(p[1]), Int(p[2]), Int(p[3]))
+    end
+end
+
+# encaja la ventana activa: 0 entera, 1 mitad izquierda, 2 mitad derecha
+func encajar(como: Int)
+    id = wm_active()
+    i = buscar(id)
+    if i < 0 or not manejable(i)
+        return
+    end
+    if como == 0 and tiene_guardada(id)
+        poner_caja(id, recuperar(id))          # maximizada: vuelve a como estaba
+        return
+    end
+    if not tiene_guardada(id)
+        guardar(id, i)
+    end
+    calcular_zona()
+    mitad = (z_w - hueco) / 2
+    if como == 0
+        wm_set_box(id, z_x, z_y, z_w, z_h)
+    elif como == 1
+        wm_set_box(id, z_x, z_y, mitad, z_h)
+    else
+        wm_set_box(id, z_x + mitad + hueco, z_y, z_w - mitad - hueco, z_h)
+    end
+end
+
+func restaurar()
+    id = wm_active()
+    if id == 0
+        return
+    end
+    caja = recuperar(id)
+    if caja != ""
+        poner_caja(id, caja)
+    else
+        wm_back(id)                            # ya estaba como antes: detrás de todas
+    end
+end
+
+# --- mosaico ---
+
+# las ventanas que entran en el mosaico, de delante atrás
+func del_mosaico() -> [Int]
+    var r: [Int] = []
+    for i in (0..wm_read() - 1)
+        if manejable(i) and wm_flags(i) & 128 == 0
+            r.push(wm_id(i))
+        end
+    end
+    return r
+end
+
+# reparte las ventanas: la primera, la mitad izquierda; las demás, apiladas a la derecha
+func repartir(ids: [Int])
+    n = ids.length
+    if n == 0
+        return
+    end
+    calcular_zona()
+    if n == 1
+        wm_set_box(ids[0], z_x, z_y, z_w, z_h)
+        return
+    end
+    mitad = (z_w - hueco) / 2
+    wm_set_box(ids[0], z_x, z_y, mitad, z_h)
+    resto = n - 1
+    alto = (z_h - (resto - 1) * hueco) / resto
+    for k in (1..n - 1)
+        y = z_y + (k - 1) * (alto + hueco)
+        h = alto
+        if k == n - 1
+            h = z_y + z_h - y                  # la última se queda lo que sobre
+        end
+        wm_set_box(ids[k], z_x + mitad + hueco, y, z_w - mitad - hueco, h)
+    end
+end
+
+func mosaico_una_vez()
+    repartir(del_mosaico())
+end
+
+# en automático: si entró o salió alguna, se reparte otra vez (la nueva, la grande)
+func mirar_mosaico()
+    ahora = del_mosaico()
+    firma = ""
+    for id in ahora
+        firma = firma + "#{id},"
+    end
+    if firma == vistas
+        return
+    end
+    vistas = firma
+    # quitar las que ya no están
+    var nuevo: [Int] = []
+    for id in orden
+        for a in ahora
+            if a == id
+                nuevo.push(id)
+                break
+            end
+        end
+    end
+    # las nuevas, delante
+    for a in ahora
+        esta = false
+        for id in nuevo
+            if id == a
+                esta = true
+                break
+            end
+        end
+        if not esta
+            nuevo.insert(0, a)
+        end
+    end
+    orden = nuevo
+    repartir(orden)
+end
+
+# --- arrastrar con Alt ---
+
+# mover (tamano false) o cambiar el tamaño de la ventana de debajo del puntero hasta soltar el botón
+func arrastrar(tamano: Bool)
+    px = wm_pointer_x()
+    py = wm_pointer_y()
+    id = wm_at(px, py)
+    i = buscar(id)
+    if i < 0 or wm_flags(i) & 2 != 0 or wm_flags(i) & 4 != 0
+        return
+    end
+    x0 = wm_box(i, 0)
+    y0 = wm_box(i, 1)
+    w0 = wm_box(i, 2)
+    h0 = wm_box(i, 3)
+    soltar = K_SOLTAR_MOVER
+    if tamano
+        soltar = K_SOLTAR_TAMANO
+        cx_key_add("rawmouse upstroke mouse_rightpress", soltar)
+    else
+        cx_key_add("rawmouse upstroke mouse_leftpress", soltar)
+    end
+    con_hardware = check_mouse()           # el ratón del Amiga: el botón se ve también en el hardware
+    ultimo_x = px
+    ultimo_y = py
+    vueltas = 0
+    while true
+        c = cx_command()
+        if c == 100 + soltar or c == 5 or break_check()
+            break
+        end
+        if con_hardware and not check_mouse()
+            break
+        end
+        x = wm_pointer_x()
+        y = wm_pointer_y()
+        if x != ultimo_x or y != ultimo_y
+            if tamano
+                wm_set_box(id, x0, y0, w0 + x - px, h0 + y - py)
+            else
+                wm_set_box(id, x0 + x - px, y0 + y - py, w0, h0)
+            end
+            ultimo_x = x
+            ultimo_y = y
+        end
+        time_delay(1)
+        vueltas = vueltas + 1
+        if vueltas > 3000                  # un minuto sin soltar: algo se perdió
+            break
+        end
+    end
+    cx_key_add("", soltar)
+end
+
+func tecla(nombre: String, defecto: String, n: Int)
+    d = tooltype(nombre, defecto)
+    if d != "" and not cx_key_add(d, n)
+        Print "TrasfondoVentanas: the hotkey " + nombre + " is not valid: " + d
+    end
+end
+
+Main
+    if not single_instance("TrasfondoVentanas")
+        Print "TrasfondoVentanas was already running: stopping it"
+    elif not cx_broker("TrasfondoVentanas", "TrasfondoVentanas 0.1", "Tiles, moves and sizes windows", 0)
+        Print "TrasfondoVentanas: no commodities.library"
+    else
+        hueco = Int(tooltype("HUECO", "4"))
+        automatico = str_upper(tooltype("MOSAICO", "NO")) == "SI"
+        tecla("TECLA_MAXIMIZAR", "ctrl alt up", K_MAXIMIZAR)
+        tecla("TECLA_IZQUIERDA", "ctrl alt left", K_IZQUIERDA)
+        tecla("TECLA_DERECHA", "ctrl alt right", K_DERECHA)
+        tecla("TECLA_RESTAURAR", "ctrl alt down", K_RESTAURAR)
+        tecla("TECLA_MOSAICO", "ctrl alt t", K_MOSAICO)
+        tecla("TECLA_AUTOMATICO", "ctrl alt a", K_AUTOMATICO)
+        tecla("RATON_MOVER", "rawmouse lalt mouse_leftpress", K_MOVER)
+        tecla("RATON_TAMANO", "rawmouse lalt mouse_rightpress", K_TAMANO)
+        activo = true
+        seguir = true
+        while seguir
+            espera = 60000
+            if automatico and activo
+                espera = CADA
+            end
+            c = cx_wait(espera)
+            if c == -1 or c == 5
+                seguir = false
+            elif c == 3
+                activo = false
+            elif c == 4
+                activo = true
+            elif c == 100 + K_MAXIMIZAR
+                encajar(0)
+            elif c == 100 + K_IZQUIERDA
+                encajar(1)
+            elif c == 100 + K_DERECHA
+                encajar(2)
+            elif c == 100 + K_RESTAURAR
+                restaurar()
+            elif c == 100 + K_MOSAICO
+                mosaico_una_vez()
+            elif c == 100 + K_AUTOMATICO
+                automatico = not automatico
+                vistas = ""
+                orden = []
+            elif c == 100 + K_MOVER
+                arrastrar(false)
+            elif c == 100 + K_TAMANO
+                arrastrar(true)
+            end
+            if automatico and activo and seguir
+                mirar_mosaico()
+            end
+        end
+    end
+end

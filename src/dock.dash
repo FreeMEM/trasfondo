@@ -190,11 +190,19 @@ Main
         end
         f_inicial = font_open("CGTriumvirate.font", lado / 2)
         Dock.open
-        # (ChangeWindowBox no espera: se mueve después de que haya cambiado el tamaño)
+        # (ChangeWindowBox no espera: se mueve cuando ya tiene el tamaño, o lo pisaría con el de antes)
         window_resize(0, ancho, alto)
-        time_delay(2)
+        k = 0
+        while (Dock.width != ancho or Dock.height != alto) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
         window_move(0, x, y)
-        time_delay(2)
+        k = 0
+        while (Dock.left != x or Dock.top != y) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
         # recién abierta, la ventana tiene el color del escritorio (sin imagen de fondo): con él se
         # suavizan las esquinas
         fondo = gfx_pixel_rgb(0, 0)

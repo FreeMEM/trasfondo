@@ -1,0 +1,35 @@
+# Para las capturas de tools/vista.py: tres ventanas que se pueden redimensionar (y una cuarta con
+# TRES=NO... no: siempre tres), cada una con su color, donde caigan; espera sin hacer nada.
+
+Window Uno
+    title "Shell 1"
+    width 260
+    height 160
+    left 30
+    top 60
+    sizegadget true
+end
+
+func pintar(rgb: Int)
+    gfx_pen(color_pen((rgb >> 16) & 255, (rgb >> 8) & 255, rgb & 255))
+    gfx_rect(0, 0, 2000, 2000)
+end
+
+Main
+    Uno.open
+    pintar(0x3b4252)
+    window_create("Notas", 320, 120, 240, 180, 1)
+    pintar(0x4c566a)
+    window_create("Calculadora", 120, 300, 200, 150, 1)
+    pintar(0x5e81ac)
+    EventLoop
+        On Timer 1000
+            if break_check()
+                Stop
+            end
+        end
+        On Close
+            Stop
+        end
+    end
+end
