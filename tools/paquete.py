@@ -2,7 +2,7 @@
 """El paquete de Trasfondo 2.0 para Aminet y GitHub: el cajón Trasfondo con sus piezas, sus iconos, el
 instalador y el .lha.
 
-    DASH=~/Projects/FreeMEMLang/.worktrees/trasfondo-2 python3 tools/paquete.py 2.0
+    python3 tools/paquete.py 2.0          (DASH: la carpeta de Dash, por defecto ~/Projects/FreeMEMLang)
         →  build/paquete/Trasfondo/...  y  build/trasfondo-2.0.lha
 
 Compila cada pieza con el Dash de $DASH (./dash, Dash 2.0) y hace los catálogos (tools/catalogos.py). Necesita el
