@@ -199,6 +199,23 @@ En la rama `trasfondo-2`, probado solo en FS-UAE (68040, uaegfx, Workbench 3.2.3
   momento).
 - Capturas: `tools/vista.py` (FS-UAE con RTG, clics, teclas y órdenes por guion).
 
+## Lo siguiente: como el vídeo de Quickshell (usuario, 2026-11-03)
+
+El usuario quiere llegar a algo parecido a una configuración de Quickshell para niri que vio en un vídeo (Reddit,
+r/niri, "quickshell niri hyprland quickshelldots"). En orden:
+
+1. Colores sacados del fondo de escritorio (oscuro y claro, varias paletas) para todas las piezas.
+2. Estilos de barra con selector: isla arriba en el centro que crece al pasar el ratón, clásica, panel que crece y
+   vertical en un lado (iconos juntos, poco hueco).
+3. Paneles que salen de la barra: calendario, ajustes rápidos con "no molestar" (30 min, 1 h, 2 h), avisos.
+4. Lanzador de programas con buscador.
+5. Selector de fondos a pantalla completa con tira de miniaturas.
+6. Panel grande (dashboard): música, interruptores, calendario, avisos, portapapeles.
+
+Límites en AmigaOS 3.x: no hay componedor, así que el desenfoque y la transparencia solo pueden usar el fondo de
+escritorio (no lo que haya de otras ventanas debajo) y la vista general de ventanas en pequeño no se puede. La
+música, solo con reproductores que se manejen por ARexx (AmigaAMP). El brillo no existe.
+
 ## Orden propuesto
 
 1. Base común: puerto `TRASFONDO`, ajustes en `ENV:`, tema, y separar la medida del dibujo en el código
