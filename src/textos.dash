@@ -123,6 +123,14 @@ const MSG_SIN_CAJON = 135
 const MSG_RTG = 136
 const MSG_DOCK_AYUDA = 137
 
+# TrasfondoDock, el menú del botón derecho de un icono
+# "Keep in dock"
+const MSG_FIJAR = 138
+# "Remove from dock"
+const MSG_QUITAR = 139
+# "Open another"
+const MSG_ABRIR = 140
+
 # un texto del catálogo con sus huecos rellenos: %s o %1 con a, %2 con b, %3 con c
 func con(texto: String, a: String) -> String
     return str_replace(str_replace(texto, "%s", a), "%1", a)

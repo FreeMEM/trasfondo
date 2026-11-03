@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (31.10.2026)
+## version $VER: Trasfondo.catalog 1.0 (03.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -311,3 +311,12 @@ La barra, el dock y sus paneles necesitan una pantalla RTG
 MSG_137
 Un programa por línea
 ; One program per line
+MSG_138
+Fijar en el dock
+; Keep in dock
+MSG_139
+Quitar del dock
+; Remove from dock
+MSG_140
+Abrir otro
+; Open another

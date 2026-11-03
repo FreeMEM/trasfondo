@@ -1,78 +1,81 @@
-# TrasfondoDock: un dock de lanzadores en un borde de la pantalla, horizontal o vertical. Cada lanzador es un
-# programa con su icono (.info, por icon.datatype); al pulsarlo se lanza como desde el Workbench (C:WBRun, de
-# 3.2) o, sin WBRun, como desde la Shell. Solo con RTG.
+# TrasfondoDock: el dock, en un borde de la pantalla, horizontal o vertical. Lleva los programas fijados (ENV: y
+# ENVARC:Trasfondo.dock, uno por línea) y, detrás, los que tienen una ventana abierta en el Workbench, cada uno con
+# su icono (.info, como lo pinta el Workbench) y un punto si está abierto. Pulsar uno trae su ventana delante o, si
+# no está abierto, lo lanza (C:WBRun de 3.2, o como un doble clic). Con el botón derecho, un menú: fijarlo, quitarlo
+# o abrir otro. Un icono soltado encima desde el Workbench se fija donde cae; arrastrando un icono fijado se cambia
+# de sitio, y sacándolo del dock se quita. Las esquinas dejan ver lo que hay detrás. Solo con RTG.
 #
-# Los lanzadores, uno por línea (la ruta del programa), en ENV:Trasfondo.dock; sin él, unos de serie.
-# Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) y ICONO (el lado de un icono, 40).
-# Se para lanzándolo otra vez, o con Ctrl-C.
+# Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) e ICONO (el
+# lado mínimo de un icono, 40). Se para lanzándolo otra vez, o con Ctrl-C.
 
 @workbench_output "NIL:"
-@version "TrasfondoDock 0.1"
+@version "TrasfondoDock 0.2"
+@catalog "Trasfondo.catalog" 1       # el de Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "dibujo.dash"
 import "ajustes.dash"
+import "textos.dash"
 
 const LISTA = "ENV:Trasfondo.dock"
+const LISTA_ARC = "ENVARC:Trasfondo.dock"
 const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
 const ALTO_BARRA = 24        # la barra de arriba: el dock de arriba o de los lados sale debajo
 const MARGEN = 6             # entre el dock y el borde de la pantalla
 const RELLENO = 8            # dentro del dock, alrededor de los iconos
-const HUECO = 8              # entre dos iconos
+const HUECO = 6              # entre dos iconos (cada uno ocupa lo que mide: juntos, como en una barra)
 const R = 14                 # radio del dock
+const LADO_MAX = 80          # el sitio de un icono no crece más (uno más grande se recorta)
+const ARRASTRE = 6           # lo que se mueve el ratón con el botón pulsado para que sea arrastrar
+const FUERA = 40             # un icono soltado a más de esto del dock sale de él
+const MANTENER = 500         # ms con el botón pulsado sin moverlo: el menú (el botón derecho va a la ventana activa)
 
 const C_DOCK = 0x1b1e23
 const C_BORDE = 0x30353d
 const C_TEXTO = 0xe8eaed
 const C_TESELA = 0x3c414a
 const C_PUNTO = 0x9aa0a6
+const C_MARCA = 0x8ab4f8
+const C_MENU = 0x2a2e35
+const C_MENU_SEL = 0x3c4350
 
-var ruta: [String] = []      # los programas
-var icono: [Int] = []        # su imagen (0: sin icono, se pinta una tesela con la inicial)
-var lado: Int = 40           # lo que ocupa cada icono
+const OP_FIJAR = 1
+const OP_QUITAR = 2
+const OP_ABRIR = 3
+
+struct Item
+    ruta: String = ""        # la ruta real (file_real_path, como la da wm_path)
+    icono: Int = 0           # de icon_load; 0 sin icono: una tesela con la inicial
+    fijo: Bool = false
+    win: Int = 0             # su ventana de delante (wm_id), 0 si no está abierto
+end
+
+var items: [Item] = []
+var lado_min: Int = 40
+var lado: Int = 40           # el ancho del dock por dentro (el alto, si es horizontal): el del icono más grande
+var pos: [Int] = []          # dónde empieza cada icono a lo largo del dock, dentro de la ventana
+var tam: [Int] = []          # lo que ocupa cada uno a lo largo del dock
 var vertical: Bool = false
 var posicion: String = "ABAJO"
-var ancho: Int = 0           # el del dock
+var sw: Int = 0              # la pantalla
+var sh: Int = 0
+var dx: Int = 0              # el dock en la pantalla
+var dy: Int = 0
+var ancho: Int = 0
 var alto: Int = 0
-var fondo: Int = 0xaaaaaa    # el color del escritorio, para suavizar las esquinas
+var bajo: [Int] = []         # lo que hay detrás de las cuatro esquinas, R x R cada una (antes de taparlas)
 var wbrun: Bool = false
 var f_inicial: Int = 0
+var vistos_id: [Int] = []    # las ventanas ya vistas y la ruta de su programa (wm_path va al disco)
+var vistos_ruta: [String] = []
+var menu: Int = 0            # la ventana del menú del botón derecho, 0 si no está
+var menu_de: Int = -1        # de qué icono es
+var menu_ops: [Int] = []     # qué hace cada línea (OP_*)
+var menu_textos: [String] = []
+var menu_alto: Int = 0       # el de una línea
+var f_menu: Int = 0          # su letra (0: la de la ventana)
 
-func leer_lista()
-    texto = file_read_text(LISTA)
-    if texto == nil
-        texto = DE_SERIE
-    end
-    for l in str_split(texto, "\n")
-        l = str_trim(l)
-        if l != "" and not str_starts(l, ";")
-            ruta.push(l)
-        end
-    end
-end
+# ---- la lista ----
 
-# el icono de un programa, a lo más lado x lado sin deformarlo; 0 si no tiene
-func cargar_icono(r: String) -> Int
-    im = image_load(r + ".info")
-    if im == 0
-        return 0
-    end
-    w = image_width(im)
-    h = image_height(im)
-    if w <= lado and h <= lado
-        return im
-    end
-    nw = lado
-    nh = h * lado / w
-    if h > w
-        nh = lado
-        nw = w * lado / h
-    end
-    esc = image_scale(im, nw, nh)
-    image_free(im)
-    return esc
-end
-
-# lo de después de la última / o los dos puntos: el nombre del programa
 func nombre(r: String) -> String
     i = r.length - 1
     while i >= 0 and r[i:i + 1] != "/" and r[i:i + 1] != ":"
@@ -81,70 +84,642 @@ func nombre(r: String) -> String
     return r[i + 1:r.length]
 end
 
-# dónde va el icono i, dentro de la ventana
-func icono_x(i: Int) -> Int
-    if vertical
-        return RELLENO
+# la ruta real si el fichero está; si no, la escrita (se verá con la tesela)
+func real(r: String) -> String
+    x = file_real_path(r)
+    if x == ""
+        return r
     end
-    return RELLENO + i * (lado + HUECO)
+    return x
 end
 
-func icono_y(i: Int) -> Int
-    if vertical
-        return RELLENO + i * (lado + HUECO)
+func leer_fijos()
+    texto = file_read_text(LISTA)
+    if texto == nil
+        texto = DE_SERIE
     end
-    return RELLENO
-end
-
-func pintar()
-    pluma(fondo)
-    gfx_rect(0, 0, ancho - 1, alto - 1)
-    redondo(0, 0, ancho - 1, alto - 1, R, C_BORDE)
-    redondo(1, 1, ancho - 2, alto - 2, R - 1, C_DOCK)
-    for i in (0..ruta.length - 1)
-        x = icono_x(i)
-        y = icono_y(i)
-        if icono[i] != 0
-            image_draw(icono[i], x + (lado - image_width(icono[i])) / 2, y + (lado - image_height(icono[i])) / 2)
-        else
-            redondo(x + 2, y + 2, x + lado - 3, y + lado - 3, 8, C_TESELA)
-            font_use(f_inicial)
-            font_style(2)
-            centrado(x + lado / 2, y + lado / 2 - font_height() / 2 + font_baseline(), str_upper(nombre(ruta[i])[0:1]), C_TEXTO)
-            font_style(0)
+    for l in str_split(texto, "\n")
+        l = str_trim(l)
+        if l != "" and not str_starts(l, ";")
+            r = real(l)
+            if buscar(r) < 0
+                items.push(Item(r, icon_load(r), true, 0))
+            end
         end
     end
 end
 
-# el icono que hay en (x, y) de la ventana; -1 si ninguno
-func icono_en(x: Int, y: Int) -> Int
-    for i in (0..ruta.length - 1)
-        if x >= icono_x(i) and x < icono_x(i) + lado and y >= icono_y(i) and y < icono_y(i) + lado
+func guardar()
+    texto = ""
+    for it in items
+        if it.fijo
+            texto = texto + it.ruta + "\n"
+        end
+    end
+    ok = file_write_text(LISTA, texto)
+    ok = file_write_text(LISTA_ARC, texto)
+end
+
+# dos rutas, la misma (en el Amiga los nombres no distinguen mayúsculas: "CLOCK" y "Clock")
+func igual(a: String, b: String) -> Bool
+    return str_lower(a) == str_lower(b)
+end
+
+func buscar(r: String) -> Int
+    for i in (0..items.length - 1)
+        if igual(items[i].ruta, r)
             return i
         end
     end
     return -1
 end
 
-func lanzar(i: Int)
-    if wbrun
-        run_program("C:WBRun \"" + ruta[i] + "\"")
+# ---- dónde va cada cosa ----
+
+# lo que mide el icono i: a lo largo del dock (a) o de través (no a)
+func mide(i: Int, a: Bool) -> Int
+    ic = items[i].icono
+    if ic == 0
+        return lado_min
+    end
+    m = icon_width(ic)
+    if vertical == a
+        m = icon_height(ic)
+    end
+    if m > LADO_MAX
+        m = LADO_MAX
+    end
+    return m
+end
+
+func medir()
+    lado = lado_min
+    pos = []
+    tam = []
+    p = RELLENO
+    for i in (0..items.length - 1)
+        if mide(i, false) > lado
+            lado = mide(i, false)
+        end
+        pos.push(p)
+        tam.push(mide(i, true))
+        p = p + mide(i, true) + HUECO
+    end
+end
+
+func caja()
+    medir()
+    largo = 2 * RELLENO + lado_min
+    if items.length > 0
+        largo = pos[items.length - 1] + tam[items.length - 1] + RELLENO
+    end
+    corto = 2 * RELLENO + lado
+    ancho = largo
+    alto = corto
+    if vertical
+        ancho = corto
+        alto = largo
+    end
+    dx = (sw - ancho) / 2
+    dy = sh - alto - MARGEN
+    if posicion == "ARRIBA"
+        dy = ALTO_BARRA + MARGEN
+    elif posicion == "IZQUIERDA"
+        dx = MARGEN
+        dy = (sh - alto) / 2
+    elif posicion == "DERECHA"
+        dx = sw - ancho - MARGEN
+        dy = (sh - alto) / 2
+    end
+end
+
+# la celda del icono i en la ventana: esquina (icono_x, icono_y) y tamaño (celda_w, celda_h)
+func icono_x(i: Int) -> Int
+    if vertical
+        return RELLENO
+    end
+    return pos[i]
+end
+
+func icono_y(i: Int) -> Int
+    if vertical
+        return pos[i]
+    end
+    return RELLENO
+end
+
+func celda_w(i: Int) -> Int
+    if vertical
+        return lado
+    end
+    return tam[i]
+end
+
+func celda_h(i: Int) -> Int
+    if vertical
+        return tam[i]
+    end
+    return lado
+end
+
+# el icono que hay en (x, y) de la ventana (con su mitad del hueco a cada lado); -1 si ninguno
+func icono_en(x: Int, y: Int) -> Int
+    p = x
+    q = y
+    if vertical
+        p = y
+        q = x
+    end
+    if q < RELLENO - HUECO or q >= RELLENO + lado + HUECO
+        return -1
+    end
+    for i in (0..items.length - 1)
+        if p >= pos[i] - HUECO / 2 and p < pos[i] + tam[i] + HUECO / 2
+            return i
+        end
+    end
+    return -1
+end
+
+# el sitio (0..n) más cercano a (x, y) de la ventana, para soltar ahí
+func hueco_en(x: Int, y: Int) -> Int
+    p = x
+    if vertical
+        p = y
+    end
+    for i in (0..items.length - 1)
+        if p < pos[i] + tam[i] / 2
+            return i
+        end
+    end
+    return items.length
+end
+
+# ---- pintar ----
+
+# lo que hay en la pantalla detrás de las esquinas del dock, con la ventana sin taparlas
+func leer_bajo()
+    bajo = []
+    for c in (0..3)
+        ox = dx
+        if c % 2 == 1
+            ox = dx + ancho - R
+        end
+        oy = dy
+        if c >= 2
+            oy = dy + alto - R
+        end
+        for j in (0..R - 1)
+            for i in (0..R - 1)
+                bajo.push(screen_pixel_rgb(ox + i, oy + j))
+            end
+        end
+    end
+end
+
+func pintar_esquinas()
+    k = 0
+    for c in (0..3)
+        ox = 0
+        if c % 2 == 1
+            ox = ancho - R
+        end
+        oy = 0
+        if c >= 2
+            oy = alto - R
+        end
+        for j in (0..R - 1)
+            for i in (0..R - 1)
+                if k < bajo.length and bajo[k] >= 0
+                    rtg_write_pixel(ox + i, oy + j, bajo[k])
+                end
+                k = k + 1
+            end
+        end
+    end
+end
+
+# el punto de un programa abierto, por el lado de fuera del dock
+func punto(i: Int)
+    x = icono_x(i)
+    y = icono_y(i)
+    if vertical
+        cy = y + tam[i] / 2
+        cx = 3
+        if posicion == "DERECHA"
+            cx = ancho - 4
+        end
+        redondo(cx - 2, cy - 2, cx + 2, cy + 2, 2, C_PUNTO)
     else
-        run_program("\"" + ruta[i] + "\"")
+        cx = x + tam[i] / 2
+        cy = alto - 4
+        if posicion == "ARRIBA"
+            cy = 3
+        end
+        redondo(cx - 2, cy - 2, cx + 2, cy + 2, 2, C_PUNTO)
+    end
+end
+
+func pintar_icono(i: Int)
+    it = items[i]
+    x = icono_x(i)
+    y = icono_y(i)
+    cw = celda_w(i)
+    ch = celda_h(i)
+    if it.icono != 0
+        w = icon_width(it.icono)
+        h = icon_height(it.icono)
+        icon_draw(it.icono, x + (cw - w) / 2, y + (ch - h) / 2)
+    else
+        redondo(x + 2, y + 2, x + cw - 3, y + ch - 3, 8, C_TESELA)
+        font_use(f_inicial)
+        font_style(2)
+        centrado(x + cw / 2, y + ch / 2 - font_height() / 2 + font_baseline(), str_upper(nombre(it.ruta)[0:1]), C_TEXTO)
+        font_style(0)
+    end
+    if it.win != 0
+        punto(i)
+    end
+end
+
+# marca: el sitio donde caería lo que se arrastra (-1 ninguno)
+func pintar(marca: Int)
+    pintar_esquinas()
+    redondo(0, 0, ancho - 1, alto - 1, R, C_BORDE)
+    redondo(1, 1, ancho - 2, alto - 2, R - 1, C_DOCK)
+    for i in (0..items.length - 1)
+        pintar_icono(i)
+    end
+    if marca >= 0
+        p = RELLENO / 2
+        if marca < items.length
+            p = pos[marca] - HUECO / 2 - 1
+        elif items.length > 0
+            p = pos[items.length - 1] + tam[items.length - 1] + HUECO / 2 - 1
+        end
+        pluma(C_MARCA)
+        if vertical
+            gfx_rect(RELLENO, p, ancho - RELLENO - 1, p + 1)
+        else
+            gfx_rect(p, RELLENO, p + 1, alto - RELLENO - 1)
+        end
+    end
+end
+
+func esperar_tamano(w: Int, h: Int)
+    k = 0
+    while (Dock.width != w or Dock.height != h) and k < 100
+        time_delay(1)
+        k = k + 1
+    end
+end
+
+func esperar_sitio(x: Int, y: Int)
+    k = 0
+    while (Dock.left != x or Dock.top != y) and k < 100
+        time_delay(1)
+        k = k + 1
+    end
+end
+
+# a su sitio y tamaño nuevos: primero pequeña en medio, para leer lo que hay detrás de las esquinas sin taparlas
+# (ChangeWindowBox no espera: se mueve cuando ya tiene el tamaño, o lo pisaría con el de antes)
+func colocar()
+    caja()
+    window_resize(0, 40, 20)
+    esperar_tamano(40, 20)
+    window_move(0, dx + (ancho - 40) / 2, dy + (alto - 20) / 2)
+    esperar_sitio(dx + (ancho - 40) / 2, dy + (alto - 20) / 2)
+    time_delay(10)                     # (el Workbench repinta lo que deja ver)
+    leer_bajo()
+    window_move(0, dx, dy)
+    esperar_sitio(dx, dy)
+    window_resize(0, ancho, alto)
+    esperar_tamano(ancho, alto)
+    pintar(-1)
+end
+
+# ---- los programas abiertos ----
+
+func ruta_de(i: Int, id: Int) -> String
+    for k in (0..vistos_id.length - 1)
+        if vistos_id[k] == id
+            return vistos_ruta[k]
+        end
+    end
+    return wm_path(i)
+end
+
+# 0 nada cambió, 1 hay que repintar, 2 hay que colocar (cambió la lista)
+func refrescar() -> Int
+    n = wm_read()
+    var ids: [Int] = []
+    var rutas: [String] = []
+    for i in (0..n - 1)
+        f = wm_flags(i)
+        # (ni las propias, ni las de fondo o sin bordes: la barra, los paneles; ni las del Workbench, sus cajones)
+        if (f & 38) == 0 and wm_task(i) != "Workbench"
+            id = wm_id(i)
+            r = ruta_de(i, id)
+            ids.push(id)
+            rutas.push(r)
+        end
+    end
+    vistos_id = ids
+    vistos_ruta = rutas
+    estado = 0
+    var nuevos: [Item] = []
+    for it in items
+        w = 0
+        for k in (0..ids.length - 1)
+            if w == 0 and igual(rutas[k], it.ruta)
+                w = ids[k]
+            end
+        end
+        if it.fijo or w != 0
+            if (w != 0) != (it.win != 0) and estado == 0
+                estado = 1
+            end
+            it.win = w
+            nuevos.push(it)
+        else
+            icon_free(it.icono)
+            estado = 2
+        end
+    end
+    items = nuevos
+    for k in (0..ids.length - 1)
+        if rutas[k] != "" and buscar(rutas[k]) < 0
+            items.push(Item(rutas[k], icon_load(rutas[k]), false, ids[k]))
+            estado = 2
+        end
+    end
+    return estado
+end
+
+# ---- lo que se hace ----
+
+func lanzar(r: String)
+    if wbrun
+        ok = run_program("C:WBRun \"" + r + "\"")
+    elif not wb_open(r)
+        ok = run_program("\"" + r + "\"")
+    end
+end
+
+func pulsar(i: Int)
+    it = items[i]
+    if it.win != 0 and wm_front(it.win)
+        ok = wm_activate(it.win)
+    else
+        lanzar(it.ruta)
+    end
+end
+
+# un icono de la lista a otro sitio (0..n, antes del que esté ahí), fijado
+func mover(i: Int, sitio: Int)
+    it = items[i]
+    it.fijo = true
+    var nuevos: [Item] = []
+    for k in (0..items.length)
+        if k == sitio
+            nuevos.push(it)
+        end
+        if k < items.length and k != i
+            nuevos.push(items[k])
+        end
+    end
+    items = nuevos
+    guardar()
+end
+
+# los fijados delante, en su orden; detrás, los abiertos sin fijar
+func ordenar()
+    var nuevos: [Item] = []
+    for it in items
+        if it.fijo
+            nuevos.push(it)
+        end
+    end
+    for it in items
+        if not it.fijo
+            nuevos.push(it)
+        end
+    end
+    items = nuevos
+end
+
+func quitar(i: Int)
+    it = items[i]
+    it.fijo = false
+    guardar()
+    ordenar()
+    if it.win == 0
+        icon_free(it.icono)
+        var nuevos: [Item] = []
+        for k in items
+            if k.fijo or k.win != 0
+                nuevos.push(k)
+            end
+        end
+        items = nuevos
+    end
+end
+
+# un icono soltado desde el Workbench: fijado en el sitio donde cayó
+func soltado(r0: String, x: Int, y: Int)
+    r = real(r0)
+    if str_ends(r, ".info")
+        r = r[0:r.length - 5]
+    end
+    i = buscar(r)
+    if i < 0
+        items.push(Item(r, icon_load(r), true, 0))
+        i = items.length - 1
+    end
+    mover(i, hueco_en(x, y))
+end
+
+# con el botón pulsado sobre el icono i: 0 fue un clic, 1 se arrastró (ya está hecho), 2 se mantuvo sin moverlo
+# (el menú)
+func arrastrar(i: Int) -> Int
+    x0 = wm_pointer_x()
+    y0 = wm_pointer_y()
+    t0 = time_ms()
+    movido = false
+    sitio = -1
+    while mouse_button(0)
+        px = wm_pointer_x()
+        py = wm_pointer_y()
+        if not movido and (abs(px - x0) > ARRASTRE or abs(py - y0) > ARRASTRE)
+            movido = true
+        end
+        if not movido and time_ms() - t0 >= MANTENER
+            return 2
+        end
+        if movido
+            s = hueco_en(px - dx, py - dy)
+            if fuera(px, py)
+                s = -1
+            end
+            if s != sitio
+                sitio = s
+                pintar(sitio)
+            end
+        end
+        time_delay(1)
+    end
+    if not movido
+        return 0
+    end
+    px = wm_pointer_x()
+    py = wm_pointer_y()
+    if fuera(px, py)
+        quitar(i)
+    else
+        s = hueco_en(px - dx, py - dy)
+        if s != i and s != i + 1 or not items[i].fijo
+            mover(i, s)
+        end
+    end
+    return 1
+end
+
+func fuera(px: Int, py: Int) -> Bool
+    return px < dx - FUERA or px > dx + ancho + FUERA or py < dy - FUERA or py > dy + alto + FUERA
+end
+
+# ---- el menú del botón derecho ----
+
+func usar_letra()
+    if f_menu != 0
+        font_use(f_menu)
+    end
+end
+
+func menu_cerrar()
+    if menu != 0
+        window_close(menu)
+        menu = 0
+        ok = window_use(0)
+    end
+end
+
+func menu_pintar(sel: Int)
+    w = 0
+    pluma(C_BORDE)
+    gfx_rect(0, 0, menu_ancho() - 1, menu_textos.length * menu_alto + 7)
+    pluma(C_MENU)
+    gfx_rect(1, 1, menu_ancho() - 2, menu_textos.length * menu_alto + 6)
+    usar_letra()
+    for k in (0..menu_textos.length - 1)
+        y = 4 + k * menu_alto
+        if k == sel
+            pluma(C_MENU_SEL)
+            gfx_rect(3, y, menu_ancho() - 4, y + menu_alto - 1)
+        end
+        centrado(menu_ancho() / 2, y + (menu_alto - font_height()) / 2 + font_baseline(), menu_textos[k], C_TEXTO)
+    end
+end
+
+func menu_ancho() -> Int
+    w = 120
+    usar_letra()
+    for t in menu_textos
+        if font_text_width(t) + 24 > w
+            w = font_text_width(t) + 24
+        end
+    end
+    return w
+end
+
+func menu_abrir(i: Int)
+    menu_cerrar()
+    it = items[i]
+    menu_de = i
+    menu_ops = []
+    menu_textos = []
+    if it.fijo
+        menu_ops.push(OP_QUITAR)
+        menu_textos.push(tr(MSG_QUITAR, "Remove from dock"))
+    else
+        menu_ops.push(OP_FIJAR)
+        menu_textos.push(tr(MSG_FIJAR, "Keep in dock"))
+    end
+    if it.win != 0
+        menu_ops.push(OP_ABRIR)
+        menu_textos.push(tr(MSG_ABRIR, "Open another"))
+    end
+    usar_letra()
+    menu_alto = font_height() + 8
+    w = menu_ancho()
+    h = menu_textos.length * menu_alto + 8
+    # junto al icono, por el lado de dentro de la pantalla
+    x = dx + icono_x(i) + celda_w(i) / 2 - w / 2
+    y = dy - h - 4
+    if posicion == "ARRIBA"
+        y = dy + alto + 4
+    elif posicion == "IZQUIERDA"
+        x = dx + ancho + 4
+        y = dy + icono_y(i)
+    elif posicion == "DERECHA"
+        x = dx - w - 4
+        y = dy + icono_y(i)
+    end
+    if x < 0
+        x = 0
+    end
+    if x + w > sw
+        x = sw - w
+    end
+    menu = window_create("", x, y, w, h, 2 + 4 + 8)
+    if menu != 0
+        window_activate(menu)
+        gfx_mode(0)                    # (el texto, sin fondo)
+        menu_pintar(-1)
+    end
+end
+
+func menu_elegir(y: Int)
+    k = (y - 4) / menu_alto
+    op = 0
+    if k >= 0 and k < menu_ops.length
+        op = menu_ops[k]
+    end
+    i = menu_de
+    menu_cerrar()
+    if i < 0 or i >= items.length
+        return
+    end
+    if op == OP_FIJAR
+        items[i].fijo = true
+        guardar()
+        pintar(-1)
+    elif op == OP_QUITAR
+        n = items.length
+        quitar(i)
+        if items.length != n
+            colocar()
+        else
+            pintar(-1)
+        end
+    elif op == OP_ABRIR
+        lanzar(items[i].ruta)
     end
 end
 
 Window Dock
     title ""
-    width 100
-    height 60
+    width 40
+    height 20
     left 0
-    top 300
+    top 0
     borderless true
     closegadget false
     dragbar false
     depthgadget false
     activate false
+    rmbtrap true
 end
 
 Main
@@ -155,70 +730,90 @@ Main
     else
         posicion = str_upper(ajuste("DOCK_POSICION", "POSICION", "ABAJO"))
         vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
-        lado = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
-        if lado < 16
-            lado = 16
+        lado_min = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
+        if lado_min < 16
+            lado_min = 16
         end
         wbrun = file_exists("C:WBRun")
-        leer_lista()
-        for r in ruta
-            icono.push(cargar_icono(r))
-        end
-        n = ruta.length
-        if n == 0
-            n = 1
-        end
-        largo = 2 * RELLENO + n * lado + (n - 1) * HUECO
-        corto = 2 * RELLENO + lado
-        ancho = largo
-        alto = corto
-        if vertical
-            ancho = corto
-            alto = largo
-        end
         sw = rtg_get_width()
         sh = rtg_get_height()
-        x = (sw - ancho) / 2
-        y = sh - alto - MARGEN
-        if posicion == "ARRIBA"
-            y = ALTO_BARRA + MARGEN
-        elif posicion == "IZQUIERDA"
-            x = MARGEN
-            y = (sh - alto) / 2
-        elif posicion == "DERECHA"
-            x = sw - ancho - MARGEN
-            y = (sh - alto) / 2
-        end
-        f_inicial = font_open("CGTriumvirate.font", lado / 2)
+        leer_fijos()
+        caja()
+        leer_bajo()                    # (antes de abrir: nada tapa las esquinas)
         Dock.open
-        # (ChangeWindowBox no espera: se mueve cuando ya tiene el tamaño, o lo pisaría con el de antes)
-        window_resize(0, ancho, alto)
-        k = 0
-        while (Dock.width != ancho or Dock.height != alto) and k < 100
-            time_delay(1)
-            k = k + 1
+        ok = app_window(0)
+        f_inicial = font_open("CGTriumvirate.font", lado / 2)
+        f_menu = font_open("CGTriumvirate.font", 13)
+        if f_menu == 0
+            f_menu = font_open("helvetica.font", 13)
         end
-        window_move(0, x, y)
-        k = 0
-        while (Dock.left != x or Dock.top != y) and k < 100
-            time_delay(1)
-            k = k + 1
-        end
-        # recién abierta, la ventana tiene el color del escritorio (sin imagen de fondo): con él se
-        # suavizan las esquinas
-        fondo = gfx_pixel_rgb(0, 0)
         gfx_mode(0)
-        pintar()
+        # los iconos de antes de abrir no tenían la pantalla de la ventana: otra vez, con ella
+        for it in items
+            icon_free(it.icono)
+            it.icono = icon_load(it.ruta)
+        end
+        e = refrescar()
+        caja()
+        window_move(0, dx, dy)
+        esperar_sitio(dx, dy)
+        window_resize(0, ancho, alto)
+        esperar_tamano(ancho, alto)
+        if e == 2
+            colocar()
+        else
+            pintar(-1)
+        end
         EventLoop
-            On Timer 500
+            On Timer 300
                 if break_check()
                     Stop
                 end
+                d = app_drop()
+                cambio = false
+                while d != ""
+                    soltado(d, app_drop_x(), app_drop_y())
+                    cambio = true
+                    d = app_drop()
+                end
+                e = refrescar()
+                if cambio or e == 2
+                    colocar()
+                elif e == 1
+                    pintar(-1)
+                end
             end
             On Click
-                i = icono_en(click_x(), click_y())
-                if i >= 0
-                    lanzar(i)
+                if menu != 0 and event_window() == menu
+                    menu_elegir(click_y())
+                elif event_window() == 0
+                    menu_cerrar()
+                    i = icono_en(click_x(), click_y())
+                    if i >= 0
+                        a = arrastrar(i)
+                        if a == 1
+                            colocar()
+                        elif a == 2
+                            menu_abrir(i)
+                        else
+                            pulsar(i)
+                        end
+                    end
+                end
+            end
+            On RightClick
+                if event_window() == 0
+                    i = icono_en(click_x(), click_y())
+                    if i >= 0
+                        menu_abrir(i)
+                    else
+                        menu_cerrar()
+                    end
+                end
+            end
+            On Inactive
+                if menu != 0 and event_window() == menu
+                    menu_cerrar()
                 end
             end
             On Close
