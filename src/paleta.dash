@@ -1,0 +1,242 @@
+# Colores sacados del fondo de escritorio (Trasfondo 2.0), como Material You: la imagen del fondo, decodificada en
+# pequeño, da su color más vivo (el acento); de él salen todos los del tema (tema.dash), en oscuro o en claro, con
+# varios esquemas: el del fondo tal cual, monocromo, análogo (el tono de al lado), complementario (el opuesto), tríada
+# (a un tercio) y vivo (más saturado).
+#
+# La imagen es la del fondo del Workbench (ENV:Sys/WBPattern.prefs) o la que se diga.
+
+const ESQUEMAS = "FONDO|MONOCROMO|ANALOGO|COMPLEMENTARIO|TRIADA|VIVO"
+const WBPATTERN = "ENV:Sys/WBPattern.prefs"
+
+# HSL en enteros: tono 0..359, saturación y luz 0..1000
+var hsl_h: Int = 0
+var hsl_s: Int = 0
+var hsl_l: Int = 0
+# el acento de la última imagen leída (acento_de)
+var acento_h: Int = 210
+var acento_s: Int = 600
+
+func a_hsl(c: Int)
+    r = (c >> 16) & 255
+    g = (c >> 8) & 255
+    b = c & 255
+    mx = r
+    if g > mx
+        mx = g
+    end
+    if b > mx
+        mx = b
+    end
+    mn = r
+    if g < mn
+        mn = g
+    end
+    if b < mn
+        mn = b
+    end
+    hsl_l = (mx + mn) * 1000 / 510
+    if mx == mn
+        hsl_h = 0
+        hsl_s = 0
+        return
+    end
+    d = mx - mn
+    if hsl_l > 500
+        hsl_s = d * 1000 / (510 - mx - mn)
+    else
+        hsl_s = d * 1000 / (mx + mn)
+    end
+    if mx == r
+        hsl_h = 60 * (g - b) / d
+    elif mx == g
+        hsl_h = 60 * (b - r) / d + 120
+    else
+        hsl_h = 60 * (r - g) / d + 240
+    end
+    if hsl_h < 0
+        hsl_h = hsl_h + 360
+    end
+end
+
+func _canal(p: Int, q: Int, t0: Int) -> Int
+    t = t0
+    while t < 0
+        t = t + 360
+    end
+    while t >= 360
+        t = t - 360
+    end
+    v = p
+    if t < 60
+        v = p + (q - p) * t / 60
+    elif t < 180
+        v = q
+    elif t < 240
+        v = p + (q - p) * (240 - t) / 60
+    end
+    return v * 255 / 1000
+end
+
+# un color de su tono (0..359), saturación y luz (0..1000)
+func de_hsl(h: Int, s0: Int, l: Int) -> Int
+    s = s0
+    if s > 1000
+        s = 1000
+    end
+    q = l + s - l * s / 1000
+    if l < 500
+        q = l * (1000 + s) / 1000
+    end
+    p = 2 * l - q
+    return (_canal(p, q, h + 120) << 16) | (_canal(p, q, h) << 8) | _canal(p, q, h - 120)
+end
+
+# la imagen del fondo del Workbench, de ENV:Sys/WBPattern.prefs (la de la ventana del Workbench, si no la de la
+# pantalla); "" si no hay o es una trama
+func imagen_del_fondo() -> String
+    n = file_size(WBPATTERN)
+    if n <= 0 or n > 8192
+        return ""
+    end
+    b = buffer_alloc(n)
+    if file_load(WBPATTERN, b, n) != n
+        buffer_free(b)
+        return ""
+    end
+    raiz = ""
+    pantalla = ""
+    i = 12                             # (FORM, largo, PREF)
+    while i + 8 <= n
+        largo = buffer_get_long(b, i + 4)
+        if buffer_equals(b, i, 4, "PTRN") and largo >= 24
+            cual = buffer_get_word(b, i + 8 + 16)
+            banderas = buffer_get_word(b, i + 8 + 18)
+            dl = buffer_get_word(b, i + 8 + 22)
+            if (banderas & 1) == 0 and dl > 0 and 24 + dl <= largo
+                nombre = ""
+                for k in (0..dl - 1)
+                    c = buffer_get_byte(b, i + 8 + 24 + k)
+                    if c == 0
+                        break
+                    end
+                    nombre = nombre + str_char(c)
+                end
+                if cual == 0
+                    raiz = nombre
+                elif cual == 2
+                    pantalla = nombre
+                end
+            end
+        end
+        i = i + 8 + largo + (largo & 1)
+    end
+    buffer_free(b)
+    if raiz != ""
+        return raiz
+    end
+    return pantalla
+end
+
+# el acento de una imagen: el tono que más pesa entre sus píxeles con color (los grises no cuentan); false si no se
+# pudo leer. Deja acento_h y acento_s
+func acento_de(ruta: String) -> Bool
+    d = image_decode(ruta, 64, 48)
+    if d == 0
+        return false
+    end
+    px = image_decoded_pixels(d)
+    w = image_decoded_width(d)
+    h = image_decoded_height(d)
+    paso = 3
+    if image_decoded_alpha(d)
+        paso = 4
+    end
+    var peso: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    var suma_h: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    var suma_s: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    var cuenta: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]
+    for k in (0..w * h - 1)
+        o = k * paso
+        a_hsl((buffer_get_byte(px, o) << 16) | (buffer_get_byte(px, o + 1) << 8) | buffer_get_byte(px, o + 2))
+        if hsl_s > 150 and hsl_l > 120 and hsl_l < 880
+            # (cuenta más lo saturado y lo de luz media)
+            luz = hsl_l
+            if luz > 500
+                luz = 1000 - luz
+            end
+            p = hsl_s * luz / 500
+            c = hsl_h / 30
+            peso[c] = peso[c] + p
+            suma_h[c] = suma_h[c] + hsl_h
+            suma_s[c] = suma_s[c] + hsl_s
+            cuenta[c] = cuenta[c] + 1
+        end
+    end
+    image_decoded_free(d)
+    mejor = -1
+    for c in (0..11)
+        if cuenta[c] > 0 and (mejor < 0 or peso[c] > peso[mejor])
+            mejor = c
+        end
+    end
+    if mejor < 0
+        acento_h = 210                 # (una imagen gris: azul apagado, el monocromo de siempre)
+        acento_s = 80
+    else
+        acento_h = suma_h[mejor] / cuenta[mejor]
+        acento_s = suma_s[mejor] / cuenta[mejor]
+    end
+    return true
+end
+
+func _linea(nombre: String, c: Int) -> String
+    return nombre + "=" + hex6(c) + "\n"
+end
+
+# el texto de un tema (para ENV:Trasfondo.tema) del acento de ahora, con ese esquema, oscuro o claro
+func tema_de(esquema: String, claro: Bool) -> String
+    h = acento_h
+    s = acento_s
+    if esquema == "ANALOGO"
+        h = h + 30
+    elif esquema == "COMPLEMENTARIO"
+        h = h + 180
+    elif esquema == "TRIADA"
+        h = h + 120
+    end
+    if h >= 360
+        h = h - 360
+    end
+    ns = s / 4                         # (los grises, teñidos del tono)
+    if ns > 160
+        ns = 160
+    end
+    sa = s                             # (el acento, con color)
+    if sa < 450
+        sa = 450
+    end
+    if esquema == "VIVO"
+        sa = 950
+        ns = 200
+    elif esquema == "MONOCROMO"
+        sa = 60
+        ns = 40
+    end
+    t = ""
+    if claro
+        t = t + _linea("FONDO", de_hsl(h, ns, 965)) + _linea("PANEL", de_hsl(h, ns, 940))
+        t = t + _linea("TARJETA", de_hsl(h, ns, 910)) + _linea("BOTON", de_hsl(h, ns, 875))
+        t = t + _linea("BORDE", de_hsl(h, ns, 820)) + _linea("TENUE", de_hsl(h, ns, 560))
+        t = t + _linea("SUAVE", de_hsl(h, ns, 380)) + _linea("TEXTO", de_hsl(h, ns, 110))
+        t = t + _linea("ACENTO", de_hsl(h, sa, 420)) + _linea("SOBRE_ACENTO", de_hsl(h, ns, 975))
+        t = t + _linea("CLARO", de_hsl(h, ns, 180)) + _linea("PELIGRO", 0xc5221f)
+    else
+        t = t + _linea("FONDO", de_hsl(h, ns, 60)) + _linea("PANEL", de_hsl(h, ns, 85))
+        t = t + _linea("TARJETA", de_hsl(h, ns, 120)) + _linea("BOTON", de_hsl(h, ns, 155))
+        t = t + _linea("BORDE", de_hsl(h, ns, 190)) + _linea("TENUE", de_hsl(h, ns, 420))
+        t = t + _linea("SUAVE", de_hsl(h, ns, 640)) + _linea("TEXTO", de_hsl(h, ns, 920))
+        t = t + _linea("ACENTO", de_hsl(h, sa, 700)) + _linea("SOBRE_ACENTO", de_hsl(h, ns, 110))
+        t = t + _linea("CLARO", de_hsl(h, ns, 950)) + _linea("PELIGRO", 0xf28b82)
+    end
+    return t
+end

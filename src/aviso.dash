@@ -7,18 +7,19 @@
 
 import "dibujo.dash"
 import "avisos.dash"
+import "tema.dash"
 
 const ANCHO = 340
 const ALTO = 78
 const ALTO_BARRA = 24
 const DURA = 6000            # ms que se ve
 
-const C_FONDO = 0x23272e
-const C_BORDE = 0x3c414a
-const C_TEXTO = 0xe8eaed
-const C_SUAVE = 0x9aa0a6
-const C_ACENTO = 0x8ab4f8
-const C_CIRCULO = 0x3c414a
+var C_FONDO: Int = 0x23272e
+var C_BORDE: Int = 0x3c414a
+var C_TEXTO: Int = 0xe8eaed
+var C_SUAVE: Int = 0x9aa0a6
+var C_ACENTO: Int = 0x8ab4f8
+var C_CIRCULO: Int = 0x3c414a
 
 var f_normal: Int = 0
 var f_negrita: Int = 0
@@ -83,7 +84,18 @@ Window Aviso
     activate false
 end
 
+# los colores del tema (tema.dash); sin él, los de arriba
+func colores()
+    C_FONDO = tema_color("TARJETA", C_FONDO)
+    C_BORDE = tema_color("BORDE", C_BORDE)
+    C_TEXTO = tema_color("TEXTO", C_TEXTO)
+    C_SUAVE = tema_color("SUAVE", C_SUAVE)
+    C_ACENTO = tema_color("ACENTO", C_ACENTO)
+    C_CIRCULO = tema_color("BORDE", C_CIRCULO)
+end
+
 Main
+    colores()
     avisos_leer()
     if avisos_cuantos() == 0
         # nada que enseñar

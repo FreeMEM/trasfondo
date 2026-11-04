@@ -204,7 +204,8 @@ En la rama `trasfondo-2`, probado solo en FS-UAE (68040, uaegfx, Workbench 3.2.3
 El usuario quiere llegar a algo parecido a una configuración de Quickshell para niri que vio en un vídeo (Reddit,
 r/niri, "quickshell niri hyprland quickshelldots"). En orden:
 
-1. Colores sacados del fondo de escritorio (oscuro y claro, varias paletas) para todas las piezas.
+1. Colores sacados del fondo de escritorio (oscuro y claro, varias paletas) para todas las piezas. Hecho
+   (2026-11-04): src/tema.dash (ENV:Trasfondo.tema), src/paleta.dash y la sección Colores de TrasfondoPrefs.
 2. Estilos de barra con selector: isla arriba en el centro que crece al pasar el ratón, clásica, panel que crece y
    vertical en un lado (iconos juntos, poco hueco).
 3. Paneles que salen de la barra: calendario, ajustes rápidos con "no molestar" (30 min, 1 h, 2 h), avisos.

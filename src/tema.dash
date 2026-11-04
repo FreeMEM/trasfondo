@@ -1,0 +1,52 @@
+# El tema de colores de Trasfondo: lo comparten la barra, el panel, el dock, los ajustes rápidos y los avisos. Vive
+# en ENV:Trasfondo.tema (copia de ENVARC:), una línea NOMBRE=RRGGBB por color; lo escribe TrasfondoPrefs, a mano o
+# sacado del fondo de escritorio (paleta.dash). Sin él, cada pieza usa sus colores de siempre.
+#
+# Los colores, de más oscuro a más claro en el tema oscuro (al revés en el claro):
+#   FONDO   la barra                     PANEL    paneles, dock, ajustes rápidos
+#   TARJETA lo que va encima de un panel BOTON    botones, píldoras, teselas
+#   BORDE   bordes y separadores         TENUE    texto apagado
+#   SUAVE   texto secundario             TEXTO    texto
+#   ACENTO  lo marcado (hoy, encendido)  SOBRE_ACENTO  texto sobre el acento
+#   CLARO   lo resaltado claro           PELIGRO  avisos de peligro (CPU alta, apagar)
+
+const TEMA = "ENV:Trasfondo.tema"
+const TEMA_ARC = "ENVARC:Trasfondo.tema"
+
+var tema_texto: String = ""
+var tema_leido: Bool = false
+
+# el color de ese nombre en el tema, o el que se da si no está
+func tema_color(nombre: String, defecto: Int) -> Int
+    if not tema_leido
+        tema_leido = true
+        t = file_read_text(TEMA)
+        if t != nil
+            tema_texto = str_replace(t, "\r", "")
+        end
+    end
+    for l in str_split(tema_texto, "\n")
+        igual = str_find(l, "=")
+        if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
+            v = str_trim(l[igual + 1:l.length])
+            if str_starts(v, "#")
+                v = v[1:v.length]
+            end
+            if v != ""
+                return str_to_int(v, 16)
+            end
+        end
+    end
+    return defecto
+end
+
+# un color como RRGGBB
+func hex6(c: Int) -> String
+    d = "0123456789ABCDEF"
+    s = ""
+    for k in (0..5)
+        n = (c >> (4 * k)) & 15
+        s = d[n:n + 1] + s
+    end
+    return s
+end

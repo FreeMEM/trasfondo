@@ -234,8 +234,8 @@ MSG_111
 Sección
 ; Section
 MSG_112
-Fondo|Barra|Dock|Ventanas|Arranque
-; Background|Bar|Dock|Windows|Startup
+Fondo|Barra|Dock|Ventanas|Colores|Arranque
+; Background|Bar|Dock|Windows|Colours|Startup
 MSG_113
 Ciudad
 ; City
@@ -320,3 +320,27 @@ Quitar del dock
 MSG_140
 Abrir otro
 ; Open another
+MSG_141
+Colores
+; Colours
+MSG_142
+Los de siempre|Del fondo
+; Usual|From the background
+MSG_143
+Modo
+; Mode
+MSG_144
+Oscuro|Claro
+; Dark|Light
+MSG_145
+Esquema
+; Scheme
+MSG_146
+Del fondo|Monocromo|Análogo|Complementario|Tríada|Vivo
+; Background|Monochrome|Analogous|Complementary|Triad|Vivid
+MSG_147
+Imagen
+; Picture
+MSG_148
+Vacía: la imagen de fondo del Workbench
+; Empty: the Workbench backdrop picture

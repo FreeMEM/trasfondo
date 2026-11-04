@@ -15,6 +15,7 @@
 import "dibujo.dash"
 import "ajustes.dash"
 import "textos.dash"
+import "tema.dash"
 
 const LISTA = "ENV:Trasfondo.dock"
 const LISTA_ARC = "ENVARC:Trasfondo.dock"
@@ -29,14 +30,14 @@ const ARRASTRE = 6           # lo que se mueve el ratón con el botón pulsado p
 const FUERA = 40             # un icono soltado a más de esto del dock sale de él
 const MANTENER = 500         # ms con el botón pulsado sin moverlo: el menú (el botón derecho va a la ventana activa)
 
-const C_DOCK = 0x1b1e23
-const C_BORDE = 0x30353d
-const C_TEXTO = 0xe8eaed
-const C_TESELA = 0x3c414a
-const C_PUNTO = 0x9aa0a6
-const C_MARCA = 0x8ab4f8
-const C_MENU = 0x2a2e35
-const C_MENU_SEL = 0x3c4350
+var C_DOCK: Int = 0x1b1e23
+var C_BORDE: Int = 0x30353d
+var C_TEXTO: Int = 0xe8eaed
+var C_TESELA: Int = 0x3c414a
+var C_PUNTO: Int = 0x9aa0a6
+var C_MARCA: Int = 0x8ab4f8
+var C_MENU: Int = 0x2a2e35
+var C_MENU_SEL: Int = 0x3c4350
 
 const OP_FIJAR = 1
 const OP_QUITAR = 2
@@ -722,7 +723,20 @@ Window Dock
     rmbtrap true
 end
 
+# los colores del tema (tema.dash); sin él, los de arriba
+func colores()
+    C_DOCK = tema_color("PANEL", C_DOCK)
+    C_BORDE = tema_color("BORDE", C_BORDE)
+    C_TEXTO = tema_color("TEXTO", C_TEXTO)
+    C_TESELA = tema_color("BOTON", C_TESELA)
+    C_PUNTO = tema_color("SUAVE", C_PUNTO)
+    C_MARCA = tema_color("ACENTO", C_MARCA)
+    C_MENU = tema_color("TARJETA", C_MENU)
+    C_MENU_SEL = tema_color("BOTON", C_MENU_SEL)
+end
+
 Main
+    colores()
     if not single_instance("TrasfondoDock")
         Print "TrasfondoDock was already running: stopping it"
     elif rtg_get_depth() < 15

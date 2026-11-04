@@ -16,6 +16,7 @@ import "dibujo.dash"
 import "tiempo.dash"
 import "avisos.dash"
 import "ajustes.dash"
+import "tema.dash"
 
 const ALTO = 24              # alto de la barra
 const ALTO_PILDORA = 18
@@ -24,12 +25,12 @@ const HUECO = 6              # entre dos píldoras
 const RELLENO = 10           # dentro de la píldora, a cada lado del texto
 const ICONO = 16             # lo que ocupa un icono dentro de su píldora
 
-const C_FONDO = 0x101317
-const C_PILDORA = 0x262b33
-const C_TEXTO = 0xe8eaed
-const C_SUAVE = 0x9aa0a6
-const C_ACENTO = 0x8ab4f8
-const C_CALIENTE = 0xf28b82
+var C_FONDO: Int = 0x101317
+var C_PILDORA: Int = 0x262b33
+var C_TEXTO: Int = 0xe8eaed
+var C_SUAVE: Int = 0x9aa0a6
+var C_ACENTO: Int = 0x8ab4f8
+var C_CALIENTE: Int = 0xf28b82
 
 var ancho: Int = 640
 var fuente: Int = 0
@@ -221,7 +222,18 @@ Window Barra
     activate false
 end
 
+# los colores del tema (tema.dash); sin él, los de arriba
+func colores()
+    C_FONDO = tema_color("FONDO", C_FONDO)
+    C_PILDORA = tema_color("BOTON", C_PILDORA)
+    C_TEXTO = tema_color("TEXTO", C_TEXTO)
+    C_SUAVE = tema_color("SUAVE", C_SUAVE)
+    C_ACENTO = tema_color("ACENTO", C_ACENTO)
+    C_CALIENTE = tema_color("PELIGRO", C_CALIENTE)
+end
+
 Main
+    colores()
     if not single_instance("TrasfondoBarra")
         Print "TrasfondoBarra was already running: stopping it"
     elif rtg_get_depth() < 15

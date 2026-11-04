@@ -233,7 +233,7 @@ MSG_111 (111//)
 Section
 ; MSG_SECCIONES
 MSG_112 (112//)
-Background|Bar|Dock|Windows|Startup
+Background|Bar|Dock|Windows|Colours|Startup
 ; MSG_CIUDAD
 MSG_113 (113//)
 City
@@ -318,3 +318,27 @@ Remove from dock
 ; MSG_ABRIR
 MSG_140 (140//)
 Open another
+; MSG_COLORES_DE
+MSG_141 (141//)
+Colours
+; MSG_TEMAS
+MSG_142 (142//)
+Usual|From the background
+; MSG_MODO
+MSG_143 (143//)
+Mode
+; MSG_MODOS
+MSG_144 (144//)
+Dark|Light
+; MSG_ESQUEMA
+MSG_145 (145//)
+Scheme
+; MSG_ESQUEMAS
+MSG_146 (146//)
+Background|Monochrome|Analogous|Complementary|Triad|Vivid
+; MSG_IMAGEN
+MSG_147 (147//)
+Picture
+; MSG_IMAGEN_AYUDA
+MSG_148 (148//)
+Empty: the Workbench backdrop picture

@@ -9,6 +9,7 @@
 
 import "dibujo.dash"
 import "avisos.dash"
+import "tema.dash"
 
 const ANCHO = 560
 const ALTO = 340
@@ -16,17 +17,17 @@ const ALTO_BARRA = 24        # el de la barra: el panel sale justo debajo
 const M = 12                 # margen
 const R = 10                 # radio de las tarjetas
 
-const C_FONDO = 0x16191d
-const C_BORDE = 0x30353d
-const C_TARJETA = 0x23272e
-const C_BOTON = 0x30353d
-const C_TEXTO = 0xe8eaed
-const C_SUAVE = 0x9aa0a6
-const C_TENUE = 0x5f6368
-const C_HOY = 0xf1f3f4
-const C_HOY_TEXTO = 0x16191d
-const C_AVISO = 0x2c3139
-const C_CIRCULO = 0x3c414a
+var C_FONDO: Int = 0x16191d
+var C_BORDE: Int = 0x30353d
+var C_TARJETA: Int = 0x23272e
+var C_BOTON: Int = 0x30353d
+var C_TEXTO: Int = 0xe8eaed
+var C_SUAVE: Int = 0x9aa0a6
+var C_TENUE: Int = 0x5f6368
+var C_HOY: Int = 0xf1f3f4
+var C_HOY_TEXTO: Int = 0x16191d
+var C_AVISO: Int = 0x2c3139
+var C_CIRCULO: Int = 0x3c414a
 
 const MESES = "January|February|March|April|May|June|July|August|September|October|November|December"
 const DIAS = "Mo|Tu|We|Th|Fr|Sa|Su"
@@ -318,7 +319,23 @@ Window Panel
     depthgadget false
 end
 
+# los colores del tema (tema.dash); sin él, los de arriba
+func colores()
+    C_FONDO = tema_color("PANEL", C_FONDO)
+    C_BORDE = tema_color("BORDE", C_BORDE)
+    C_TARJETA = tema_color("TARJETA", C_TARJETA)
+    C_BOTON = tema_color("BOTON", C_BOTON)
+    C_TEXTO = tema_color("TEXTO", C_TEXTO)
+    C_SUAVE = tema_color("SUAVE", C_SUAVE)
+    C_TENUE = tema_color("TENUE", C_TENUE)
+    C_HOY = tema_color("ACENTO", C_HOY)
+    C_HOY_TEXTO = tema_color("SOBRE_ACENTO", C_HOY_TEXTO)
+    C_AVISO = tema_color("BOTON", C_AVISO)
+    C_CIRCULO = tema_color("BORDE", C_CIRCULO)
+end
+
 Main
+    colores()
     if not single_instance("TrasfondoPanel")
         # ya estaba abierto: se cierra (lo hace el otro, con el Ctrl-C de single_instance)
     elif rtg_get_depth() < 15

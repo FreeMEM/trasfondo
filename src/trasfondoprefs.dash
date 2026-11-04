@@ -17,6 +17,8 @@
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
+import "tema.dash"
+import "paleta.dash"
 
 const SECCIONES = "fecha,cpu,temperatura,memoria,tareas,discos,red"
 const COLORES = "16,24,32|0,0,0|48,48,48|16,40,96|16,56,32|72,16,24|48,24,72"   # los de MSG_COLORES, en su orden
@@ -64,6 +66,7 @@ var g_actualizar: Int = -1
 var g_estado: Int = -1
 var g_lanzadores: Int = -1
 var seccion: Int = 0
+var y_muestras: Int = 0                # dónde van las muestras de los colores (página 4)
 
 # un ajuste de las preferencias (NOMBRE=valor), o el defecto
 func conf(nombre: String, defecto: String) -> String
@@ -231,7 +234,66 @@ func recoger()
     end
 end
 
-# la página n (0 fondo, 1 barra, 2 dock, 3 ventanas, 4 arranque), con la fila de arriba y los botones
+# el tema que dicen los valores de la página de colores: su texto (tema.dash), o "" para los de siempre
+func tema_actual() -> String
+    if valores["TEMA"] != "FONDO"
+        return ""
+    end
+    img = valores["TEMA_IMAGEN"]
+    if img == ""
+        img = imagen_del_fondo()
+    end
+    if img == "" or not acento_de(img)
+        acento_h = 210                 # (sin imagen que leer: el azul de siempre)
+        acento_s = 600
+    end
+    return tema_de(valores["TEMA_ESQUEMA"], valores["TEMA_MODO"] == "CLARO")
+end
+
+# los colores del tema, en una fila de muestras bajo los gadgets (los de siempre si no hay tema)
+func muestras()
+    texto = tema_actual()
+    var nombres: [String] = str_split("FONDO|PANEL|TARJETA|BOTON|BORDE|TENUE|SUAVE|TEXTO|ACENTO|SOBRE_ACENTO|CLARO|PELIGRO", "|")
+    var siempre: [Int] = [0x101317, 0x16191d, 0x23272e, 0x30353d, 0x30353d, 0x5f6368, 0x9aa0a6, 0xe8eaed, 0x8ab4f8, 0x16191d, 0xf1f3f4, 0xf28b82]
+    tema_texto = texto
+    tema_leido = true
+    w = (ancho - m * 2) / nombres.length
+    for k in (0..nombres.length - 1)
+        c = tema_color(nombres[k], siempre[k])
+        gfx_pen(color_pen((c >> 16) & 255, (c >> 8) & 255, c & 255))
+        gfx_rect(m + k * w, y_muestras, m + k * w + w - 3, y_muestras + fila * 2)
+        gfx_pen(1)                     # (un marco: una muestra del gris de la ventana se vería igual)
+        gfx_box(m + k * w, y_muestras, m + k * w + w - 3, y_muestras + fila * 2)
+    end
+end
+
+# el tema a ENV: (y a ENVARC: al guardar); con los de siempre, fuera
+func escribir_tema(guardar: Bool)
+    texto = tema_actual()
+    if texto == ""
+        file_delete(TEMA)
+        if guardar
+            file_delete(TEMA_ARC)
+        end
+        return
+    end
+    ok = file_write_text(TEMA, texto)
+    if guardar
+        ok = file_write_text(TEMA_ARC, texto)
+    end
+end
+
+# ¿es e un gadget de la página?
+func de_la_pagina(e: Int) -> Bool
+    for g in g_num
+        if g == e
+            return true
+        end
+    end
+    return false
+end
+
+# la página n (0 fondo, 1 barra, 2 dock, 3 ventanas, 4 colores, 5 arranque), con la fila de arriba y los botones
 func pagina(n: Int, linea_version: String)
     gt_init()
     gfx_clear()
@@ -244,7 +306,7 @@ func pagina(n: Int, linea_version: String)
     g_lanzadores = -1
     seccion = n
     y = m
-    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Startup"))
+    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup"))
     y = y + fila + hueco
     x = m
     ancho_n = screen_font_text_width("000") + 24
@@ -316,6 +378,18 @@ func pagina(n: Int, linea_version: String)
             y = y + fila + 2
             i = i + 1
         end
+    elif n == 4
+        ciclo(y, tr(MSG_COLORES_DE, "Colours"), "TEMA", tr(MSG_TEMAS, "Usual|From the background"), "FIJO|FONDO")
+        y = y + fila + 2
+        ciclo(y, tr(MSG_MODO, "Mode"), "TEMA_MODO", tr(MSG_MODOS, "Dark|Light"), "OSCURO|CLARO")
+        y = y + fila + 2
+        ciclo(y, tr(MSG_ESQUEMA, "Scheme"), "TEMA_ESQUEMA", tr(MSG_ESQUEMAS, "Background|Monochrome|Analogous|Complementary|Triad|Vivid"), ESQUEMAS)
+        y = y + fila + 2
+        campo(y, tr(MSG_IMAGEN, "Picture"), "TEMA_IMAGEN")
+        y = y + fila + 2
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_IMAGEN_AYUDA, "Empty: the Workbench backdrop picture"))
+        y = y + fila + 6
+        y_muestras = y
     else
         var piezas: [String] = str_split(PIEZAS, "|")
         var textos_a: [String] = [tr(MSG_ARR_FONDO, "Start the background with the Workbench"), tr(MSG_ARR_BARRA, "Start the bar with the Workbench"), tr(MSG_ARR_DOCK, "Start the dock with the Workbench"), tr(MSG_ARR_VENTANAS, "Start the window keys with the Workbench")]
@@ -346,6 +420,9 @@ func pagina(n: Int, linea_version: String)
             gt_disable(g_num[i])
         end
         i = i + 1
+    end
+    if n == 4
+        muestras()
     end
 end
 
@@ -414,7 +491,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -540,6 +617,10 @@ Main
     valores["BARRA_LON"] = conf("BARRA_LON", "")
     valores["DOCK_POSICION"] = str_upper(conf("DOCK_POSICION", "ABAJO"))
     valores["DOCK_ICONO"] = conf("DOCK_ICONO", "40")
+    valores["TEMA"] = str_upper(conf("TEMA", "FIJO"))
+    valores["TEMA_MODO"] = str_upper(conf("TEMA_MODO", "OSCURO"))
+    valores["TEMA_ESQUEMA"] = str_upper(conf("TEMA_ESQUEMA", "FONDO"))
+    valores["TEMA_IMAGEN"] = conf("TEMA_IMAGEN", "")
     valores["VENTANAS_HUECO"] = conf("VENTANAS_HUECO", "4")
     valores["VENTANAS_MOSAICO"] = si(str_upper(conf("VENTANAS_MOSAICO", "NO")) == "SI")
     valores["VENTANAS_TECLA_MAXIMIZAR"] = conf("VENTANAS_TECLA_MAXIMIZAR", "ctrl alt up")
@@ -683,6 +764,9 @@ Main
             pedido = time_ms()
         elif e == g_lanzadores and g_lanzadores >= 0
             editar_lanzadores()
+        elif seccion == 4 and de_la_pagina(e)
+            recoger()                        # (las muestras, al momento)
+            muestras()
         elif e == -2 or e == g_cancelar
             break
         elif e == g_guardar or e == g_usar
@@ -702,6 +786,13 @@ Main
             end
             if cambio("VENTANAS_")
                 rearrancar("TrasfondoVentanas")
+            end
+            if cambio("TEMA")
+                escribir_tema(e == g_guardar)
+                rearrancar("TrasfondoBarra")    # (sus paneles, los ajustes rápidos y los avisos, al abrirlos)
+                rearrancar("TrasfondoDock")
+            elif e == g_guardar and valores["TEMA"] == "FONDO"
+                escribir_tema(true)             # (lo de Usar, también a ENVARC:)
             end
             break
         end

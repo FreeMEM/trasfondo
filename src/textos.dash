@@ -143,3 +143,21 @@ end
 func con3(texto: String, a: String, b: String, c: String) -> String
     return str_replace(con2(texto, a, b), "%3", c)
 end
+
+# TrasfondoPrefs, la sección de colores
+# "Colours"
+const MSG_COLORES_DE = 141
+# "Usual|From the background"
+const MSG_TEMAS = 142
+# "Mode"
+const MSG_MODO = 143
+# "Dark|Light"
+const MSG_MODOS = 144
+# "Scheme"
+const MSG_ESQUEMA = 145
+# "Background|Monochrome|Analogous|Complementary|Triad|Vivid"
+const MSG_ESQUEMAS = 146
+# "Picture"
+const MSG_IMAGEN = 147
+# "Empty: the Workbench backdrop picture"
+const MSG_IMAGEN_AYUDA = 148
