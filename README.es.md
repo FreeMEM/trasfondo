@@ -39,12 +39,32 @@ pone al día solo con un clic, TrasfondoPrefs y Exchange. En [YouTube](https://y
 
 [![Vídeo: Trasfondo 0.11, un monitor de recursos en el fondo del Workbench](docs/video.jpg)](https://youtu.be/QyzxsXAyeg4)
 
+## Novedades de la 2.0
+
+La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte que se arranca o no:
+
+- **TrasfondoBarra**: una barra arriba con la hora, la fecha, el tiempo, la CPU y la memoria. Al pulsarla salen
+  sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
+  preferencias, red, memoria, reiniciar).
+- **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en
+  la lista del panel. Por ejemplo, `Avisa "Copia hecha"`.
+- **TrasfondoDock**: un dock con los programas abiertos y los que fijes. Se fija un programa soltando su icono
+  encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
+- **TrasfondoVentanas**: teclas para las ventanas (maximizar, mitades, restaurar, mosaico a mano o
+  automático) y moverlas o cambiarlas de tamaño con Alt y el ratón.
+- **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
+  con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
+- **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque) y dice qué piezas
+  arrancan con el Workbench.
+
+La barra, sus paneles y el dock necesitan una tarjeta gráfica (RTG, 15 bits o más). El fondo y las ventanas
+funcionan en cualquier pantalla.
+
 ## Escrito en Dash
 
 Trasfondo está escrito entero en [Dash](https://github.com/FreeMEM/dash), un lenguaje de alto nivel para
-Amiga que se traduce a C y se compila a un ejecutable nativo de 68k. No lleva C a mano: el panel son unas 1.100
-líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash), y todo el programa, con TrasfondoPrefs, el
-actualizador y los textos, unas 2.200.
+Amiga que se traduce a C y se compila a un ejecutable nativo de 68k. No lleva C a mano: el panel del fondo son unas 1.100
+líneas de Dash en [src/trasfondo.dash](src/trasfondo.dash), y todas las piezas juntas, unas 6.300.
 
 Lo que Dash no sabía hacer se le añadió como funciones propias del lenguaje (builtins):
 
@@ -70,7 +90,7 @@ Así, cualquier otro programa en Dash puede usarlas también.
 - **Cualquier 68k**: el ejecutable es código de 68000 y no usa FPU.
 - **Chipset nativo (OCS, ECS, AGA) o tarjeta gráfica (RTG)**. Con RTG usa `cybergraphics.library` o
   `Picasso96API.library` si están.
-- **Memoria**: el ejecutable ocupa 138 KB.
+- **Memoria**: el fondo ocupa 136 KB; todas las piezas juntas, unos 820 KB en disco.
 - **Red y WiFi: cualquier pila TCP/IP.** Con Roadshow, lo que entra y sale en bytes por segundo de cada
   interfaz. Con otra pila (MiamiDx, AmiTCP...), Trasfondo pregunta al driver de la tarjeta (el de
   `DEVS:Networks/` que esté en uso) y da paquetes por segundo: los drivers no cuentan bytes. La señal de la
@@ -93,11 +113,12 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-0.11.lha` (de la página de
+1. Descomprime `trasfondo-2.0.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
-2. Doble clic en **Instalar**. Pregunta si quieres que Trasfondo arranque solo con el Workbench (lo copia
-   a `SYS:WBStartup`) o en qué cajón lo dejas, y pone sus preferencias, **TrasfondoPrefs**, en
-   `SYS:Prefs`, y el catálogo en castellano en `LOCALE:Catalogs`.
+2. Doble clic en **Instalar**. Pregunta dónde dejar el cajón `Trasfondo` con todas las piezas y cuáles
+   arrancan con el Workbench (pone sus iconos en `SYS:WBStartup`). Pone **TrasfondoPrefs** en `SYS:Prefs`, la
+   orden `Avisa` en `C:` y el catálogo en castellano en `LOCALE:Catalogs`. Si tenías una versión anterior, la
+   quita.
 3. Lánzalo con doble clic, o desde el Shell con `run trasfondo`.
 4. Para pararlo, lánzalo otra vez, usa Eliminar en Exchange o pulsa Ctrl-C en su Shell. El fondo queda
    como estaba.
@@ -128,6 +149,9 @@ el botón).
 Necesita una pila TCP/IP en marcha y AmiSSL; sin ellas no hace nada (y no pone en marcha la red: si no hay pila, espera a que la haya). Al acabar cada consulta suelta la red. Solo pregunta a `api.github.com`, y la casilla
 **Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
 para llegar a la 0.8 hay que instalarla a mano una vez.
+
+Desde la 0.11, el botón pone al día el fondo y TrasfondoPrefs, pero no trae la barra, el dock ni las demás
+piezas de la 2.0: para tenerlas, descomprime `trasfondo-2.0.lha` y usa su instalador.
 
 ### Desde Exchange
 
@@ -183,6 +207,8 @@ estimación: es el tiempo real que cada tarea pasa en la CPU.
 - Con una tarjeta gráfica en el bus Zorro cada repintado lee y escribe la memoria de la tarjeta, que por ese
   bus es lenta: ahí se nota más lo que gasta. Medir cada más segundos y el fondo fijo lo bajan.
 - La posición aún no se puede cambiar.
+- La barra y el dock son ventanas normales: otra ventana puede taparlos.
+- Actualizar desde TrasfondoPrefs solo pone al día el fondo y TrasfondoPrefs, no las demás piezas.
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.
 

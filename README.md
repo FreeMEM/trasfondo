@@ -39,12 +39,32 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
 
 [![Video: Trasfondo 0.11, a resource monitor on your Workbench backdrop](docs/video-en.jpg)](https://youtu.be/asdHx5MZsJA)
 
+## What's new in 2.0
+
+2.0 adds new pieces for the Workbench screen, each one a separate program you can start or not:
+
+- **TrasfondoBarra**: a bar at the top with the time, the date, the weather, the CPU and the memory. Clicking it
+  opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
+  (quick settings: preferences, network, memory, reboot).
+- **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
+  and keeps it in the panel's list. For example, `Avisa "Backup done"`.
+- **TrasfondoDock**: a dock with the open programs and the ones you pin. You pin a program by dropping its icon
+  on it; you move one by dragging it, and you unpin or pin one by holding the button down.
+- **TrasfondoVentanas**: keys for the windows (maximize, halves, restore, tiling by hand or automatic) and
+  moving or resizing them with Alt and the mouse.
+- **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
+  with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
+- **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup) and sets which pieces
+  start with the Workbench.
+
+The bar, its panels and the dock need a graphics card (RTG, 15 bits or more). The backdrop and the windows
+work on any screen.
+
 ## Written in Dash
 
 Trasfondo is written entirely in [Dash](https://github.com/FreeMEM/dash), a high-level language for the
-Amiga that is translated to C and compiled into a native 68k executable. There is no hand-written C: the panel is about 1,100
-lines of Dash in [src/trasfondo.dash](src/trasfondo.dash), and the whole program, with TrasfondoPrefs, the
-updater and the texts, about 2,200.
+Amiga that is translated to C and compiled into a native 68k executable. There is no hand-written C: the backdrop panel is about 1,100
+lines of Dash in [src/trasfondo.dash](src/trasfondo.dash), and all the pieces together, about 6,300.
 
 Whatever Dash couldn't do was added to it as functions built into the language (builtins):
 
@@ -70,7 +90,7 @@ That way, any other Dash program can use them too.
 - **Any 68k**: the executable is 68000 code and doesn't use an FPU.
 - **Native chipset (OCS, ECS, AGA) or graphics card (RTG)**. With RTG it uses `cybergraphics.library` or
   `Picasso96API.library` if they are present.
-- **Memory**: the executable takes up 138 KB.
+- **Memory**: the backdrop takes up 136 KB; all the pieces together, about 820 KB on disk.
 - **Network and WiFi: any TCP/IP stack.** With Roadshow, incoming and outgoing bytes per second for each
   interface. With another stack (MiamiDx, AmiTCP...), Trasfondo asks the card's driver (the one in
   `DEVS:Networks/` that is in use) and gives packets per second: drivers don't count bytes. The WiFi
@@ -93,11 +113,12 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-0.11.lha` (from the
+1. Unpack `trasfondo-2.0.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
-2. Double-click **Instalar** (the installer). It asks whether you want Trasfondo to start by itself with the Workbench (it copies it
-   to `SYS:WBStartup`) or which drawer to leave it in, and puts its preferences, **TrasfondoPrefs**, in
-   `SYS:Prefs`, and the Spanish catalog in `LOCALE:Catalogs`.
+2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
+   and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**
+   in `SYS:Prefs`, the `Avisa` command in `C:` and the Spanish catalog in `LOCALE:Catalogs`. If you had an
+   earlier version, it removes it.
 3. Start it with a double-click, or from the Shell with `run trasfondo`.
 4. To stop it, start it again, use Remove in Exchange or press Ctrl-C in its Shell. The backdrop is left
    as it was.
@@ -128,6 +149,9 @@ the button).
 It needs a running TCP/IP stack and AmiSSL; without them it does nothing (and it doesn't start the network: if there is no stack, it waits until there is one). When each check is done it lets go of the network. It only talks to `api.github.com`, and the
 **Look for new versions on GitHub** checkbox in TrasfondoPrefs turns it off. Versions up to 0.7 don't have it:
 to get to 0.8 you have to install it by hand once.
+
+From 0.11, the button updates the backdrop and TrasfondoPrefs, but it doesn't bring the bar, the dock or the
+other 2.0 pieces: to get them, unpack `trasfondo-2.0.lha` and use its installer.
 
 ### From Exchange
 
@@ -183,6 +207,8 @@ estimate: it is the real time each task spends on the CPU.
 - With a graphics card on the Zorro bus, every repaint reads and writes the card's memory, which is slow over that
   bus: that is where its cost is most noticeable. Measuring less often and the solid background bring it down.
 - The position can't be changed yet.
+- The bar and the dock are normal windows: another window can cover them.
+- Updating from TrasfondoPrefs only updates the backdrop and TrasfondoPrefs, not the other pieces.
 - If a pixel of an icon matches the colour of the previous panel at that point, it is taken for background and the
   panel paints over it until the Workbench repaints the icon.
 
