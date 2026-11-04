@@ -239,6 +239,9 @@ func tema_actual() -> String
     if valores["TEMA"] != "FONDO"
         return ""
     end
+    if valores["TEMA_ESQUEMA"] == "WORKBENCH"
+        return tema_workbench()        # (sin imagen que leer)
+    end
     img = valores["TEMA_IMAGEN"]
     if img == ""
         img = imagen_del_fondo()
@@ -250,21 +253,116 @@ func tema_actual() -> String
     return tema_de(valores["TEMA_ESQUEMA"], valores["TEMA_MODO"] == "CLARO")
 end
 
-# los colores del tema, en una fila de muestras bajo los gadgets (los de siempre si no hay tema)
+func pintar_con(c: Int)
+    gfx_pen(color_pen((c >> 16) & 255, (c >> 8) & 255, c & 255))
+end
+
+# un texto en (x, y), con y la línea de arriba del texto
+func texto_en(x: Int, y: Int, s: String, c: Int)
+    pintar_con(c)
+    gfx_text_at(x, y + font_baseline(), s)
+end
+
+# una píldora: rectángulo de color con un texto dentro; devuelve su ancho
+func pildora(x: Int, y: Int, h: Int, s: String, fondo: Int, letra: Int) -> Int
+    w = font_text_width(s) + 10
+    pintar_con(fondo)
+    gfx_rect(x, y, x + w - 1, y + h - 1)
+    texto_en(x + 5, y + (h - font_height()) / 2, s, letra)
+    return w
+end
+
+# cómo quedará, en pequeño, con los colores del tema (los de siempre si no hay tema): la barra arriba, un panel con
+# su tarjeta, el día de hoy y un botón, y el dock abajo, sobre un escritorio oscuro
 func muestras()
-    texto = tema_actual()
-    var nombres: [String] = str_split("FONDO|PANEL|TARJETA|BOTON|BORDE|TENUE|SUAVE|TEXTO|ACENTO|SOBRE_ACENTO|CLARO|PELIGRO", "|")
-    var siempre: [Int] = [0x101317, 0x16191d, 0x23272e, 0x30353d, 0x30353d, 0x5f6368, 0x9aa0a6, 0xe8eaed, 0x8ab4f8, 0x16191d, 0xf1f3f4, 0xf28b82]
-    tema_texto = texto
+    tema_texto = tema_actual()
     tema_leido = true
-    w = (ancho - m * 2) / nombres.length
-    for k in (0..nombres.length - 1)
-        c = tema_color(nombres[k], siempre[k])
-        gfx_pen(color_pen((c >> 16) & 255, (c >> 8) & 255, c & 255))
-        gfx_rect(m + k * w, y_muestras, m + k * w + w - 3, y_muestras + fila * 2)
-        gfx_pen(1)                     # (un marco: una muestra del gris de la ventana se vería igual)
-        gfx_box(m + k * w, y_muestras, m + k * w + w - 3, y_muestras + fila * 2)
+    c_fondo = tema_color("FONDO", 0x101317)
+    c_panel = tema_color("PANEL", 0x16191d)
+    c_tarjeta = tema_color("TARJETA", 0x23272e)
+    c_boton = tema_color("BOTON", 0x30353d)
+    c_borde = tema_color("BORDE", 0x30353d)
+    c_tenue = tema_color("TENUE", 0x5f6368)
+    c_suave = tema_color("SUAVE", 0x9aa0a6)
+    c_texto = tema_color("TEXTO", 0xe8eaed)
+    c_acento = tema_color("ACENTO", 0x8ab4f8)
+    c_sobre = tema_color("SOBRE_ACENTO", 0x16191d)
+    c_claro = tema_color("CLARO", 0xf1f3f4)
+    c_peligro = tema_color("PELIGRO", 0xf28b82)
+    gfx_mode(0)
+    x0 = m
+    y0 = y_muestras
+    w = ancho - m * 2
+    h = alto - m - alto_boton - hueco - y0
+    fh = font_height()
+    # el escritorio
+    pintar_con(0x30343a)
+    gfx_rect(x0, y0, x0 + w - 1, y0 + h - 1)
+    # la barra
+    bh = fh + 6
+    pintar_con(c_fondo)
+    gfx_rect(x0, y0, x0 + w - 1, y0 + bh - 1)
+    px = pildora(x0 + 3, y0 + 2, bh - 4, "Trasfondo", c_boton, c_acento)
+    reloj = "12:00"
+    pw = font_text_width(reloj) + 10
+    px = pildora(x0 + (w - pw) / 2, y0 + 2, bh - 4, reloj, c_boton, c_texto)
+    cpu = "CPU 92%"
+    pw = font_text_width(cpu) + 10
+    px = pildora(x0 + w - pw - 3, y0 + 2, bh - 4, cpu, c_boton, c_peligro)
+    mem = "MEM 11%"
+    pw2 = font_text_width(mem) + 10
+    px = pildora(x0 + w - pw - pw2 - 7, y0 + 2, bh - 4, mem, c_boton, c_suave)
+    # un panel a la derecha, bajo la barra
+    pw = w * 45 / 100
+    ph = h - bh - 8
+    xp = x0 + w - pw - 4
+    yp = y0 + bh + 4
+    pintar_con(c_borde)
+    gfx_rect(xp, yp, xp + pw - 1, yp + ph - 1)
+    pintar_con(c_panel)
+    gfx_rect(xp + 1, yp + 1, xp + pw - 2, yp + ph - 2)
+    # su tarjeta: un título, un texto suave y los días, con hoy marcado
+    th = fh * 3 + 12
+    pintar_con(c_tarjeta)
+    gfx_rect(xp + 5, yp + 5, xp + pw - 6, yp + 5 + th - 1)
+    texto_en(xp + 10, yp + 8, "Trasfondo 2.0", c_texto)
+    texto_en(xp + 10, yp + 9 + fh, "Workbench 3.2", c_suave)
+    dx = xp + 10
+    dy = yp + 10 + fh * 2
+    for d in (2..6)
+        s = "#{d}"
+        if d == 4
+            pintar_con(c_acento)
+            gfx_rect(dx - 2, dy - 1, dx + font_text_width("00") + 1, dy + fh)
+            texto_en(dx, dy, s, c_sobre)
+        else
+            texto_en(dx, dy, s, c_tenue)
+        end
+        dx = dx + font_text_width("00") + 8
     end
+    # dos botones: uno normal y uno encendido (claro)
+    yb = yp + 5 + th + 5
+    if yb + fh + 4 < yp + ph - 4
+        bw = pildora(xp + 5, yb, fh + 4, "Wi-Fi", c_claro, c_fondo)
+        bw = pildora(xp + 5 + bw + 5, yb, fh + 4, "Off", c_boton, c_texto)
+    end
+    # el dock, abajo a la izquierda: teselas y el punto de uno abierto
+    t = fh + 8
+    dw = 4 * (t + 4) + 6
+    dh = t + 10
+    xd = x0 + 6
+    yd = y0 + h - dh - 4
+    pintar_con(c_borde)
+    gfx_rect(xd, yd, xd + dw - 1, yd + dh - 1)
+    pintar_con(c_panel)
+    gfx_rect(xd + 1, yd + 1, xd + dw - 2, yd + dh - 2)
+    for k in (0..3)
+        tx = xd + 5 + k * (t + 4)
+        pintar_con(c_boton)
+        gfx_rect(tx, yd + 4, tx + t - 1, yd + 4 + t - 1)
+    end
+    pintar_con(c_suave)
+    gfx_rect(xd + 5 + t / 2 - 1, yd + dh - 4, xd + 5 + t / 2 + 1, yd + dh - 3)
 end
 
 # el tema a ENV: (y a ENVARC: al guardar); con los de siempre, fuera
@@ -383,7 +481,7 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         ciclo(y, tr(MSG_MODO, "Mode"), "TEMA_MODO", tr(MSG_MODOS, "Dark|Light"), "OSCURO|CLARO")
         y = y + fila + 2
-        ciclo(y, tr(MSG_ESQUEMA, "Scheme"), "TEMA_ESQUEMA", tr(MSG_ESQUEMAS, "Background|Monochrome|Analogous|Complementary|Triad|Vivid"), ESQUEMAS)
+        ciclo(y, tr(MSG_ESQUEMA, "Scheme"), "TEMA_ESQUEMA", tr(MSG_ESQUEMAS, "Background|Monochrome|Analogous|Complementary|Triad|Vivid|Workbench"), ESQUEMAS)
         y = y + fila + 2
         campo(y, tr(MSG_IMAGEN, "Picture"), "TEMA_IMAGEN")
         y = y + fila + 2

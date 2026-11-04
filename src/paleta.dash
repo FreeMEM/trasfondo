@@ -1,11 +1,11 @@
 # Colores sacados del fondo de escritorio (Trasfondo 2.0), como Material You: la imagen del fondo, decodificada en
 # pequeño, da su color más vivo (el acento); de él salen todos los del tema (tema.dash), en oscuro o en claro, con
 # varios esquemas: el del fondo tal cual, monocromo, análogo (el tono de al lado), complementario (el opuesto), tríada
-# (a un tercio) y vivo (más saturado).
+# (a un tercio) y vivo (más saturado). Y el del Workbench: sus mismos colores (los lápices de su pantalla), sin imagen.
 #
 # La imagen es la del fondo del Workbench (ENV:Sys/WBPattern.prefs) o la que se diga.
 
-const ESQUEMAS = "FONDO|MONOCROMO|ANALOGO|COMPLEMENTARIO|TRIADA|VIVO"
+const ESQUEMAS = "FONDO|MONOCROMO|ANALOGO|COMPLEMENTARIO|TRIADA|VIVO|WORKBENCH"
 const WBPATTERN = "ENV:Sys/WBPattern.prefs"
 
 # HSL en enteros: tono 0..359, saturación y luz 0..1000
@@ -189,12 +189,50 @@ func acento_de(ruta: String) -> Bool
     return true
 end
 
+# a y b mezclados: p de 0 (todo a) a 100 (todo b)
+func mezcla(a: Int, b: Int, p: Int) -> Int
+    r = (((a >> 16) & 255) * (100 - p) + ((b >> 16) & 255) * p) / 100
+    g = (((a >> 8) & 255) * (100 - p) + ((b >> 8) & 255) * p) / 100
+    z = ((a & 255) * (100 - p) + (b & 255) * p) / 100
+    return (r << 16) | (g << 8) | z
+end
+
+# un lápiz del Workbench, o el color que se da si no lo tiene
+func lapiz(n: Int, defecto: Int) -> Int
+    c = screen_pen_rgb(n)
+    if c < 0
+        return defecto
+    end
+    return c
+end
+
+# el tema del Workbench: la barra como la de su pantalla, los paneles del gris de sus ventanas y el acento del
+# relleno de la ventana activa
+func tema_workbench() -> String
+    texto = lapiz(2, 0x000000)
+    brillo = lapiz(3, 0xffffff)
+    sombra = lapiz(4, 0x000000)
+    relleno = lapiz(5, 0x6688bb)
+    fondo = lapiz(7, 0xaaaaaa)
+    t = _linea("FONDO", lapiz(10, brillo)) + _linea("PANEL", fondo)
+    t = t + _linea("TARJETA", mezcla(fondo, brillo, 30)) + _linea("BOTON", mezcla(fondo, sombra, 12))
+    t = t + _linea("BORDE", mezcla(fondo, sombra, 45)) + _linea("TENUE", mezcla(texto, fondo, 60))
+    t = t + _linea("SUAVE", mezcla(texto, fondo, 35)) + _linea("TEXTO", texto)
+    t = t + _linea("ACENTO", relleno) + _linea("SOBRE_ACENTO", lapiz(6, brillo))
+    # (lo encendido lleva encima el color de la barra: con el azul del relleno se lee)
+    t = t + _linea("CLARO", relleno) + _linea("PELIGRO", 0xc5221f)
+    return t
+end
+
 func _linea(nombre: String, c: Int) -> String
     return nombre + "=" + hex6(c) + "\n"
 end
 
 # el texto de un tema (para ENV:Trasfondo.tema) del acento de ahora, con ese esquema, oscuro o claro
 func tema_de(esquema: String, claro: Bool) -> String
+    if esquema == "WORKBENCH"
+        return tema_workbench()
+    end
     h = acento_h
     s = acento_s
     if esquema == "ANALOGO"

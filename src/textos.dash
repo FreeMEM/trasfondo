@@ -155,7 +155,7 @@ const MSG_MODO = 143
 const MSG_MODOS = 144
 # "Scheme"
 const MSG_ESQUEMA = 145
-# "Background|Monochrome|Analogous|Complementary|Triad|Vivid"
+# "Background|Monochrome|Analogous|Complementary|Triad|Vivid|Workbench"
 const MSG_ESQUEMAS = 146
 # "Picture"
 const MSG_IMAGEN = 147

@@ -336,8 +336,8 @@ MSG_145
 Esquema
 ; Scheme
 MSG_146
-Del fondo|Monocromo|Análogo|Complementario|Tríada|Vivo
-; Background|Monochrome|Analogous|Complementary|Triad|Vivid
+Del fondo|Monocromo|Análogo|Complementario|Tríada|Vivo|Workbench
+; Background|Monochrome|Analogous|Complementary|Triad|Vivid|Workbench
 MSG_147
 Imagen
 ; Picture

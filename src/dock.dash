@@ -64,6 +64,9 @@ var dy: Int = 0
 var ancho: Int = 0
 var alto: Int = 0
 var bajo: [Int] = []         # lo que hay detrás de las cuatro esquinas, R x R cada una (antes de taparlas)
+var leido_en: Int = 0        # time_ms de la última vez que se leyeron las esquinas
+var fuera_de: [Int] = []     # unos puntos justo fuera del dock cuando se leyeron: si cambian (el Workbench pinta su
+                             # imagen después de arrancar el dock, o se cambia el fondo), se leen otra vez
 var wbrun: Bool = false
 var f_inicial: Int = 0
 var vistos_id: [Int] = []    # las ventanas ya vistas y la ruta de su programa (wm_path va al disco)
@@ -258,8 +261,37 @@ end
 
 # ---- pintar ----
 
+# los puntos de alrededor del dock, junto a cada esquina, por fuera
+func alrededor() -> [Int]
+    var r: [Int] = []
+    r.push(screen_pixel_rgb(dx - 2, dy + R / 2))
+    r.push(screen_pixel_rgb(dx + R / 2, dy - 2))
+    r.push(screen_pixel_rgb(dx + ancho + 1, dy + R / 2))
+    r.push(screen_pixel_rgb(dx + ancho - R / 2, dy - 2))
+    r.push(screen_pixel_rgb(dx - 2, dy + alto - R / 2))
+    r.push(screen_pixel_rgb(dx + R / 2, dy + alto + 1))
+    r.push(screen_pixel_rgb(dx + ancho + 1, dy + alto - R / 2))
+    r.push(screen_pixel_rgb(dx + ancho - R / 2, dy + alto + 1))
+    return r
+end
+
+# ¿cambió lo de alrededor desde que se leyeron las esquinas?
+func cambio_alrededor() -> Bool
+    var ahora: [Int] = alrededor()
+    if ahora.length != fuera_de.length
+        return true
+    end
+    for k in (0..ahora.length - 1)
+        if ahora[k] != fuera_de[k]
+            return true
+        end
+    end
+    return false
+end
+
 # lo que hay en la pantalla detrás de las esquinas del dock, con la ventana sin taparlas
 func leer_bajo()
+    fuera_de = alrededor()
     bajo = []
     for c in (0..3)
         ox = dx
@@ -791,8 +823,14 @@ Main
                     d = app_drop()
                 end
                 e = refrescar()
-                if cambio or e == 2
+                # (lo de alrededor, como mucho cada 2 s y sin el menú abierto, que está pegado al dock)
+                releer = false
+                if menu == 0 and time_ms() - leido_en > 2000
+                    releer = cambio_alrededor()
+                end
+                if cambio or e == 2 or releer
                     colocar()
+                    leido_en = time_ms()
                 elif e == 1
                     pintar(-1)
                 end
