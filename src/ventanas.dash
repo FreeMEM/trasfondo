@@ -15,7 +15,7 @@
 # Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
 
 @workbench_output "NIL:"
-@version "TrasfondoVentanas 2.1"
+@version "TrasfondoVentanas 2.2"
 
 import "ajustes.dash"
 

@@ -48,14 +48,17 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   preferencias, red, memoria, reiniciar).
 - **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en
   la lista del panel. Por ejemplo, `Avisa "Copia hecha"`.
-- **TrasfondoDock**: un dock con los programas abiertos y los que fijes. Se fija un programa soltando su icono
-  encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
+- **TrasfondoDock**: un dock con los programas abiertos y los que fijes, cada uno en una casilla igual, con su
+  icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa. Se fija un programa
+  soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
+  Si se pide (TrasfondoPrefs, o `ESCONDER=SI`), se esconde solo y deja una rayita en el borde: sale al llevar el
+  ratón allí.
 - **TrasfondoVentanas**: teclas para las ventanas (maximizar, mitades, restaurar, mosaico a mano o
   automático) y moverlas o cambiarlas de tamaño con Alt y el ratón.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
   con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
-- **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque) y dice qué piezas
-  arrancan con el Workbench.
+- **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque). En Arranque, marcar
+  una pieza la pone en marcha y hace que arranque con el Workbench; quitar la marca la para y deja de arrancar.
 
 La barra, sus paneles y el dock necesitan una tarjeta gráfica (RTG, 15 bits o más). El fondo y las ventanas
 funcionan en cualquier pantalla.
@@ -113,7 +116,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-2.1.lha` (de la página de
+1. Descomprime `trasfondo-2.2.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta dónde dejar el cajón `Trasfondo` con todas las piezas y cuáles
    arrancan con el Workbench (pone sus iconos en `SYS:WBStartup`). Pone **TrasfondoPrefs** en `SYS:Prefs`, la
@@ -154,7 +157,7 @@ Desde la 2.1, el botón trae todas las piezas: el fondo, TrasfondoPrefs, la barr
 ventanas y la orden `Avisa`. Quien llegue desde la 0.11 o la 2.0 recibe primero el fondo nuevo, y este, al
 arrancar, baja solo las piezas que faltan y las deja a su lado, con sus iconos de arranque: después se elige en
 TrasfondoPrefs cuáles arrancan con el Workbench. Las piezas que estén en marcha siguen con la versión de antes
-hasta que vuelvan a arrancar.
+hasta que vuelvan a arrancar (quitar y volver a poner su marca en Arranque lo hace).
 
 ### Desde Exchange
 

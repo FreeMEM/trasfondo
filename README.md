@@ -48,14 +48,17 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   (quick settings: preferences, network, memory, reboot).
 - **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
   and keeps it in the panel's list. For example, `Avisa "Backup done"`.
-- **TrasfondoDock**: a dock with the open programs and the ones you pin. You pin a program by dropping its icon
-  on it; you move one by dragging it, and you unpin or pin one by holding the button down.
+- **TrasfondoDock**: a dock with the open programs and the ones you pin, each in an equal box with its icon
+  fitted to it. When the mouse is over one, its box lights up and the program's name shows. You pin a program by
+  dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If
+  you ask for it (TrasfondoPrefs, or `ESCONDER=SI`), it hides by itself and leaves a thin line at the edge: it
+  comes back when the mouse gets there.
 - **TrasfondoVentanas**: keys for the windows (maximize, halves, restore, tiling by hand or automatic) and
   moving or resizing them with Alt and the mouse.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
   with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
-- **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup) and sets which pieces
-  start with the Workbench.
+- **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup). In Startup, ticking
+  a piece starts it and makes it start with the Workbench; unticking it stops it and it no longer starts.
 
 The bar, its panels and the dock need a graphics card (RTG, 15 bits or more). The backdrop and the windows
 work on any screen.
@@ -113,7 +116,7 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-2.1.lha` (from the
+1. Unpack `trasfondo-2.2.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
 2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
    and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**
@@ -154,7 +157,7 @@ Since 2.1, the button brings every piece: the backdrop, TrasfondoPrefs, the bar 
 windows and the `Avisa` command. Anyone coming from 0.11 or 2.0 gets the new backdrop first, and when it starts it
 downloads the missing pieces by itself and puts them next to it, with their startup icons: then you choose in
 TrasfondoPrefs which ones start with the Workbench. Pieces that are running keep the old version until they
-start again.
+start again (unticking and ticking them in Startup does it).
 
 ### From Exchange
 
