@@ -47,7 +47,10 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
   (quick settings: preferences, network, memory, reboot).
 - **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
-  and keeps it in the panel's list. For example, `Avisa "Backup done"`.
+  and keeps it in the panel's list. For example, `Avisa "Backup done"`. The bar also has an ARexx port,
+  `TRASFONDO`: `ADDRESS TRASFONDO 'NOTIFY TITLE="Backup done" TEXT="12 files"'` leaves a notification, `COUNT`
+  says how many there are (in `RESULT`) and `CLEAR` removes them. Programs written in Dash notify with
+  `notify(title, text)`.
 - **TrasfondoDock**: a dock with the open programs and the ones you pin, each in an equal box with its icon
   fitted to it. When the mouse is over one, its box lights up and the program's name shows. You pin a program by
   dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If
@@ -116,7 +119,7 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-2.2.lha` (from the
+1. Unpack `trasfondo-2.3.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
 2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
    and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**

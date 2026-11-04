@@ -47,7 +47,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
   preferencias, red, memoria, reiniciar).
 - **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en
-  la lista del panel. Por ejemplo, `Avisa "Copia hecha"`.
+  la lista del panel. Por ejemplo, `Avisa "Copia hecha"`. La barra tiene además un puerto ARexx, `TRASFONDO`:
+  `ADDRESS TRASFONDO 'NOTIFY TITLE="Copia hecha" TEXT="12 ficheros"'` deja un aviso, `COUNT` dice cuántos hay
+  (en `RESULT`) y `CLEAR` los quita. Los programas escritos en Dash avisan con `notify(titulo, texto)`.
 - **TrasfondoDock**: un dock con los programas abiertos y los que fijes, cada uno en una casilla igual, con su
   icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa. Se fija un programa
   soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
@@ -116,7 +118,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-2.2.lha` (de la página de
+1. Descomprime `trasfondo-2.3.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta dónde dejar el cajón `Trasfondo` con todas las piezas y cuáles
    arrancan con el Workbench (pone sus iconos en `SYS:WBStartup`). Pone **TrasfondoPrefs** en `SYS:Prefs`, la

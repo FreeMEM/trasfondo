@@ -1,0 +1,21 @@
+# El puerto ARexx de la barra (TRASFONDO): notify() de Dash le manda un aviso, y por ARexx se le preguntan COUNT,
+# NOTIFY a mano y CLEAR. Lo que pasa, en DH0:avisos.txt (tools/vista.py con --copiar y GUARDA).
+
+Main
+    t = ""
+    ok = notify("Desde Dash", "notify() por el puerto TRASFONDO")
+    t = t + "notify #{ok}\n"
+    r = rexx_send("TRASFONDO", "COUNT")
+    t = t + "count " + r + " rc #{rexx_rc()}\n"
+    r = rexx_send("TRASFONDO", "NOTIFY \"A mano\" \"desde un guion\" Guion")
+    t = t + "notify a mano rc #{rexx_rc()}\n"
+    r = rexx_send("TRASFONDO", "COUNT")
+    t = t + "count " + r + "\n"
+    r = rexx_send("TRASFONDO", "BAILA")
+    t = t + "baila rc #{rexx_rc()}\n"
+    a = file_read_text("ENV:Trasfondo.avisos")
+    if a != nil
+        t = t + a
+    end
+    ok = file_write_text("DH0:avisos.txt", t)
+end

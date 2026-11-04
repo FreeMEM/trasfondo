@@ -10,7 +10,7 @@
 # sin ellos no hay tiempo.
 
 @workbench_output "NIL:"
-@version "TrasfondoBarra 2.2"
+@version "TrasfondoBarra 2.3"
 
 import "dibujo.dash"
 import "tiempo.dash"
@@ -251,6 +251,7 @@ Main
         Print "TrasfondoBarra needs an RTG screen (15 bits or more)"
     else
         ancho = rtg_get_width()
+        ok = rexx_port("TRASFONDO")   # los avisos de notify() y de los guiones ARexx
         # PROGDIR: no vale en la orden: es de cada proceso, y el de run_program es otro
         if dir_change("PROGDIR:")
             carpeta = dir_current()
@@ -286,6 +287,7 @@ Main
                 if break_check()
                     Stop
                 end
+                av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR)
                 tiempo_paso()
                 tic = tic + 1
                 if tic >= 5

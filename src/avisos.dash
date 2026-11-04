@@ -76,3 +76,113 @@ end
 func avisos_cuantos() -> Int
     return av_hora.length
 end
+
+# ---- el puerto ARexx de la barra: TRASFONDO ----
+#   NOTIFY TITLE="..." [TEXT="..."] [FROM="..."]   (o NOTIFY "título" "texto" "quién"; también TITULO, TEXTO, DE)
+#   COUNT                                          cuántos avisos hay (en RESULT)
+#   CLEAR                                          los quita todos
+# Lo que manda notify() de Dash, y lo que quiera cualquier guion: ADDRESS TRASFONDO 'NOTIFY "Copia hecha"'.
+
+# las palabras de una orden, con las comillas quitadas ("a b" es una)
+func av_palabras(orden: String) -> [String]
+    var r: [String] = []
+    actual = ""
+    dentro = false
+    hay = false
+    for i in (0..orden.length - 1)
+        c = orden[i:i + 1]
+        if c == "\""
+            dentro = not dentro
+            hay = true
+        elif c == " " and not dentro
+            if hay
+                r.push(actual)
+            end
+            actual = ""
+            hay = false
+        else
+            actual = actual + c
+            hay = true
+        end
+    end
+    if hay
+        r.push(actual)
+    end
+    return r
+end
+
+# lo que va tras CLAVE= si la palabra empieza así (sin mirar mayúsculas); nil si no
+func av_clave(palabra: String, claves: [String]) -> String
+    for k in claves
+        if str_starts(str_upper(palabra), k + "=")
+            return palabra[k.length + 1:palabra.length]
+        end
+    end
+    return nil
+end
+
+# una orden que llegó al puerto: la hace y la contesta
+func av_orden(orden: String)
+    var p: [String] = av_palabras(orden)
+    if p.length == 0
+        rexx_reply(10, "")
+        return
+    end
+    que = str_upper(p[0])
+    if que == "NOTIFY"
+        titulo = ""
+        texto = ""
+        de = "ARexx"
+        sueltas = 0
+        for i in (1..p.length - 1)
+            var t_: [String] = ["TITLE", "TITULO"]
+            var x_: [String] = ["TEXT", "TEXTO"]
+            var d_: [String] = ["FROM", "DE"]
+            v = av_clave(p[i], t_)
+            if v != nil
+                titulo = v
+            else
+                v = av_clave(p[i], x_)
+                if v != nil
+                    texto = v
+                else
+                    v = av_clave(p[i], d_)
+                    if v != nil
+                        de = v
+                    elif sueltas == 0
+                        titulo = p[i]
+                        sueltas = 1
+                    elif sueltas == 1
+                        texto = p[i]
+                        sueltas = 2
+                    else
+                        de = p[i]
+                    end
+                end
+            end
+        end
+        if titulo == "" and texto == ""
+            rexx_reply(10, "")
+            return
+        end
+        avisos_nuevo(de, titulo, texto)
+        rexx_reply(0, "")
+    elif que == "COUNT"
+        avisos_leer()
+        rexx_reply(0, "#{avisos_cuantos()}")
+    elif que == "CLEAR"
+        file_delete(AVISOS)
+        rexx_reply(0, "")
+    else
+        rexx_reply(10, "")
+    end
+end
+
+# las órdenes que hayan llegado (en cada vuelta del bucle)
+func av_puerto()
+    orden = rexx_get()
+    while orden != ""
+        av_orden(orden)
+        orden = rexx_get()
+    end
+end

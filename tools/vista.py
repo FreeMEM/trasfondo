@@ -71,6 +71,7 @@ def main():
     ap.add_argument("--dock", default=None, help="arranca el dock con estos argumentos (POSICION=ABAJO)")
     ap.add_argument("--fondo", default=None, help="arranca también el fondo (Trasfondo, de build/release) con estos "
                     "argumentos; TrasfondoPrefs queda en DH0: y ENV:Trasfondo.cajon apunta ahí")
+    ap.add_argument("--copiar", action="append", default=[], help="fichero:Nombre, copiado a DH0:Nombre")
     ap.add_argument("--inicio", action="append", default=[], help="una línea más para la Startup-Sequence, tras LoadWB")
     a = ap.parse_args()
     for n in PROGRAMAS:
@@ -106,6 +107,9 @@ def main():
             shutil.copy(RAIZ / "build/release/TrasfondoPrefs", hd / "TrasfondoPrefs")
             extra += f"Echo DH0: >ENV:Trasfondo.cajon\nRun >NIL: DH0:Trasfondo {a.fondo}\n"
         extra += "".join(l + "\n" for l in a.inicio)
+        for c in a.copiar:
+            f, n = c.split(":", 1)
+            shutil.copy(RAIZ / f, hd / n)
         if a.dock is not None:
             # unos lanzadores de prueba: iconos de verdad (los que haya en ICONOS) con un programa cualquiera
             apps = hd / "Apps"
