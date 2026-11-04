@@ -3,7 +3,7 @@
 instalador y el .lha.
 
     python3 tools/paquete.py 2.0          (DASH: la carpeta de Dash, por defecto ~/Projects/FreeMEMLang)
-        →  build/paquete/Trasfondo/...  y  build/trasfondo-2.0.lha
+        →  build/paquete/Trasfondo/...,  build/trasfondo-2.0.lha  y los sueltos de la release en build/release
 
 Compila cada pieza con el Dash de $DASH (./dash, Dash 2.0) y hace los catálogos (tools/catalogos.py). Necesita el
 lha de 68k (/opt/amiga/bin/lha) para que el archivo guarde bien los atributos.
@@ -86,6 +86,17 @@ def main():
     subprocess.run([b"/opt/amiga/bin/lha", b"ao5q", b"--system-kanji-code=latin1", b"--archive-kanji-code=latin1", os.fsencode(lha), b"Trasfondo", b"Trasfondo.info"]
                    + sorted(ficheros), cwd=dest, check=True)
     print(lha)
+    # los sueltos de la release, para el botón Actualizar (src/actualizar.dash): las piezas, el catálogo en castellano
+    # y el icono de arranque con un hueco donde el actualizador pone la ruta de cada pieza
+    rel = raiz / "build/release"
+    shutil.rmtree(rel, ignore_errors=True)
+    rel.mkdir()
+    shutil.copy(lha, rel)
+    for nombre in PIEZAS.values():
+        shutil.copy(caj / nombre, rel / ("trasfondo" if nombre == "Trasfondo" else nombre))
+    shutil.copy(os.path.join(cats, b"spanish", b"Trasfondo.catalog"), rel / "Trasfondo-espanol.catalog")
+    (rel / "Arranque.info").write_bytes(info(icono(), WBPROJECT, herramienta="@@HERRAMIENTA@@", tooltypes=["DONOTWAIT"]))
+    print(rel)
 
 
 if __name__ == "__main__":

@@ -344,3 +344,9 @@ Imagen
 MSG_148
 Vacía: la imagen de fondo del Workbench
 ; Empty: the Workbench backdrop picture
+MSG_149
+Puestas la barra, el dock y las demás piezas
+; Installed the bar, the dock and the other pieces
+MSG_150
+%s: no es un icono
+; %s: not an icon

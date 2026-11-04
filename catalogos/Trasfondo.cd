@@ -342,3 +342,9 @@ Picture
 ; MSG_IMAGEN_AYUDA
 MSG_148 (148//)
 Empty: the Workbench backdrop picture
+; MSG_PIEZAS
+MSG_149 (149//)
+Installed the bar, the dock and the other pieces
+; MSG_NO_ICONO
+MSG_150 (150//)
+%s: not an icon

@@ -161,3 +161,7 @@ const MSG_ESQUEMAS = 146
 const MSG_IMAGEN = 147
 # "Empty: the Workbench backdrop picture"
 const MSG_IMAGEN_AYUDA = 148
+# "Installed the bar, the dock and the other pieces"
+const MSG_PIEZAS = 149
+# "%s: not an icon"
+const MSG_NO_ICONO = 150

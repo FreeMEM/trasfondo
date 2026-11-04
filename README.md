@@ -113,7 +113,7 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-2.0.lha` (from the
+1. Unpack `trasfondo-2.1.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
 2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
    and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**
@@ -150,8 +150,11 @@ It needs a running TCP/IP stack and AmiSSL; without them it does nothing (and it
 **Look for new versions on GitHub** checkbox in TrasfondoPrefs turns it off. Versions up to 0.7 don't have it:
 to get to 0.8 you have to install it by hand once.
 
-From 0.11, the button updates the backdrop and TrasfondoPrefs, but it doesn't bring the bar, the dock or the
-other 2.0 pieces: to get them, unpack `trasfondo-2.0.lha` and use its installer.
+Since 2.1, the button brings every piece: the backdrop, TrasfondoPrefs, the bar and its panels, the dock, the
+windows and the `Avisa` command. Anyone coming from 0.11 or 2.0 gets the new backdrop first, and when it starts it
+downloads the missing pieces by itself and puts them next to it, with their startup icons: then you choose in
+TrasfondoPrefs which ones start with the Workbench. Pieces that are running keep the old version until they
+start again.
 
 ### From Exchange
 
@@ -208,7 +211,6 @@ estimate: it is the real time each task spends on the CPU.
   bus: that is where its cost is most noticeable. Measuring less often and the solid background bring it down.
 - The position can't be changed yet.
 - The bar and the dock are normal windows: another window can cover them.
-- Updating from TrasfondoPrefs only updates the backdrop and TrasfondoPrefs, not the other pieces.
 - If a pixel of an icon matches the colour of the previous panel at that point, it is taken for background and the
   panel paints over it until the Workbench repaints the icon.
 

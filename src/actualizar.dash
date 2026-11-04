@@ -1,8 +1,10 @@
 # Trasfondo se pone al día solo. Mira en GitHub cuál es la última versión (un minuto después de arrancar y
 # luego cada seis horas) y, si se lo pide TrasfondoPrefs (botón Actualizar, que deja "actualizar" en
-# ENV:Trasfondo.orden), baja los dos ejecutables sueltos de esa release, los comprueba (tamaño, que sean
-# ejecutables y que lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old. Con ellos
-# baja el catálogo en castellano, si hace falta (ver act_donde_catalogo). Y si falta el catálogo
+# ENV:Trasfondo.orden), baja los ejecutables sueltos de esa release (el fondo, TrasfondoPrefs y, desde la 2.1,
+# las demás piezas, la orden Avisa y el icono de arranque), los comprueba (tamaño, que sean ejecutables y que
+# lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old. Con ellos baja el catálogo en
+# castellano, si hace falta (ver act_donde_catalogo). Si faltan piezas (quien llega desde la 0.11 con el
+# botón), las baja solo en la primera consulta y las deja en su cajón, como el instalador. Y si falta el catálogo
 # en un sistema en castellano (pasa al venir de la 0.8, que no lo bajaba), lo baja solo y lo usa al momento.
 # Todo va paso a paso desde el bucle del panel, sin esperar nunca: act_paso() avanza lo que se pueda.
 # Lo que va pasando, en ENV:Trasfondo.estado; la versión nueva que hay, en ENV:Trasfondo.nueva.
@@ -15,18 +17,23 @@ const ESPERA_RED = 30000           # lo más que se espera a cada paso de la red
 const TOPE_API = 131072            # la respuesta de la API cabe de sobra
 const MUESTRA = 8192               # lo que se recibe de una vez
 const CAT_ASSET = "Trasfondo-espanol.catalog"   # el castellano, suelto en cada release
+const N_FICH = 11                  # lo que se baja: ver act_nombre
+const ARRANQUE = 10                # el icono de proyecto de SYS:WBStartup, con la herramienta por poner
+const HUECO = "@@HERRAMIENTA@@"    # lo que lleva ese icono en lugar de la ruta de la pieza
 
 var a_version: String = ""         # la de este ejecutable ("0.8")
 var a_buscar: Bool = true          # BUSCAR=NO en las preferencias: no pregunta a GitHub
 var a_proxima: Int = 0             # time_ms de la próxima consulta
 var a_nueva: String = ""           # la versión nueva que hay ("" si ninguna)
-var a_url: [String] = ["", "", ""]  # trasfondo, TrasfondoPrefs y el catálogo: de dónde se bajan ("" si no está)
-var a_tam: [Int] = [0, 0, 0]       # y cuánto miden
+var a_url: [String] = ["", "", "", "", "", "", "", "", "", "", ""]   # de dónde se baja cada uno ("" si no está)
+var a_tam: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                   # y cuánto miden
 var a_fase: Int = 0                # 0 nada, 1 consultando, 2 bajando
-var a_cual: Int = 0                # el fichero que se baja (0 trasfondo, 1 TrasfondoPrefs, 2 el catálogo)
+var a_cual: Int = 0                # el fichero que se baja (act_nombre)
 var a_quiere: Bool = false         # se pidió actualizar
+var a_completar: Bool = false      # se bajan solo las piezas que faltan, de esta misma versión
+var a_faltan: Bool = false         # la consulta vio que faltan piezas y que la release las tiene
 var a_listo: Bool = false          # instalada: hay que relanzarse
-var a_cuerpo: [Int] = [0, 0, 0]    # lo bajado y comprobado (búferes)
+var a_cuerpo: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                # lo bajado y comprobado (búferes)
 var a_falta_cat: Bool = false      # el sistema está en castellano y no hay catálogo: se baja en la consulta
 var a_idioma: Bool = false         # llegó el catálogo: hay que repintar
 var a_red: Bool = false            # se abrió la red: al acabar se suelta (net_release)
@@ -337,7 +344,12 @@ func act_consultar()
     a_red = true
     a_fase = 1
     h_saltos = 0
-    http_empezar(API_HOST, API_RUTA, TOPE_API)
+    ruta = API_RUTA
+    otra = file_read_text("ENV:Trasfondo.api")       # para las pruebas: otra release ("/repos/.../tags/v2.1")
+    if otra != nil and str_trim(otra) != ""
+        ruta = str_trim(str_replace(otra, "\n", ""))
+    end
+    http_empezar(API_HOST, ruta, TOPE_API)
 end
 
 func act_consulta_hecha()
@@ -347,11 +359,14 @@ func act_consulta_hecha()
     if str_starts(etiqueta, "v")
         etiqueta = etiqueta[1:etiqueta.length]
     end
-    var nombres: [String] = ["trasfondo", "TrasfondoPrefs", CAT_ASSET]
-    completa = true                       # los dos ejecutables; el catálogo puede faltar
-    for k in (0..2)
+    completa = true                       # los dos ejecutables; el catálogo y las piezas pueden faltar
+    for k in (0..N_FICH - 1)
         a_url[k] = ""
-        i = str_find(j, "\"name\":\"" + nombres[k] + "\"")
+        nombre = act_nombre(k)
+        if k == 2
+            nombre = CAT_ASSET
+        end
+        i = str_find(j, "\"name\":\"" + nombre + "\"")
         if i >= 0
             a_tam[k] = json_numero(j, "size", i)
             a_url[k] = json_texto(j, "browser_download_url", i)
@@ -363,10 +378,14 @@ func act_consulta_hecha()
             completa = false
         end
     end
+    a_faltan = false
     if etiqueta != "" and completa and act_mas_nueva(etiqueta, a_version)
         a_nueva = etiqueta
         file_write_text("ENV:Trasfondo.nueva", etiqueta + "\n")
     else
+        if etiqueta == a_version and a_url[3] != "" and act_faltan_piezas()
+            a_faltan = true
+        end
         a_nueva = ""
         file_delete("ENV:Trasfondo.nueva")
         if a_quiere
@@ -400,10 +419,20 @@ func act_comprobar(c: Int, nombre: String, programa: String) -> String
         end
         return ""
     end
+    if a_cual == ARRANQUE                 # un icono: DiskObject (0xE310, versión 1)
+        if buffer_get_long(h_buf, c) != 0xE3100001 or act_buscar_texto(h_buf, c, h_n, HUECO) < 0
+            return con(tr(MSG_NO_ICONO, "%s: not an icon"), nombre)
+        end
+        return ""
+    end
     if buffer_get_long(h_buf, c) != 0x3F3
         return con(tr(MSG_NO_EJECUTABLE, "%s: not an executable"), nombre)
     end
-    marca = "$VER: " + programa + " " + a_nueva
+    version = a_nueva
+    if a_completar                        # las piezas que faltan son de esta misma versión
+        version = a_version
+    end
+    marca = "$VER: " + programa + " " + version
     i = c
     while i < h_n - marca.length
         if buffer_get_byte(h_buf, i) == 36 and str_from_buffer(h_buf, i, marca.length) == marca
@@ -472,12 +501,121 @@ func act_instalar()
     if a_cuerpo[2] != 0
         act_poner_catalogo(a_cuerpo[2])
     end
+    act_poner_piezas()
     file_delete("ENV:Trasfondo.nueva")
     a_listo = true
 end
 
+# el cajón de las piezas, acabado en ":" o "/": el que apuntó el instalador o, si no hay, el de este programa
+func act_cajon() -> String
+    t = file_read_text("ENV:Trasfondo.cajon")
+    c = ""
+    if t != nil
+        c = str_trim(str_replace(t, "\n", ""))
+    end
+    if c == ""
+        c = file_real_path("PROGDIR:")
+    end
+    if c != "" and not str_ends(c, ":") and not str_ends(c, "/")
+        c = c + "/"
+    end
+    return c
+end
+
+# falta alguna de las piezas de la 2.0 en el cajón (quien viene de la 0.11 solo tiene el fondo)
+func act_faltan_piezas() -> Bool
+    cajon = act_cajon()
+    if cajon == ""
+        return false
+    end
+    for k in (3..8)
+        if not file_exists(cajon + act_nombre(k))
+            return true
+        end
+    end
+    return false
+end
+
+# dónde está texto en el búfer, de desde a hasta; -1 si no está
+func act_buscar_texto(b: Int, desde: Int, hasta: Int, texto: String) -> Int
+    primero = str_code(texto, 0)
+    tope = hasta - texto.length
+    i = buffer_find_byte(b, desde, tope + 1, primero)
+    while i >= 0
+        if buffer_equals(b, i, texto.length, texto)
+            return i
+        end
+        i = buffer_find_byte(b, i + 1, tope + 1, primero)
+    end
+    return -1
+end
+
+# el icono de arranque de una pieza: el bajado, con la ruta de la pieza en lugar del hueco
+func act_poner_arranque(destino: String, herramienta: String) -> Bool
+    b = a_cuerpo[ARRANQUE]
+    n = a_tam[ARRANQUE]
+    i = act_buscar_texto(b, 0, n, HUECO)
+    if i < 4
+        return false
+    end
+    largo = herramienta.length + 1
+    resto = i + HUECO.length + 1                  # lo que va detrás del hueco y su cero
+    total = i + largo + (n - resto)
+    s = buffer_alloc(total)
+    if s == 0
+        return false
+    end
+    buffer_copy(s, 0, b, 0, i - 4)
+    buffer_set_long(s, i - 4, largo)
+    str_to_buffer(herramienta, s, i)
+    buffer_set_byte(s, i + herramienta.length, 0)
+    buffer_copy(s, i + largo, b, resto, n - resto)
+    hecho = act_poner(destino, s, total)
+    buffer_free(s)
+    file_delete(destino + ".old")
+    return hecho
+end
+
+# las piezas en su cajón, Avisa en C: y, si el cajón es nuevo (venía de la 0.11), sus iconos de arranque y
+# ENV:Trasfondo.cajon, para que TrasfondoPrefs pueda elegir qué arranca con el Workbench
+func act_poner_piezas()
+    cajon = act_cajon()
+    if cajon == ""
+        return
+    end
+    nuevo = file_read_text("ENV:Trasfondo.cajon") == nil
+    for k in (3..8)
+        if a_cuerpo[k] != 0
+            act_poner(cajon + act_nombre(k), a_cuerpo[k], a_tam[k])
+        end
+    end
+    if a_cuerpo[9] != 0
+        act_poner("C:Avisa", a_cuerpo[9], a_tam[9])
+    end
+    if a_cuerpo[ARRANQUE] != 0
+        if not file_exists(cajon + "Arranque")
+            dir_create(cajon + "Arranque")
+        end
+        var con_icono: [String] = ["Trasfondo", "TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
+        for i in (0..con_icono.length - 1)
+            icono = cajon + "Arranque/" + con_icono[i] + ".info"
+            if not file_exists(icono)
+                act_poner_arranque(icono, cajon + con_icono[i])
+            end
+        end
+    end
+    if nuevo
+        sin_barra = cajon
+        if str_ends(sin_barra, "/")
+            sin_barra = sin_barra[0:sin_barra.length - 1]
+        end
+        file_write_text("ENV:Trasfondo.cajon", sin_barra + "\n")
+        file_write_text("ENVARC:Trasfondo.cajon", sin_barra + "\n")
+    end
+end
+
 func act_soltar_cuerpos()
-    for k in (0..2)
+    for k in (0..N_FICH - 1)
         if a_cuerpo[k] != 0
             buffer_free(a_cuerpo[k])
             a_cuerpo[k] = 0
@@ -511,26 +649,46 @@ end
 
 # el nombre de lo que se baja (el del fichero) y el de su $VER: (el del programa)
 func act_nombre(cual: Int) -> String
-    if cual == 0
-        return "trasfondo"
-    elif cual == 1
-        return "TrasfondoPrefs"
-    end
-    return "Trasfondo.catalog"
+    var nombres: [String] = ["trasfondo", "TrasfondoPrefs", "Trasfondo.catalog", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoAviso", "TrasfondoRapido", "TrasfondoDock", "TrasfondoVentanas", "Avisa", "Arranque.info"]
+    return nombres[cual]
 end
 
-# lo siguiente que hay que bajar después de cual, o -1 si ya está todo
+# lo siguiente que hay que bajar después de cual, o -1 si ya está todo. Al completar, solo las piezas
 func act_siguiente(cual: Int) -> Int
-    if cual == 0
-        return 1
-    elif cual == 1 and a_url[2] != "" and act_donde_catalogo().length > 0
-        return 2
+    k = cual + 1
+    if a_completar and k < 3
+        k = 3
+    end
+    while k < N_FICH
+        if k == 1
+            return 1
+        elif k == 2
+            if a_url[2] != "" and act_donde_catalogo().length > 0
+                return 2
+            end
+        elif a_url[k] != ""
+            return k
+        end
+        k = k + 1
     end
     return -1
 end
 
 # lo bajado (a_cual) está comprobado y guardado: lo que sigue
 func act_bajado()
+    if a_completar                        # las piezas que faltaban: todas bajadas, se ponen
+        sig = act_siguiente(a_cual)
+        if sig >= 0
+            act_bajar(sig)
+        else
+            a_fase = 0
+            a_completar = false
+            act_poner_piezas()
+            act_soltar_cuerpos()
+            act_estado(tr(MSG_PIEZAS, "Installed the bar, the dock and the other pieces"))
+        end
+        return
+    end
     if not a_quiere                       # solo el catálogo, que faltaba: se pone y se usa ya
         a_fase = 0
         if act_poner_catalogo(a_cuerpo[2]) and catalog_open("Trasfondo.catalog", 1)
@@ -579,6 +737,10 @@ func act_paso()
             if a_quiere and a_nueva != ""
                 act_estado(con(tr(MSG_BAJANDO, "Downloading %s..."), "trasfondo"))
                 act_bajar(0)
+            elif a_faltan and not a_quiere
+                a_faltan = false                  # una vez: si falla, hasta que arranque otra vez
+                a_completar = true
+                act_bajar(act_siguiente(2))
             elif a_falta_cat and not a_quiere and a_url[2] != "" and act_donde_catalogo().length > 0
                 a_falta_cat = false               # una vez: si falla, sigue en inglés hasta que arranque otra vez
                 act_bajar(2)
@@ -598,11 +760,12 @@ func act_paso()
                 end
             end
             if fallo != ""
-                if a_quiere
+                if a_quiere or a_completar
                     act_estado(con(tr(MSG_ERROR, "Error: %s"), fallo))
                 end
                 a_fase = 0
                 a_quiere = false
+                a_completar = false
                 act_soltar_cuerpos()
             else
                 buffer_copy(b, 0, h_buf, c, a_tam[a_cual])
@@ -611,11 +774,12 @@ func act_paso()
             end
         end
     elif h_paso == 5
-        if a_quiere
+        if a_quiere or a_completar
             act_estado(con(tr(MSG_ERROR, "Error: %s"), h_error))
         end
         a_fase = 0
         a_quiere = false
+        a_completar = false
         act_soltar_cuerpos()
     elif a_fase == 2 and h_paso == 3 and a_tam[a_cual] > 0 and a_quiere
         por = h_n * 100 / (a_tam[a_cual] + 400)     # (las cabeceras van en lo recibido)

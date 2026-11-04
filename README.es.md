@@ -113,7 +113,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-2.0.lha` (de la página de
+1. Descomprime `trasfondo-2.1.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta dónde dejar el cajón `Trasfondo` con todas las piezas y cuáles
    arrancan con el Workbench (pone sus iconos en `SYS:WBStartup`). Pone **TrasfondoPrefs** en `SYS:Prefs`, la
@@ -150,8 +150,11 @@ Necesita una pila TCP/IP en marcha y AmiSSL; sin ellas no hace nada (y no pone e
 **Buscar versiones nuevas en GitHub** de TrasfondoPrefs lo apaga. Las versiones hasta la 0.7 no lo traen:
 para llegar a la 0.8 hay que instalarla a mano una vez.
 
-Desde la 0.11, el botón pone al día el fondo y TrasfondoPrefs, pero no trae la barra, el dock ni las demás
-piezas de la 2.0: para tenerlas, descomprime `trasfondo-2.0.lha` y usa su instalador.
+Desde la 2.1, el botón trae todas las piezas: el fondo, TrasfondoPrefs, la barra y sus paneles, el dock, las
+ventanas y la orden `Avisa`. Quien llegue desde la 0.11 o la 2.0 recibe primero el fondo nuevo, y este, al
+arrancar, baja solo las piezas que faltan y las deja a su lado, con sus iconos de arranque: después se elige en
+TrasfondoPrefs cuáles arrancan con el Workbench. Las piezas que estén en marcha siguen con la versión de antes
+hasta que vuelvan a arrancar.
 
 ### Desde Exchange
 
@@ -208,7 +211,6 @@ estimación: es el tiempo real que cada tarea pasa en la CPU.
   bus es lenta: ahí se nota más lo que gasta. Medir cada más segundos y el fondo fijo lo bajan.
 - La posición aún no se puede cambiar.
 - La barra y el dock son ventanas normales: otra ventana puede taparlos.
-- Actualizar desde TrasfondoPrefs solo pone al día el fondo y TrasfondoPrefs, no las demás piezas.
 - Si un píxel de un icono coincide en color con el panel anterior en ese punto, se toma por fondo y el
   panel lo pisa hasta que el Workbench vuelva a pintar el icono.
 

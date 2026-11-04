@@ -1,0 +1,103 @@
+# El botón Actualizar trae todas las piezas (2.1), en el emulador y con la red del PC. Hace de usuario:
+#
+# 1. Quien viene de la 0.11: DH0:T1 solo tiene trasfondo y TrasfondoPrefs, sin ENV:Trasfondo.cajon. En la primera
+#    consulta, Trasfondo ve que faltan piezas y las baja solo: el cajón, sus iconos de arranque y C:Avisa.
+# 2. Quien tiene una versión anterior con su cajón (DH0:T2, ENV:Trasfondo.cajon): pulsa Actualizar (ENV:Trasfondo.orden)
+#    y le llega todo.
+#
+#     python3 tests/prueba_actualizar.py      (necesita la release de prueba: ENV:Trasfondo.api la elige)
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+# espera a que ENV:Trasfondo.estado diga algo con una de esas palabras; lo que va saliendo, a la salida
+func esperar_estado(palabras: [String], segundos: Int) -> String
+    visto = ""
+    t = 0
+    while t < segundos * 2
+        e = file_read_text("ENV:Trasfondo.estado")
+        if e != nil
+            e = str_trim(e)
+            if e != visto and not str_contains(e, "%")
+                Print "  estado: " + e
+                visto = e
+            end
+            for i in (0..palabras.length - 1)
+                if str_contains(e, palabras[i])
+                    return e
+                end
+            end
+        end
+        esperar(25)
+        t = t + 1
+    end
+    return "(nada en " + "#{segundos}" + " s)"
+end
+
+func listar(cajon: String)
+    n = dir_read(cajon)
+    linea = ""
+    for i in (0..n - 1)
+        linea = linea + dir_entry_name(i) + " "
+    end
+    Print "  " + cajon + ": " + linea
+end
+
+Main
+    file_write_text("ENV:Trasfondo.api", "/repos/FreeMEM/trasfondo/releases/tags/v2.1\n")
+    file_delete("ENV:Trasfondo.cajon")
+    file_delete("ENVARC:Trasfondo.cajon")
+    file_delete("C:Avisa")
+    Print "== 1: desde la 0.11"
+    lanzar("Run >NIL: DH0:T1/trasfondo")
+    var fin1: [String] = ["Installed the bar", "Error"]
+    Print "fin: " + esperar_estado(fin1, 300)
+    listar("DH0:T1")
+    listar("DH0:T1/Arranque")
+    c = file_read_text("ENV:Trasfondo.cajon")
+    if c != nil
+        c = str_trim(c)
+    else
+        c = "(no está)"
+    end
+    Print "ENV cajon: " + c
+    v1 = file_exists("ENVARC:Trasfondo.cajon")
+    Print "ENVARC cajon: " + "#{v1}"
+    v2 = file_size("C:Avisa")
+    Print "C:Avisa: " + "#{v2}"
+    v3 = file_size("DH0:T1/TrasfondoBarra")
+    Print "barra: " + "#{v3}"
+    lanzar("DH0:T1/trasfondo")                  # otra copia: para la que corre
+    esperar(150)
+
+    Print "== 2: con el botón, desde una anterior con su cajón"
+    file_write_text("ENV:Trasfondo.cajon", "DH0:T2\n")
+    file_delete("ENV:Trasfondo.estado")
+    lanzar("Run >NIL: DH0:T2/trasfondo")
+    esperar(250)
+    file_write_text("ENV:Trasfondo.orden", "actualizar\n")
+    var fin2: [String] = ["Installed 2.1", "Error"]
+    Print "fin: " + esperar_estado(fin2, 300)
+    esperar(100)
+    listar("DH0:T2")
+    v4 = file_size("DH0:T2/TrasfondoBarra")
+    Print "barra: " + "#{v4}" + " (antes 5)"
+    v5 = file_size("DH0:T2/TrasfondoDock")
+    Print "dock: " + "#{v5}" + " (antes 5)"
+    v6 = file_size("DH0:T2/trasfondo")
+    Print "trasfondo: " + "#{v6}"
+    v7 = not file_exists("DH0:T2/Arranque")
+    Print "Arranque de T2 sin tocar: " + "#{v7}"
+    lanzar("DH0:T2/trasfondo")
+    esperar(100)
+    file_delete("ENV:Trasfondo.api")
+end
