@@ -309,10 +309,10 @@ end
 
 Window Panel
     title ""
-    width 560
-    height 340
+    width 1
+    height 1
     left 0
-    top 24
+    top 0
     borderless true
     closegadget false
     dragbar false
@@ -354,9 +354,21 @@ Main
         f_media = abrir_fuente(24)
         f_grande = abrir_fuente(44)
         f_negrita = abrir_fuente(13)
-        Panel.open
+        Panel.open                   # de 1 x 1 en la esquina: a su sitio y luego a su tamaño (no se ve saltar)
         gfx_mode(0)                  # el texto sin fondo: encima de las tarjetas
-        window_move(0, (rtg_get_width() - ANCHO) / 2, ALTO_BARRA + 4)
+        sx = (rtg_get_width() - ANCHO) / 2
+        window_move(0, sx, ALTO_BARRA + 4)
+        k = 0
+        while (Panel.left != sx or Panel.top != ALTO_BARRA + 4) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
+        window_resize(0, ANCHO, ALTO)
+        k = 0
+        while (Panel.width != ANCHO or Panel.height != ALTO) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
         pintar_todo()
         EventLoop
             On Timer 500

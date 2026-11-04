@@ -65,6 +65,7 @@ var lienzo: Int = 0          # el panel en el fondo; 0 si está oculto
 var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel no está aunque lo quiera)
 var activo: Bool = true      # midiendo la CPU
 var alto_lienzo: Int = 0     # el alto con que se creó el panel: si cambia lo que hay que enseñar, se crea otro
+var y_lienzo: Int = 4         # dónde empieza el panel (debajo de la barra, si está)
 
 var d_nombre: [String] = []  # los volúmenes, sin RAM Disk
 var d_kb: [Int] = []         # tamaño en KB; -1 si no contestó
@@ -1004,10 +1005,25 @@ func poner_velo()
     end
 end
 
+# dónde empieza el panel, desde la barra de título de la pantalla: debajo de TrasfondoBarra si está en marcha
+func y_libre() -> Int
+    y = 4
+    for i in (0..wm_read() - 1)
+        if wm_task(i) == "TrasfondoBarra"
+            debajo = wm_box(i, 1) + wm_box(i, 3) - wm_bar_height() + 4
+            if debajo > y
+                y = debajo
+            end
+        end
+    end
+    return y
+end
+
 func mostrar()
     if lienzo == 0
         alto_lienzo = alto_panel()
-        lienzo = desktop_canvas(-4, 4, ANCHO, alto_lienzo)
+        y_lienzo = y_libre()
+        lienzo = desktop_canvas(-4, y_lienzo, ANCHO, alto_lienzo)
         if lienzo == 0
             Print tr(MSG_NO_FONDO, "Trasfondo: cannot draw on the Workbench backdrop")
         else
@@ -1127,7 +1143,7 @@ Main
                     end
                     if lienzo != 0
                         medir_paneles()
-                        if alto_panel() != alto_lienzo      # otro disco, otra red, otras secciones: otro alto
+                        if alto_panel() != alto_lienzo or y_libre() != y_lienzo   # otro alto, o la barra va o viene
                             ocultar()
                             mostrar()
                         end

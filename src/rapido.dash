@@ -41,6 +41,7 @@ var f_negrita: Int = 0
 var b_prefs_x: Int = 0       # dónde están los botones de arriba
 var b_reiniciar_x: Int = 0
 var confirmar: Bool = false  # se pulsó reiniciar una vez: la segunda reinicia
+var confirmar_desde: Int = 0 # time_ms de la primera (un doble clic no cuenta como dos)
 
 func abrir_fuente(tam: Int) -> Int
     f = font_open("CGTriumvirate.font", tam)
@@ -104,6 +105,10 @@ func pintar_cabecera()
     if mem_fast_total() > 0
         texto = texto + " · Fast " + mb(mem_fast_total())
     end
+    if confirmar
+        pluma(C_PELIGRO)
+        texto = "Click again to restart"
+    end
     gfx_text_at(M + 62, CABECERA_Y + 36 + font_baseline(), texto)
     # los botones: Prefs y reiniciar
     y = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
@@ -150,8 +155,12 @@ end
 func pintar_tarjetas()
     # la red: los interfaces de Roadshow que están arriba
     n = net_ifs_read()
-    if n < 0
-        tarjeta(0, 0, "Network", "no Roadshow", false)
+    if n < 0                                 # otra pila (MiamiDx, AmiTCP): no dice sus interfaces
+        if net_stack_running()
+            tarjeta(0, 0, "Network", "TCP/IP running", true)
+        else
+            tarjeta(0, 0, "Network", "offline", false)
+        end
     else
         arriba = 0
         nombre = ""
@@ -214,10 +223,14 @@ func pulsar(x: Int, y: Int) -> Bool
         end
         if x >= b_reiniciar_x and x < b_reiniciar_x + BOTON
             if confirmar
-                run_program("C:Reboot")
-                return true
+                if time_ms() - confirmar_desde > 600     # (no un doble clic)
+                    run_program("C:Reboot")
+                    return true
+                end
+                return false
             end
-            confirmar = true                 # se vuelve rojo: otra pulsación reinicia
+            confirmar = true                 # se vuelve rojo y lo dice: otra pulsación reinicia
+            confirmar_desde = time_ms()
             pintar_cabecera()
             return false
         end
@@ -243,10 +256,10 @@ end
 
 Window Rapido
     title ""
-    width 360
-    height 300
+    width 1
+    height 1
     left 0
-    top 28
+    top 0
     borderless true
     closegadget false
     dragbar false
@@ -276,8 +289,20 @@ Main
     else
         f_normal = abrir_fuente(12)
         f_negrita = abrir_fuente(14)
-        Rapido.open
-        window_move(0, rtg_get_width() - ANCHO - 6, ALTO_BARRA + 4)
+        Rapido.open                  # de 1 x 1 en la esquina: a su sitio y luego a su tamaño (no se ve saltar)
+        sx = rtg_get_width() - ANCHO - 6
+        window_move(0, sx, ALTO_BARRA + 4)
+        k = 0
+        while (Rapido.left != sx or Rapido.top != ALTO_BARRA + 4) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
+        window_resize(0, ANCHO, ALTO)
+        k = 0
+        while (Rapido.width != ANCHO or Rapido.height != ALTO) and k < 100
+            time_delay(1)
+            k = k + 1
+        end
         gfx_mode(0)
         pintar_todo()
         EventLoop

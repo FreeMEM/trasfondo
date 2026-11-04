@@ -290,16 +290,16 @@ MSG_130 (130//)
 Resize
 ; MSG_ARR_FONDO
 MSG_131 (131//)
-Start the background with the Workbench
+The background: on, and with the Workbench
 ; MSG_ARR_BARRA
 MSG_132 (132//)
-Start the bar with the Workbench
+The bar: on, and with the Workbench
 ; MSG_ARR_DOCK
 MSG_133 (133//)
-Start the dock with the Workbench
+The dock: on, and with the Workbench
 ; MSG_ARR_VENTANAS
 MSG_134 (134//)
-Start the window keys with the Workbench
+The window keys: on, and with the Workbench
 ; MSG_SIN_CAJON
 MSG_135 (135//)
 Install Trasfondo with its installer to choose this
@@ -348,3 +348,6 @@ Installed the bar, the dock and the other pieces
 ; MSG_NO_ICONO
 MSG_150 (150//)
 %s: not an icon
+; MSG_ESCONDER
+MSG_151 (151//)
+Hide it until the mouse reaches its edge

@@ -165,3 +165,5 @@ const MSG_IMAGEN_AYUDA = 148
 const MSG_PIEZAS = 149
 # "%s: not an icon"
 const MSG_NO_ICONO = 150
+# "Hide it until the mouse reaches its edge"
+const MSG_ESCONDER = 151

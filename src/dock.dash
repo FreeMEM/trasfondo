@@ -22,10 +22,14 @@ const LISTA_ARC = "ENVARC:Trasfondo.dock"
 const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
 const ALTO_BARRA = 24        # la barra de arriba: el dock de arriba o de los lados sale debajo
 const MARGEN = 6             # entre el dock y el borde de la pantalla
-const RELLENO = 8            # dentro del dock, alrededor de los iconos
-const HUECO = 6              # entre dos iconos (cada uno ocupa lo que mide: juntos, como en una barra)
-const R = 14                 # radio del dock
-const LADO_MAX = 80          # el sitio de un icono no crece más (uno más grande se recorta)
+const RELLENO = 6            # dentro del dock, alrededor de las casillas
+const HUECO = 4              # entre dos casillas
+const PAD = 5                # dentro de una casilla, alrededor del icono
+const R = 16                 # radio del dock
+const PILDORA = 64           # escondido: lo largo de la rayita que queda en el borde
+const GRUESO = 4             # y lo gruesa
+const CERCA = 24             # el ratón a menos de esto del dock no lo esconde
+const ESPERA_ESCONDER = 900  # ms con el ratón lejos antes de esconderse
 const ARRASTRE = 6           # lo que se mueve el ratón con el botón pulsado para que sea arrastrar
 const FUERA = 40             # un icono soltado a más de esto del dock sale de él
 const MANTENER = 500         # ms con el botón pulsado sin moverlo: el menú (el botón derecho va a la ventana activa)
@@ -77,6 +81,17 @@ var menu_ops: [Int] = []     # qué hace cada línea (OP_*)
 var menu_textos: [String] = []
 var menu_alto: Int = 0       # el de una línea
 var f_menu: Int = 0          # su letra (0: la de la ventana)
+var encima: Int = -1         # el icono que tiene el ratón encima (resaltado, con su nombre), -1 ninguno
+var etiqueta: Int = 0        # la ventanita con su nombre, 0 si no está
+var esconder: Bool = false   # DOCK_ESCONDER: se esconde solo y sale al acercar el ratón a su borde
+var escondido: Bool = false
+var lejos_desde: Int = 0     # time_ms desde que el ratón está lejos (0: está cerca)
+var px: Int = 0              # la rayita de cuando está escondido: dónde y cuánto
+var py: Int = 0
+var pw: Int = 0
+var ph: Int = 0
+var bajo_rayita: [Int] = []  # lo que hay detrás de la rayita
+var tic: Int = 0
 
 # ---- la lista ----
 
@@ -141,19 +156,9 @@ end
 # ---- dónde va cada cosa ----
 
 # lo que mide el icono i: a lo largo del dock (a) o de través (no a)
+# todas las casillas iguales: el lado del icono y su margen (el icono, escalado para caber)
 func mide(i: Int, a: Bool) -> Int
-    ic = items[i].icono
-    if ic == 0
-        return lado_min
-    end
-    m = icon_width(ic)
-    if vertical == a
-        m = icon_height(ic)
-    end
-    if m > LADO_MAX
-        m = LADO_MAX
-    end
-    return m
+    return lado_min + 2 * PAD
 end
 
 func medir()
@@ -173,7 +178,7 @@ end
 
 func caja()
     medir()
-    largo = 2 * RELLENO + lado_min
+    largo = 2 * RELLENO + lado_min + 2 * PAD
     if items.length > 0
         largo = pos[items.length - 1] + tam[items.length - 1] + RELLENO
     end
@@ -345,9 +350,9 @@ func punto(i: Int)
         redondo(cx - 2, cy - 2, cx + 2, cy + 2, 2, C_PUNTO)
     else
         cx = x + tam[i] / 2
-        cy = alto - 4
+        cy = alto - 3
         if posicion == "ARRIBA"
-            cy = 3
+            cy = 2
         end
         redondo(cx - 2, cy - 2, cx + 2, cy + 2, 2, C_PUNTO)
     end
@@ -359,12 +364,32 @@ func pintar_icono(i: Int)
     y = icono_y(i)
     cw = celda_w(i)
     ch = celda_h(i)
+    if i == encima
+        redondo(x, y, x + cw - 1, y + ch - 1, 10, C_TESELA)
+    end
     if it.icono != 0
         w = icon_width(it.icono)
         h = icon_height(it.icono)
-        icon_draw(it.icono, x + (cw - w) / 2, y + (ch - h) / 2)
+        if w > lado_min or h > lado_min       # más grande que su sitio: más pequeño, sin deformarlo
+            if w >= h
+                h = h * lado_min / w
+                w = lado_min
+            else
+                w = w * lado_min / h
+                h = lado_min
+            end
+            if h < 1
+                h = 1
+            end
+            if w < 1
+                w = 1
+            end
+            icon_draw_size(it.icono, x + (cw - w) / 2, y + (ch - h) / 2, w, h)
+        else
+            icon_draw(it.icono, x + (cw - w) / 2, y + (ch - h) / 2)
+        end
     else
-        redondo(x + 2, y + 2, x + cw - 3, y + ch - 3, 8, C_TESELA)
+        redondo(x + PAD, y + PAD, x + cw - 1 - PAD, y + ch - 1 - PAD, 10, C_TESELA)
         font_use(f_inicial)
         font_style(2)
         centrado(x + cw / 2, y + ch / 2 - font_height() / 2 + font_baseline(), str_upper(nombre(it.ruta)[0:1]), C_TEXTO)
@@ -756,6 +781,185 @@ Window Dock
 end
 
 # los colores del tema (tema.dash); sin él, los de arriba
+# ---- el nombre del icono que tiene el ratón encima ----
+
+func etiqueta_quitar()
+    if etiqueta != 0
+        window_close(etiqueta)
+        etiqueta = 0
+        ok = window_use(0)
+    end
+end
+
+func etiqueta_poner(i: Int)
+    etiqueta_quitar()
+    texto = nombre(items[i].ruta)
+    if texto == ""
+        texto = items[i].ruta
+    end
+    usar_letra()
+    w = font_text_width(texto) + 20
+    h = font_height() + 10
+    x = dx + icono_x(i) + celda_w(i) / 2 - w / 2
+    y = dy - h - 6
+    if posicion == "ARRIBA"
+        y = dy + alto + 6
+    elif posicion == "IZQUIERDA"
+        x = dx + ancho + 6
+        y = dy + icono_y(i) + celda_h(i) / 2 - h / 2
+    elif posicion == "DERECHA"
+        x = dx - w - 6
+        y = dy + icono_y(i) + celda_h(i) / 2 - h / 2
+    end
+    if x < 0
+        x = 0
+    end
+    if x + w > sw
+        x = sw - w
+    end
+    etiqueta = window_create("", x, y, w, h, 2 + 4 + 8)
+    if etiqueta != 0
+        gfx_mode(0)
+        pluma(C_BORDE)
+        gfx_rect(0, 0, w - 1, h - 1)
+        pluma(C_MENU)
+        gfx_rect(1, 1, w - 2, h - 2)
+        usar_letra()
+        centrado(w / 2, 5 + font_baseline(), texto, C_TEXTO)
+        ok = window_use(0)
+    end
+end
+
+# el ratón sobre el dock: qué icono tiene encima (-1 si ninguno o fuera)
+func icono_del_raton() -> Int
+    mx = wm_pointer_x() - dx
+    my = wm_pointer_y() - dy
+    if mx < 0 or my < 0 or mx >= ancho or my >= alto
+        return -1
+    end
+    return icono_en(mx, my)
+end
+
+func mirar_encima()
+    i = -1
+    if menu == 0
+        i = icono_del_raton()
+    end
+    if i != encima
+        encima = i
+        pintar(-1)
+        if i >= 0
+            etiqueta_poner(i)
+        else
+            etiqueta_quitar()
+        end
+    end
+end
+
+# ---- esconderse ----
+
+# la rayita: en el borde de la pantalla, en medio del lado del dock
+func rayita()
+    pw = PILDORA
+    ph = GRUESO
+    px = dx + ancho / 2 - pw / 2
+    py = sh - ph - 1
+    if posicion == "ARRIBA"
+        py = ALTO_BARRA + 1
+    elif vertical
+        pw = GRUESO
+        ph = PILDORA
+        py = dy + alto / 2 - ph / 2
+        px = 1
+        if posicion == "DERECHA"
+            px = sw - pw - 1
+        end
+    end
+end
+
+# el ratón llega al borde del dock escondido: a la mitad de fuera del sitio del dock, o más allá
+func raton_en_borde() -> Bool
+    mx = wm_pointer_x()
+    my = wm_pointer_y()
+    if posicion == "ABAJO"
+        return my >= dy + alto / 2 and mx >= dx and mx < dx + ancho
+    elif posicion == "ARRIBA"
+        return my <= dy + alto / 2 and my >= ALTO_BARRA - 2 and mx >= dx and mx < dx + ancho
+    elif posicion == "IZQUIERDA"
+        return mx <= dx + ancho / 2 and my >= dy and my < dy + alto
+    end
+    return mx >= dx + ancho / 2 and my >= dy and my < dy + alto
+end
+
+# el ratón está lejos del dock
+func raton_lejos() -> Bool
+    mx = wm_pointer_x()
+    my = wm_pointer_y()
+    return mx < dx - CERCA or mx >= dx + ancho + CERCA or my < dy - CERCA or my >= dy + alto + CERCA
+end
+
+func esconder_ya()
+    menu_cerrar()
+    etiqueta_quitar()
+    encima = -1
+    rayita()
+    bajo_rayita = []
+    for j in (0..ph - 1)
+        for i in (0..pw - 1)
+            bajo_rayita.push(screen_pixel_rgb(px + i, py + j))
+        end
+    end
+    window_resize(0, pw, ph)
+    esperar_tamano(pw, ph)
+    window_move(0, px, py)
+    esperar_sitio(px, py)
+    escondido = true
+    pintar_rayita()
+end
+
+func pintar_rayita()
+    k = 0
+    for j in (0..ph - 1)
+        for i in (0..pw - 1)
+            if k < bajo_rayita.length and bajo_rayita[k] >= 0
+                rtg_write_pixel(i, j, bajo_rayita[k])
+            end
+            k = k + 1
+        end
+    end
+    redondo(0, 0, pw - 1, ph - 1, 2, C_PUNTO)
+end
+
+func mostrar_ya()
+    escondido = false
+    lejos_desde = 0
+    window_move(0, dx, dy)             # antes de crecer, donde quepa (pegada al borde no puede)
+    esperar_sitio(dx, dy)
+    colocar()
+end
+
+# cada décima de segundo: el nombre del icono de debajo del ratón y, si se esconde solo, cuándo
+func vigilar()
+    if escondido
+        if raton_en_borde()
+            mostrar_ya()
+        end
+        return
+    end
+    mirar_encima()
+    if esconder and menu == 0
+        if raton_lejos()
+            if lejos_desde == 0
+                lejos_desde = time_ms()
+            elif time_ms() - lejos_desde > ESPERA_ESCONDER
+                esconder_ya()
+            end
+        else
+            lejos_desde = 0
+        end
+    end
+end
+
 func colores()
     C_DOCK = tema_color("PANEL", C_DOCK)
     C_BORDE = tema_color("BORDE", C_BORDE)
@@ -777,6 +981,7 @@ Main
         posicion = str_upper(ajuste("DOCK_POSICION", "POSICION", "ABAJO"))
         vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
         lado_min = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
+        esconder = str_upper(ajuste("DOCK_ESCONDER", "ESCONDER", "NO")) == "SI"
         if lado_min < 16
             lado_min = 16
         end
@@ -811,28 +1016,32 @@ Main
             pintar(-1)
         end
         EventLoop
-            On Timer 300
+            On Timer 100
                 if break_check()
                     Stop
                 end
-                d = app_drop()
-                cambio = false
-                while d != ""
-                    soltado(d, app_drop_x(), app_drop_y())
-                    cambio = true
+                vigilar()
+                tic = tic + 1
+                if tic % 3 == 0 and not escondido   # lo de siempre, cada 0,3 s
                     d = app_drop()
-                end
-                e = refrescar()
-                # (lo de alrededor, como mucho cada 2 s y sin el menú abierto, que está pegado al dock)
-                releer = false
-                if menu == 0 and time_ms() - leido_en > 2000
-                    releer = cambio_alrededor()
-                end
-                if cambio or e == 2 or releer
-                    colocar()
-                    leido_en = time_ms()
-                elif e == 1
-                    pintar(-1)
+                    cambio = false
+                    while d != ""
+                        soltado(d, app_drop_x(), app_drop_y())
+                        cambio = true
+                        d = app_drop()
+                    end
+                    e = refrescar()
+                    # (lo de alrededor, como mucho cada 2 s y sin el menú abierto, que está pegado al dock)
+                    releer = false
+                    if menu == 0 and time_ms() - leido_en > 2000
+                        releer = cambio_alrededor()
+                    end
+                    if cambio or e == 2 or releer
+                        colocar()
+                        leido_en = time_ms()
+                    elif e == 1
+                        pintar(-1)
+                    end
                 end
             end
             On Click

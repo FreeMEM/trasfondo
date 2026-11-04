@@ -291,17 +291,17 @@ MSG_130
 Cambiar tamaño
 ; Resize
 MSG_131
-Arrancar el fondo con el Workbench
-; Start the background with the Workbench
+El fondo: en marcha, y al arrancar el Workbench
+; The background: on, and with the Workbench
 MSG_132
-Arrancar la barra con el Workbench
-; Start the bar with the Workbench
+La barra: en marcha, y al arrancar el Workbench
+; The bar: on, and with the Workbench
 MSG_133
-Arrancar el dock con el Workbench
-; Start the dock with the Workbench
+El dock: en marcha, y al arrancar el Workbench
+; The dock: on, and with the Workbench
 MSG_134
-Arrancar las teclas de ventanas con el Workbench
-; Start the window keys with the Workbench
+Las teclas de ventanas: en marcha, y al arrancar el Workbench
+; The window keys: on, and with the Workbench
 MSG_135
 Instala Trasfondo con su instalador para elegir esto
 ; Install Trasfondo with its installer to choose this
@@ -350,3 +350,6 @@ Puestas la barra, el dock y las demás piezas
 MSG_150
 %s: no es un icono
 ; %s: not an icon
+MSG_151
+Esconderlo hasta que el ratón llegue a su borde
+; Hide it until the mouse reaches its edge

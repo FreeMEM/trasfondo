@@ -37,6 +37,10 @@ def guion(pasos):
         lineas.append(f"    time_delay({int(p[-1] * 50)})")
         if p[0] == "clic":
             lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_click({p[1]}, {p[2]} - 500, 0)"]
+        elif p[0] == "aqui":
+            lineas += [f"    input_click({p[1]}, {p[2]}, 0)"]
+        elif p[0] == "mover":
+            lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)"]
         elif p[0] == "tecla":
             lineas += [f"    input_key({p[1]}, {p[2]})"]
         else:
@@ -55,12 +59,19 @@ def main():
                     help="X,Y,SEGUNDOS desde el paso anterior")
     ap.add_argument("--orden", action="append", dest="pasos", type=lambda v: ("orden", v),
                     help="SEGUNDOS:orden (Avisa TITULO=...), desde el paso anterior")
+    ap.add_argument("--aqui", action="append", dest="pasos", type=lambda v: ("aqui", v),
+                    help="X,Y,SEGUNDOS: clic desde la esquina de la ventana activa, sin activar otra")
+    ap.add_argument("--mover", action="append", dest="pasos", type=lambda v: ("mover", v),
+                    help="X,Y,SEGUNDOS: lleva el puntero ahí, sin pulsar")
     ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
                     help="CODIGO,CALIFICADORES,SEGUNDOS: una tecla en bruto (0x14 la T; 2 Ctrl + 4 Alt...)")
     ap.add_argument("--barra", default="CIUDAD=Mijas", help="argumentos de la barra")
     ap.add_argument("--ventanas", default=None, help="arranca TrasfondoVentanas con estos argumentos, y tres "
                     "ventanas de prueba (tools/ventanitas.dash)")
     ap.add_argument("--dock", default=None, help="arranca el dock con estos argumentos (POSICION=ABAJO)")
+    ap.add_argument("--fondo", default=None, help="arranca también el fondo (Trasfondo, de build/release) con estos "
+                    "argumentos; TrasfondoPrefs queda en DH0: y ENV:Trasfondo.cajon apunta ahí")
+    ap.add_argument("--inicio", action="append", default=[], help="una línea más para la Startup-Sequence, tras LoadWB")
     a = ap.parse_args()
     for n in PROGRAMAS:
         compilar(n)
@@ -68,9 +79,9 @@ def main():
         compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
-        if tipo == "clic":
+        if tipo in ("clic", "mover", "aqui"):
             x, y, seg = v.split(",")
-            pasos.append(("clic", int(x), int(y), float(seg)))
+            pasos.append((tipo, int(x), int(y), float(seg)))
         elif tipo == "tecla":
             c, q, seg = v.split(",")
             pasos.append(("tecla", int(c, 0), int(q), float(seg)))
@@ -90,6 +101,11 @@ def main():
         ss = hd / "S" / "Startup-Sequence"
         t = ss.read_text()
         extra = f"Run >NIL: DH0:TrasfondoBarra {a.barra}\n"
+        if a.fondo is not None:
+            shutil.copy(RAIZ / "build/release/trasfondo", hd / "Trasfondo")
+            shutil.copy(RAIZ / "build/release/TrasfondoPrefs", hd / "TrasfondoPrefs")
+            extra += f"Echo DH0: >ENV:Trasfondo.cajon\nRun >NIL: DH0:Trasfondo {a.fondo}\n"
+        extra += "".join(l + "\n" for l in a.inicio)
         if a.dock is not None:
             # unos lanzadores de prueba: iconos de verdad (los que haya en ICONOS) con un programa cualquiera
             apps = hd / "Apps"

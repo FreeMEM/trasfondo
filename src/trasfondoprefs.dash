@@ -169,6 +169,19 @@ func arrancar(nombre: String)
     run_command(orden)
 end
 
+# para una pieza en marcha (lanzarla otra vez la para: su single_instance le manda un Ctrl-C)
+func parar(nombre: String)
+    if cajon == "" or not corriendo(nombre)
+        return
+    end
+    run_command("Run >NIL: \"" + cajon + nombre + "\"")
+    vueltas = 0
+    while corriendo(nombre) and vueltas < 100
+        time_delay(5)
+        vueltas = vueltas + 1
+    end
+end
+
 # solo si está en marcha (para que tome sus ajustes nuevos)
 func rearrancar(nombre: String)
     if corriendo(nombre)
@@ -458,6 +471,7 @@ func pagina(n: Int, linea_version: String)
         ciclo(y, tr(MSG_POSICION, "Position"), "DOCK_POSICION", tr(MSG_POSICIONES, "Bottom|Top|Left|Right"), "ABAJO|ARRIBA|IZQUIERDA|DERECHA")
         y = y + fila + 2
         numero(y, tr(MSG_TAMANO_ICONO, "Icon size"), "DOCK_ICONO", ancho_n)
+        casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_ESCONDER, "Hide it until the mouse reaches its edge"), "DOCK_ESCONDER")
         y = y + fila + 2
         t_lanz = tr(MSG_LANZADORES, "Launchers...")
         ancho_l = screen_font_text_width(t_lanz) + 24
@@ -490,7 +504,7 @@ func pagina(n: Int, linea_version: String)
         y_muestras = y
     else
         var piezas: [String] = str_split(PIEZAS, "|")
-        var textos_a: [String] = [tr(MSG_ARR_FONDO, "Start the background with the Workbench"), tr(MSG_ARR_BARRA, "Start the bar with the Workbench"), tr(MSG_ARR_DOCK, "Start the dock with the Workbench"), tr(MSG_ARR_VENTANAS, "Start the window keys with the Workbench")]
+        var textos_a: [String] = [tr(MSG_ARR_FONDO, "The background: on, and with the Workbench"), tr(MSG_ARR_BARRA, "The bar: on, and with the Workbench"), tr(MSG_ARR_DOCK, "The dock: on, and with the Workbench"), tr(MSG_ARR_VENTANAS, "The window keys: on, and with the Workbench")]
         i = 0
         while i < piezas.length
             casilla(x, y, textos_a[i], "ARR_" + piezas[i])
@@ -589,7 +603,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -614,13 +628,20 @@ func poner_arranque()
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         quiere = valores["ARR_" + p] == "SI"
-        if quiere and not en_arranque(p)
-            file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+        if quiere
+            if not en_arranque(p)
+                file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+            end
             if not corriendo(p)
                 arrancar(p)                  # y ya, sin esperar a reiniciar
             end
-        elif not quiere and en_arranque(p)
-            file_delete("SYS:WBStartup/" + p + ".info")
+        else
+            if en_arranque(p)
+                file_delete("SYS:WBStartup/" + p + ".info")
+            end
+            if corriendo(p)
+                parar(p)                     # y se apaga ya
+            end
         end
     end
 end
@@ -715,6 +736,7 @@ Main
     valores["BARRA_LON"] = conf("BARRA_LON", "")
     valores["DOCK_POSICION"] = str_upper(conf("DOCK_POSICION", "ABAJO"))
     valores["DOCK_ICONO"] = conf("DOCK_ICONO", "40")
+    valores["DOCK_ESCONDER"] = si(str_upper(conf("DOCK_ESCONDER", "NO")) == "SI")
     valores["TEMA"] = str_upper(conf("TEMA", "FIJO"))
     valores["TEMA_MODO"] = str_upper(conf("TEMA_MODO", "OSCURO"))
     valores["TEMA_ESQUEMA"] = str_upper(conf("TEMA_ESQUEMA", "FONDO"))
@@ -731,7 +753,7 @@ Main
     valores["VENTANAS_RATON_TAMANO"] = conf("VENTANAS_RATON_TAMANO", "rawmouse lalt mouse_rightpress")
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
-        valores["ARR_" + p] = si(en_arranque(p))
+        valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)
     end
     for k in valores.keys()
         antes_v[k] = valores[k]
@@ -752,7 +774,7 @@ Main
         end
     end
     # lo que va a la derecha de una casilla: el más largo
-    var derechas: [String] = [tr(MSG_BUSCAR, "Look for new versions on GitHub"), tr(MSG_ARR_FONDO, "Start the background with the Workbench"), tr(MSG_ARR_BARRA, "Start the bar with the Workbench"), tr(MSG_ARR_DOCK, "Start the dock with the Workbench"), tr(MSG_ARR_VENTANAS, "Start the window keys with the Workbench"), tr(MSG_SIN_CAJON, "Install Trasfondo with its installer to choose this"), tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen")]
+    var derechas: [String] = [tr(MSG_BUSCAR, "Look for new versions on GitHub"), tr(MSG_ARR_FONDO, "The background: on, and with the Workbench"), tr(MSG_ARR_BARRA, "The bar: on, and with the Workbench"), tr(MSG_ARR_DOCK, "The dock: on, and with the Workbench"), tr(MSG_ARR_VENTANAS, "The window keys: on, and with the Workbench"), tr(MSG_SIN_CAJON, "Install Trasfondo with its installer to choose this"), tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen")]
     largo = 0
     for t in derechas
         if largo < screen_font_text_width(t)
@@ -775,7 +797,8 @@ Main
     ancho = m + 26 + 8 + largo + m
     t_oculto = tr(MSG_OCULTO, "Start hidden")
     t_mosaico = tr(MSG_MOSAICO, "Tile new windows automatically")
-    for t in [t_oculto, t_mosaico]
+    t_esconder = tr(MSG_ESCONDER, "Hide it until the mouse reaches its edge")
+    for t in [t_oculto, t_mosaico, t_esconder]
         if ancho < x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t) + m
             ancho = x_campo + screen_font_text_width("000") + 24 + 16 + 26 + 8 + screen_font_text_width(t) + m
         end

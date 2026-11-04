@@ -232,6 +232,17 @@ func colores()
     C_CALIENTE = tema_color("PELIGRO", C_CALIENTE)
 end
 
+# un programa en marcha, por el puerto de su single_instance
+func corriendo(nombre: String) -> Bool
+    n = ports_read()
+    for i in (0..n - 1)
+        if port_name(i) == nombre
+            return true
+        end
+    end
+    return false
+end
+
 Main
     colores()
     if not single_instance("TrasfondoBarra")
@@ -288,10 +299,15 @@ Main
                 end
             end
             On Click
+                # si ya estaba abierto, se está cerrando él solo (se pulsó fuera de él): no se abre otra vez
                 if click_x() >= reloj_x1 and click_x() < reloj_x2
-                    run_program(panel)
+                    if not corriendo("TrasfondoPanel")
+                        run_program(panel)
+                    end
                 elif click_x() >= derecha_x
-                    run_program(rapido)
+                    if not corriendo("TrasfondoRapido")
+                        run_program(rapido)
+                    end
                 end
             end
             On Close
