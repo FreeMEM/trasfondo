@@ -45,7 +45,8 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
 
 - **TrasfondoBarra**: a bar at the top with the time, the date, the weather, the CPU and the memory. Clicking it
   opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
-  (quick settings: preferences, network, memory, reboot).
+  (quick settings: preferences, network, memory, reboot). It can be a whole bar at the top or sit inside the
+  screen's title bar, on the right, without covering it (TrasfondoPrefs, Bar section, "Style"; or `ESTILO=TITULO`).
 - **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
   and keeps it in the panel's list. For example, `Avisa "Backup done"`. The bar also has an ARexx port,
   `TRASFONDO`: `ADDRESS TRASFONDO 'NOTIFY TITLE="Backup done" TEXT="12 files"'` leaves a notification, `COUNT`
@@ -145,8 +146,8 @@ What TrasfondoPrefs sets takes precedence over the icon's tooltypes.
 ### Updating itself
 
 Since 0.8, Trasfondo checks GitHub for a new version: one minute after starting and then every
-six hours, without waiting or slowing the panel down. If there is one, a green indicator with its number appears next to
-"Trasfondo". In TrasfondoPrefs, **Update** downloads it (the two loose executables from the release),
+hour (every six hours up to 2.3), without waiting or slowing the panel down. If there is one, a green indicator with its number appears next to
+"Trasfondo". In TrasfondoPrefs, **Update** downloads it (the loose executables from the release),
 checks that it arrived complete and that it is the version it claims to be, keeps the current ones as `.old` and Trasfondo
 restarts with the new one. Since 0.9 it also downloads the Spanish catalog; and if your system is in
 Spanish and the catalog is missing, it downloads it by itself a minute after starting (this happens to anyone who moves from 0.8 to 0.9 with

@@ -1,5 +1,5 @@
 # Trasfondo se pone al día solo. Mira en GitHub cuál es la última versión (un minuto después de arrancar y
-# luego cada seis horas) y, si se lo pide TrasfondoPrefs (botón Actualizar, que deja "actualizar" en
+# luego cada hora) y, si se lo pide TrasfondoPrefs (botón Actualizar, que deja "actualizar" en
 # ENV:Trasfondo.orden), baja los ejecutables sueltos de esa release (el fondo, TrasfondoPrefs y, desde la 2.1,
 # las demás piezas, la orden Avisa y el icono de arranque), los comprueba (tamaño, que sean ejecutables y que
 # lleven su $VER:) y los pone en lugar de los de ahora, que quedan como .old. Con ellos baja el catálogo en
@@ -12,7 +12,7 @@
 const API_HOST = "api.github.com"
 const API_RUTA = "/repos/FreeMEM/trasfondo/releases/latest"
 const PRIMERA = 60000              # ms desde que arranca hasta la primera consulta
-const CADA = 21600000              # y luego, cada seis horas
+const CADA = 3600000               # y luego, cada hora
 const ESPERA_RED = 30000           # lo más que se espera a cada paso de la red
 const TOPE_API = 131072            # la respuesta de la API cabe de sobra
 const MUESTRA = 8192               # lo que se recibe de una vez

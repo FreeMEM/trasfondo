@@ -45,7 +45,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
 
 - **TrasfondoBarra**: una barra arriba con la hora, la fecha, el tiempo, la CPU y la memoria. Al pulsarla salen
   sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
-  preferencias, red, memoria, reiniciar).
+  preferencias, red, memoria, reiniciar). Puede ser una barra entera arriba o ir dentro de la barra de título de
+  la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`).
 - **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en
   la lista del panel. Por ejemplo, `Avisa "Copia hecha"`. La barra tiene además un puerto ARexx, `TRASFONDO`:
   `ADDRESS TRASFONDO 'NOTIFY TITLE="Copia hecha" TEXT="12 ficheros"'` deja un aviso, `COUNT` dice cuántos hay
@@ -144,8 +145,8 @@ que pone TrasfondoPrefs manda sobre los tooltypes del icono.
 ### Ponerse al día solo
 
 Desde la 0.8, Trasfondo mira en GitHub si hay una versión nueva: un minuto después de arrancar y luego cada
-seis horas, sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
-«Trasfondo». En TrasfondoPrefs, **Actualizar** la baja (los dos ejecutables sueltos de la release),
+hora (hasta la 2.3, cada seis horas), sin esperar ni frenar el panel. Si la hay, sale un piloto verde con su número junto a
+"Trasfondo". En TrasfondoPrefs, **Actualizar** la baja (los ejecutables sueltos de la release),
 comprueba que llegó entera y que es la versión que dice, deja los de ahora como `.old` y Trasfondo vuelve a
 arrancar con la nueva. Desde la 0.9 baja también el catálogo en castellano; y si tu sistema está en
 castellano y falta, lo baja él solo al minuto de arrancar (le pasa a quien llega a la 0.9 desde la 0.8 con
