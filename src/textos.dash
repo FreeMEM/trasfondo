@@ -171,3 +171,5 @@ const MSG_ESCONDER = 151
 const MSG_ESTILO = 152
 # "Whole bar|In the title bar"
 const MSG_ESTILOS = 153
+# "Top right|Top left|Bottom right|Bottom left"
+const MSG_ESQUINAS = 154

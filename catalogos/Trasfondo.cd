@@ -357,3 +357,6 @@ Style
 ; MSG_ESTILOS
 MSG_153 (153//)
 Whole bar|In the title bar
+; MSG_ESQUINAS
+MSG_154 (154//)
+Top right|Top left|Bottom right|Bottom left

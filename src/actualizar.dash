@@ -503,6 +503,7 @@ func act_instalar()
     end
     act_poner_piezas()
     file_delete("ENV:Trasfondo.nueva")
+    file_write_text("ENV:Trasfondo.instalada", a_nueva + "\n")   # TrasfondoPrefs, si lo pidió, se abre otra vez (la nueva)
     a_listo = true
 end
 

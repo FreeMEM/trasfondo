@@ -66,6 +66,8 @@ var visible: Bool = true     # lo que quiere el usuario (desactivado, el panel n
 var activo: Bool = true      # midiendo la CPU
 var alto_lienzo: Int = 0     # el alto con que se creó el panel: si cambia lo que hay que enseñar, se crea otro
 var y_lienzo: Int = 4         # dónde empieza el panel (debajo de la barra, si está)
+var x_lienzo: Int = -4        # y de lado (negativo: desde la derecha)
+var posicion: String = "ARRIBA_DERECHA"   # la esquina del panel (POSICION)
 
 var d_nombre: [String] = []  # los volúmenes, sin RAM Disk
 var d_kb: [Int] = []         # tamaño en KB; -1 si no contestó
@@ -257,6 +259,7 @@ func leer_aspecto()
         cada = 60
     end
     f = str_upper(conf("FONDO", tooltype("BACKGROUND", "VELO")))
+    posicion = str_upper(conf("POSICION", tooltype("POSITION", "ARRIBA_DERECHA")))
     fijo = f == "FIJO" or f == "SOLID"
     var rgb: [String] = str_split(conf("COLOR", "16,24,32"), ",")
     if rgb.length == 3
@@ -977,7 +980,7 @@ func cambiaron_prefs()
     poner_tecla()
     faltan_discos = 0
     act_buscar(str_upper(conf("BUSCAR", "SI")) != "NO")
-    if lienzo != 0 and alto_panel() != alto_lienzo
+    if lienzo != 0 and (alto_panel() != alto_lienzo or y_libre() != y_lienzo or x_libre() != x_lienzo)
         ocultar()
         mostrar()
     elif lienzo != 0
@@ -1005,8 +1008,31 @@ func poner_velo()
     end
 end
 
-# dónde empieza el panel, desde la barra de título de la pantalla: debajo de TrasfondoBarra si está en marcha
+# el dock, si está en marcha y no se esconde (escondido iría y vendría, y el panel con él): su caja o []
+func caja_dock() -> [Int]
+    var caja: [Int] = []
+    if str_upper(conf("DOCK_ESCONDER", "NO")) == "SI"
+        return caja
+    end
+    for i in (0..wm_read() - 1)
+        if wm_task(i) == "TrasfondoDock" and caja.length == 0
+            caja = [wm_box(i, 0), wm_box(i, 1), wm_box(i, 2), wm_box(i, 3)]
+        end
+    end
+    return caja
+end
+
+# dónde empieza el panel, desde la barra de título de la pantalla: arriba, debajo de TrasfondoBarra si está en
+# marcha (y del dock, si va arriba); abajo (negativo, desde el borde: -1 lo toca), encima del dock si va abajo
 func y_libre() -> Int
+    dock = caja_dock()
+    if str_starts(posicion, "ABAJO")
+        y = -4
+        if dock.length == 4 and dock[1] > screen_height() / 2 and dock[2] > dock[3]
+            y = dock[1] - screen_height() - 4
+        end
+        return y
+    end
     y = 4
     for i in (0..wm_read() - 1)
         if wm_task(i) == "TrasfondoBarra"
@@ -1016,14 +1042,39 @@ func y_libre() -> Int
             end
         end
     end
+    if dock.length == 4 and dock[1] < screen_height() / 2 and dock[2] > dock[3]
+        debajo = dock[1] + dock[3] - wm_bar_height() + 4
+        if debajo > y
+            y = debajo
+        end
+    end
     return y
+end
+
+# de lado: a la derecha (negativo, desde el borde) o a la izquierda, sin tapar el dock si va en ese lado
+func x_libre() -> Int
+    dock = caja_dock()
+    vertical = dock.length == 4 and dock[3] > dock[2]
+    if str_ends(posicion, "IZQUIERDA")
+        x = 3
+        if vertical and dock[0] < screen_width() / 2
+            x = dock[0] + dock[2] + 3
+        end
+        return x
+    end
+    x = -4
+    if vertical and dock[0] > screen_width() / 2
+        x = dock[0] - screen_width() - 4
+    end
+    return x
 end
 
 func mostrar()
     if lienzo == 0
         alto_lienzo = alto_panel()
         y_lienzo = y_libre()
-        lienzo = desktop_canvas(-4, y_lienzo, ANCHO, alto_lienzo)
+        x_lienzo = x_libre()
+        lienzo = desktop_canvas(x_lienzo, y_lienzo, ANCHO, alto_lienzo)
         if lienzo == 0
             Print tr(MSG_NO_FONDO, "Trasfondo: cannot draw on the Workbench backdrop")
         else
@@ -1143,7 +1194,7 @@ Main
                     end
                     if lienzo != 0
                         medir_paneles()
-                        if alto_panel() != alto_lienzo or y_libre() != y_lienzo   # otro alto, o la barra va o viene
+                        if alto_panel() != alto_lienzo or y_libre() != y_lienzo or x_libre() != x_lienzo   # otro alto, o la barra o el dock van o vienen
                             ocultar()
                             mostrar()
                         end

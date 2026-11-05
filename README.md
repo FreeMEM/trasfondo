@@ -138,7 +138,8 @@ finish (without it, it asks "Program has not finished yet. Wait a little longer?
 ### Preferences
 
 **TrasfondoPrefs** (in `SYS:Prefs`) sets what is shown, how many tasks, the hotkey, how often it measures, the
-background (see-through or solid) and its colour, and whether it starts hidden.
+background (see-through or solid) and its colour, the corner of the screen the panel goes in (top right by
+default; it keeps clear of the bar and the dock), and whether it starts hidden.
 **Use** applies them until you reboot and **Save**, for good (`ENV:` and `ENVARC:Trasfondo.prefs`).
 Trasfondo, if it is running, changes straight away, without restarting it (the system tells it when they change).
 What TrasfondoPrefs sets takes precedence over the icon's tooltypes.
@@ -188,6 +189,7 @@ They are changed in the icon (Information, in the Icons menu) or given as argume
 | `INTERVAL=2` | How many seconds between measuring and repainting (1 to 60). |
 | `BACKGROUND=SOLID` | Solid background, without the see-through veil: uses less CPU. |
 | `COLOR=16,24,32` | Background colour, in red, green and blue (0 to 255). |
+| `POSICION=ABAJO_IZQUIERDA` | The panel's corner: `ARRIBA_DERECHA` (top right, the default), `ARRIBA_IZQUIERDA`, `ABAJO_DERECHA` or `ABAJO_IZQUIERDA`. |
 | `CX_POPUP=NO` | Starts hidden. |
 | `CX_PRIORITY=0` | Priority of the commodity. |
 | `DONOTWAIT` | In `WBStartup`, the Workbench doesn't wait for it to finish. |

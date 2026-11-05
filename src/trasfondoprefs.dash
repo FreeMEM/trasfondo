@@ -442,6 +442,8 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         ciclo(y, tr(MSG_FONDO, "Background"), "FONDO", tr(MSG_FONDOS, "See-through|Solid"), "VELO|FIJO")
         y = y + fila + 2
+        ciclo(y, tr(MSG_POSICION, "Position"), "POSICION", tr(MSG_ESQUINAS, "Top right|Top left|Bottom right|Bottom left"), "ARRIBA_DERECHA|ARRIBA_IZQUIERDA|ABAJO_DERECHA|ABAJO_IZQUIERDA")
+        y = y + fila + 2
         # los colores de la lista; uno puesto a mano (tooltype o prefs) sale al final, para no perderlo
         nombres = tr(MSG_COLORES, "Night blue|Black|Grey|Blue|Green|Wine|Purple")
         opciones = COLORES
@@ -542,7 +544,7 @@ end
 
 # el alto de dentro de la ventana: el de la página más alta (el fondo o las ventanas, como las pone pagina) y los botones
 func alto_ventana() -> Int
-    fondo = m + fila + hueco + filas_s * fila + 4 + 6 * (fila + 2) + alto_boton
+    fondo = m + fila + hueco + filas_s * fila + 4 + 7 * (fila + 2) + alto_boton
     ventanas = m + fila + hueco + 9 * (fila + 2)
     if ventanas > fondo
         fondo = ventanas
@@ -604,7 +606,7 @@ func fichero() -> String
     end
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
-    texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nCOLOR=" + valores["COLOR"] + "\n"
+    texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
     var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
@@ -732,6 +734,7 @@ Main
         valores["FONDO"] = "FIJO"
     end
     valores["COLOR"] = str_replace(conf("COLOR", "16,24,32"), " ", "")
+    valores["POSICION"] = str_upper(conf("POSICION", "ARRIBA_DERECHA"))
     valores["BUSCAR"] = si(str_upper(conf("BUSCAR", "SI")) != "NO")
     valores["BARRA_ESTILO"] = str_upper(conf("BARRA_ESTILO", "COMPLETA"))
     valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
@@ -855,10 +858,23 @@ Main
         Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
         return
     end
-    pagina(0, linea_version)
+    # recién actualizado: esta es la versión nueva, que abrió la vieja; en la sección que tenía y con lo que pasó
+    t_vuelta = file_read_text("ENV:Trasfondo.prefs_seccion")
+    vuelta = t_vuelta != nil and str_trim(t_vuelta) != ""
+    if vuelta
+        file_delete("ENV:Trasfondo.prefs_seccion")
+        est_antes = file_read_text("ENV:Trasfondo.estado")
+        if est_antes != nil and str_trim(est_antes) != ""
+            linea_version = str_trim(est_antes)
+        end
+        pagina(Int(str_trim(t_vuelta)), linea_version)
+    else
+        pagina(0, linea_version)
+    end
 
     ultimo = ""
     pedido = 0                               # time_ms de cuando se pidió actualizar (0: no se ha pedido)
+    file_delete("ENV:Trasfondo.instalada")
     while true
         e = gt_event()
         if e == -1                           # nada: mira cómo va lo que se pidió a Trasfondo
@@ -872,6 +888,14 @@ Main
                 elif ultimo == "" and time_ms() - pedido > 8000
                     ultimo = tr(MSG_NO_ESTA, "Trasfondo is not running: start it and try again")
                     gt_set_text(g_estado, ultimo)
+                end
+                # instalada: estas Prefs son las viejas (no verían lo nuevo); se abren otra vez, ya las nuevas
+                if file_exists("ENV:Trasfondo.instalada")
+                    file_delete("ENV:Trasfondo.instalada")
+                    time_delay(100)
+                    file_write_text("ENV:Trasfondo.prefs_seccion", "#{seccion}\n")
+                    program_relaunch()
+                    break
                 end
             end
         elif e == g_seccion

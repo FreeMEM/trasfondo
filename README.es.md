@@ -137,7 +137,8 @@ acabe (si falta, pregunta "El programa no ha terminado aún. ¿Espero un poco m�
 ### Preferencias
 
 **TrasfondoPrefs** (en `SYS:Prefs`) dice qué se ve, cuántas tareas, la tecla rápida, cada cuánto mide, el
-fondo (transparente o fijo) y su color, y si arranca oculto.
+fondo (transparente o fijo) y su color, la esquina de la pantalla donde va el panel (arriba a la derecha si no se
+dice; no se pone debajo de la barra ni del dock), y si arranca oculto.
 **Usar** lo aplica hasta reiniciar y **Guardar**, para siempre (`ENV:` y `ENVARC:Trasfondo.prefs`).
 Trasfondo, si está en marcha, cambia al momento, sin reiniciarlo (el sistema le avisa cuando cambian). Lo
 que pone TrasfondoPrefs manda sobre los tooltypes del icono.
@@ -187,6 +188,7 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 | `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
 | `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |
 | `COLOR=16,24,32` | Color del fondo, en rojo, verde y azul (de 0 a 255). |
+| `POSICION=ABAJO_IZQUIERDA` | La esquina del panel: `ARRIBA_DERECHA` (la de siempre), `ARRIBA_IZQUIERDA`, `ABAJO_DERECHA` o `ABAJO_IZQUIERDA`. |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |
 | `DONOTWAIT` | En `WBStartup`, el Workbench no espera a que acabe. |
