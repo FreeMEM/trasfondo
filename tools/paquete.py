@@ -19,6 +19,7 @@ raiz = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(raiz / "tools"))
 from icono import icono, icono_prefs, info, WBTOOL, TOOLTYPES   # noqa: E402
 from iconos_wb import cajon, documento, instalador, WBDRAWER, WBPROJECT   # noqa: E402
+from leeme import texto80   # noqa: E402
 
 DASH = Path(os.environ.get("DASH", Path.home() / "Projects/FreeMEMLang"))
 # fuente → nombre en el Amiga; las que arrancan con el Workbench llevan icono de herramienta y de arranque
@@ -69,7 +70,8 @@ def main():
     (caj / "Instalar.info").write_bytes(
         situar(info(instalador(), WBPROJECT, herramienta="Installer",
                     tooltypes=["APPNAME=Trasfondo", "MINUSER=AVERAGE", "DEFUSER=AVERAGE"]), 10, 6))
-    (caj / "LEEME").write_bytes((raiz / "README.es.md").read_text().encode("latin-1", "replace"))
+    # (a 80 columnas: en el Amiga no hay que desplazarse de lado para leerlo, tools/leeme.py)
+    (caj / "LEEME").write_bytes(texto80((raiz / "README.es.md").read_text()).encode("latin-1", "replace"))
     (caj / "LEEME.info").write_bytes(situar(info(documento(), WBPROJECT, herramienta="SYS:Utilities/MultiView"), 10, 60))
     shutil.copy(raiz / "LICENSE", caj / "LICENSE")
     # los catálogos (tools/catalogos.py), con el nombre del idioma en Latin-1: Catalogs/español/Trasfondo.catalog.
