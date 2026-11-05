@@ -351,3 +351,9 @@ MSG_150 (150//)
 ; MSG_ESCONDER
 MSG_151 (151//)
 Hide it until the mouse reaches its edge
+; MSG_ESTILO
+MSG_152 (152//)
+Style
+; MSG_ESTILOS
+MSG_153 (153//)
+Whole bar|In the title bar

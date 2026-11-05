@@ -167,3 +167,7 @@ const MSG_PIEZAS = 149
 const MSG_NO_ICONO = 150
 # "Hide it until the mouse reaches its edge"
 const MSG_ESCONDER = 151
+# "Style"
+const MSG_ESTILO = 152
+# "Whole bar|In the title bar"
+const MSG_ESTILOS = 153

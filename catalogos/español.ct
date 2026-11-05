@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (04.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (05.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -353,3 +353,9 @@ MSG_150
 MSG_151
 Esconderlo hasta que el ratón llegue a su borde
 ; Hide it until the mouse reaches its edge
+MSG_152
+Estilo
+; Style
+MSG_153
+La barra entera|En la barra de título
+; Whole bar|In the title bar

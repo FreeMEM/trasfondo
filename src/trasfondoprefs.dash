@@ -458,6 +458,8 @@ func pagina(n: Int, linea_version: String)
         g_estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
         g_actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, t_actualizar)
     elif n == 1
+        ciclo(y, tr(MSG_ESTILO, "Style"), "BARRA_ESTILO", tr(MSG_ESTILOS, "Whole bar|In the title bar"), "COMPLETA|TITULO")
+        y = y + fila + 2
         campo(y, tr(MSG_CIUDAD, "City"), "BARRA_CIUDAD")
         y = y + fila + 2
         campo(y, tr(MSG_LAT, "Latitude"), "BARRA_LAT")
@@ -603,7 +605,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -731,6 +733,7 @@ Main
     end
     valores["COLOR"] = str_replace(conf("COLOR", "16,24,32"), " ", "")
     valores["BUSCAR"] = si(str_upper(conf("BUSCAR", "SI")) != "NO")
+    valores["BARRA_ESTILO"] = str_upper(conf("BARRA_ESTILO", "COMPLETA"))
     valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
     valores["BARRA_LAT"] = conf("BARRA_LAT", "")
     valores["BARRA_LON"] = conf("BARRA_LON", "")
@@ -767,7 +770,7 @@ Main
     end
     alto_boton = f + 6
     # el ancho de las etiquetas de la izquierda: el de la más larga de todas las páginas
-    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
     for t in izquierdas
         if x_campo < m + screen_font_text_width(t) + 10
             x_campo = m + screen_font_text_width(t) + 10
