@@ -18,8 +18,8 @@ import "avisos.dash"
 import "ajustes.dash"
 import "tema.dash"
 
-const ALTO = 24              # alto de la barra
-const ALTO_PILDORA = 18
+var alto: Int = 24           # alto de la barra (en la barra de título, el de ella)
+var alto_p: Int = 18         # el de una píldora
 const MARGEN = 6             # entre el borde de la pantalla y la primera píldora
 const HUECO = 6              # entre dos píldoras
 const RELLENO = 10           # dentro de la píldora, a cada lado del texto
@@ -45,6 +45,12 @@ var tic: Int = 0             # vueltas del temporizador (5 por segundo)
 var aviso: String = "TrasfondoAviso"   # la orden que enseña el último aviso
 var avisos_tam: Int = -1     # el tamaño de ENV:Trasfondo.avisos la última vez que se miró
 var n_avisos: Int = 0
+var titulo: Bool = false     # ESTILO=TITULO: dentro de la barra de título de la pantalla, a la derecha, sin taparla
+var ancho_t: Int = 0         # lo que mide entonces la ventana (cambia con los textos)
+var sw: Int = 0              # el ancho de la pantalla
+var gad: Int = 0             # lo que ocupa el botón de profundidad de la pantalla, a la derecha
+var c_barra: Int = 0xaaaaaa  # los colores de la barra de título: su fondo y su texto
+var c_barra_t: Int = 0x000000
 
 # el ancho de una píldora con ese texto (y un icono delante, si icono)
 func ancho_pildora(texto: String, icono: Bool) -> Int
@@ -58,10 +64,10 @@ end
 # una píldora con su texto, en x; devuelve dónde acaba
 func pildora_texto(x: Int, texto: String, rgb: Int) -> Int
     w = ancho_pildora(texto, false)
-    y = (ALTO - ALTO_PILDORA) / 2
-    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    y = (alto - alto_p) / 2
+    redondo(x, y, x + w - 1, y + alto_p - 1, alto_p / 2, C_PILDORA)
     pluma(rgb)
-    gfx_text_at(x + RELLENO, (ALTO - font_height()) / 2 + font_baseline(), texto)
+    gfx_text_at(x + RELLENO, (alto - font_height()) / 2 + font_baseline(), texto)
     return x + w
 end
 
@@ -69,11 +75,11 @@ end
 func pildora_tiempo(x: Int) -> Int
     texto = grados(t_temp)
     w = ancho_pildora(texto, true)
-    y = (ALTO - ALTO_PILDORA) / 2
-    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
-    icono_tiempo(x + RELLENO - 2 + ICONO / 2, ALTO / 2, ICONO, t_codigo, t_de_dia, C_PILDORA)
+    y = (alto - alto_p) / 2
+    redondo(x, y, x + w - 1, y + alto_p - 1, alto_p / 2, C_PILDORA)
+    icono_tiempo(x + RELLENO - 2 + ICONO / 2, alto / 2, ICONO, t_codigo, t_de_dia, C_PILDORA)
     pluma(C_TEXTO)
-    gfx_text_at(x + RELLENO + ICONO + 2, (ALTO - font_height()) / 2 + font_baseline(), texto)
+    gfx_text_at(x + RELLENO + ICONO + 2, (alto - font_height()) / 2 + font_baseline(), texto)
     return x + w
 end
 
@@ -109,15 +115,15 @@ func pildora_avisos(x: Int) -> Int
         texto = "#{n_avisos}"
     end
     w = ancho_avisos()
-    y = (ALTO - ALTO_PILDORA) / 2
-    redondo(x, y, x + w - 1, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
+    y = (alto - alto_p) / 2
+    redondo(x, y, x + w - 1, y + alto_p - 1, alto_p / 2, C_PILDORA)
     cx = x + RELLENO - 2 + ICONO / 2
-    campana(cx, ALTO / 2, C_TEXTO)
+    campana(cx, alto / 2, C_TEXTO)
     if n_avisos > 0
         pluma(C_CALIENTE)
-        gfx_circle_fill(cx + 5, ALTO / 2 - 6, 2)
+        gfx_circle_fill(cx + 5, alto / 2 - 6, 2)
         pluma(C_TEXTO)
-        gfx_text_at(x + RELLENO + ICONO + 2, (ALTO - font_height()) / 2 + font_baseline(), texto)
+        gfx_text_at(x + RELLENO + ICONO + 2, (alto - font_height()) / 2 + font_baseline(), texto)
     end
     return x + w
 end
@@ -145,9 +151,155 @@ func por_ciento(milesimas: Int) -> String
     return "#{(milesimas + 5) / 10}%"
 end
 
+# ---- dentro de la barra de título de la pantalla (ESTILO=TITULO) ----
+
+const SEP = 12               # entre dos cosas
+const BORDE_T = 6            # a cada lado
+
+# la campana y los interruptores, pequeños, para una barra de título baja
+func campana_t(cx: Int, cy: Int, rgb: Int)
+    if alto >= 18
+        campana(cx, cy, rgb)
+        return
+    end
+    pluma(rgb)
+    gfx_circle_fill(cx, cy - 1, 2)
+    gfx_rect(cx - 2, cy - 1, cx + 2, cy + 2)
+    gfx_rect(cx - 4, cy + 2, cx + 4, cy + 2)
+    gfx_rect(cx, cy + 4, cx, cy + 4)
+end
+
+func interruptores_t(cx: Int, cy: Int, rgb: Int, fondo: Int)
+    redondo(cx - 6, cy - 4, cx + 6, cy - 1, 1, rgb)
+    redondo(cx - 6, cy + 1, cx + 6, cy + 4, 1, rgb)
+    pluma(fondo)
+    gfx_rect(cx + 2, cy - 3, cx + 3, cy - 2)
+    gfx_rect(cx - 3, cy + 2, cx - 2, cy + 3)
+end
+
+# lo que ocupa el botón de profundidad de la pantalla (y los que haya a su lado), mirando la barra de título desde
+# la derecha antes de abrir la ventana: sus bordes son líneas de arriba abajo de un color que no es el de la barra
+# (el texto del título nunca llena todo el alto). Sin encontrarlas, un cálculo por el alto
+func medir_botones() -> Int
+    izq = 0
+    x = sw - 1
+    while x > sw - alto * 3 and x > 0
+        c = screen_pixel_rgb(x, 2)
+        linea = c != c_barra and c >= 0
+        y = 3
+        while linea and y < alto - 2
+            if screen_pixel_rgb(x, y) != c
+                linea = false
+            end
+            y = y + 1
+        end
+        if linea
+            izq = x                       # la más a la izquierda: el borde del botón
+        end
+        x = x - 1
+    end
+    if izq > 0
+        return sw - izq + 2
+    end
+    return alto * 2 + 3
+end
+
+func pintar_titulo()
+    hora = date_text("%H:%M")
+    fecha = date_text("%a %d %b")
+    hay_tiempo = t_temp != -9999
+    s = alto - 4                         # el icono del tiempo
+    total = mem_chip_total() + mem_fast_total()
+    usada = 0
+    if total > 0
+        usada = (total - mem_total()) / (total / 1000)
+    end
+    var der: [String] = []
+    var der_c: [Int] = []
+    if cpu >= 0
+        der.push("CPU " + por_ciento(cpu))
+        der_c.push(c_barra_t)
+    end
+    der.push("MEM " + por_ciento(usada))
+    der_c.push(c_barra_t)
+    if temp >= 0
+        der.push(grados(temp))
+        if temp >= 700
+            der_c.push(C_CALIENTE)
+        else
+            der_c.push(c_barra_t)
+        end
+    end
+    t_avisos = ""
+    if n_avisos > 0
+        t_avisos = "#{n_avisos}"
+    end
+    # lo que mide todo
+    w = BORDE_T + font_text_width(hora) + SEP + font_text_width(fecha)
+    if hay_tiempo
+        w = w + SEP + s + 2 + font_text_width(grados(t_temp))
+    end
+    w = w + SEP + 10 + font_text_width(t_avisos)
+    for d in der
+        w = w + SEP + font_text_width(d)
+    end
+    w = w + SEP + 14 + BORDE_T
+    if w != ancho_t                      # a su sitio, pegada al botón de profundidad
+        x0 = sw - gad - w
+        if w > ancho_t
+            window_move(0, x0, 0)
+            window_resize(0, w, alto)
+        else
+            window_resize(0, w, alto)
+            window_move(0, x0, 0)
+        end
+        ancho_t = w
+    end
+    pluma(c_barra)
+    gfx_rect(0, 0, w - 1, alto - 1)
+    base = (alto - font_height()) / 2 + font_baseline()
+    x = BORDE_T
+    reloj_x1 = 0
+    pluma(c_barra_t)
+    gfx_text_at(x, base, hora)
+    x = x + font_text_width(hora) + SEP
+    gfx_text_at(x, base, fecha)
+    x = x + font_text_width(fecha) + SEP
+    if hay_tiempo
+        icono_tiempo(x + s / 2, alto / 2, s, t_codigo, t_de_dia, c_barra)
+        x = x + s + 2
+        pluma(c_barra_t)
+        gfx_text_at(x, base, grados(t_temp))
+        x = x + font_text_width(grados(t_temp)) + SEP
+    end
+    campana_t(x + 4, alto / 2, c_barra_t)
+    if n_avisos > 0
+        pluma(C_CALIENTE)
+        gfx_circle_fill(x + 8, 3, 2)
+        pluma(c_barra_t)
+        gfx_text_at(x + 11, base, t_avisos)
+    end
+    x = x + 10 + font_text_width(t_avisos)
+    reloj_x2 = x + SEP / 2
+    derecha_x = reloj_x2
+    x = x + SEP
+    i = 0
+    while i < der.length
+        pluma(der_c[i])
+        gfx_text_at(x, base, der[i])
+        x = x + font_text_width(der[i]) + SEP
+        i = i + 1
+    end
+    interruptores_t(x + 7, alto / 2, c_barra_t, c_barra)
+end
+
 func pintar()
+    if titulo
+        pintar_titulo()
+        return
+    end
     pluma(C_FONDO)
-    gfx_rect(0, 0, ancho - 1, ALTO - 1)
+    gfx_rect(0, 0, ancho - 1, alto - 1)
 
     # izquierda
     pildora_texto(MARGEN, "Trasfondo", C_ACENTO)
@@ -195,9 +347,9 @@ func pintar()
     end
     # el botón de los ajustes rápidos, del todo a la derecha
     x = ancho - MARGEN - (ICONO + RELLENO + 4)
-    y = (ALTO - ALTO_PILDORA) / 2
-    redondo(x, y, x + ICONO + RELLENO + 3, y + ALTO_PILDORA - 1, ALTO_PILDORA / 2, C_PILDORA)
-    interruptores(x + (ICONO + RELLENO + 4) / 2, ALTO / 2)
+    y = (alto - alto_p) / 2
+    redondo(x, y, x + ICONO + RELLENO + 3, y + alto_p - 1, alto_p / 2, C_PILDORA)
+    interruptores(x + (ICONO + RELLENO + 4) / 2, alto / 2)
     x = x - HUECO
     i = 0
     while i < textos.length
@@ -211,8 +363,8 @@ end
 
 Window Barra
     title ""
-    width 640
-    height 24
+    width 1
+    height 1
     left 0
     top 0
     borderless true
@@ -263,12 +415,35 @@ Main
             rapido = "\"" + carpeta + "TrasfondoRapido\""
         end
         tiempo_iniciar(ajuste("BARRA_CIUDAD", "CIUDAD", ""), ajuste("BARRA_LAT", "LAT", ""), ajuste("BARRA_LON", "LON", ""))
+        titulo = str_upper(ajuste("BARRA_ESTILO", "ESTILO", "COMPLETA")) == "TITULO"
+        tam = 13
+        if titulo                    # en la barra de título de la pantalla: su alto, sus colores
+            sw = ancho
+            alto = wm_bar_height() - 1     # (sin la línea de debajo de la barra de título)
+            tam = alto - 3
+            if tam < 8
+                tam = 8
+            end
+            if screen_pen_rgb(10) >= 0
+                c_barra = screen_pen_rgb(10)
+                c_barra_t = screen_pen_rgb(9)
+            end
+            gad = medir_botones()
+        end
         Barra.open
-        window_resize(0, ancho, ALTO)
+        if not titulo
+            window_resize(0, ancho, alto)
+        end
         gfx_mode(0)                  # el texto sin fondo: encima de las píldoras
-        fuente = font_open("CGTriumvirate.font", 13)
+        fuente = 0
+        if titulo and tam < 11               # tan pequeña, la escalada no se lee: la del sistema
+            fuente = font_open("topaz.font", 8)
+        end
         if fuente == 0
-            fuente = font_open("helvetica.font", 13)
+            fuente = font_open("CGTriumvirate.font", tam)
+        end
+        if fuente == 0
+            fuente = font_open("helvetica.font", tam)
         end
         if fuente != 0
             font_use(fuente)
