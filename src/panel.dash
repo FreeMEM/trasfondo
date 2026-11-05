@@ -334,6 +334,17 @@ func colores()
     C_CIRCULO = tema_color("BORDE", C_CIRCULO)
 end
 
+# antes de cerrar al pulsar fuera: que el clic acabe (el botón suelto y un poco más). Cerrar la ventana mientras el
+# Workbench atiende un clic en el escritorio paraba todo el sistema, también el ratón, casi un segundo (Coffin)
+func apartar()
+    k = 0
+    while mouse_button(0) and k < 100
+        time_delay(1)
+        k = k + 1
+    end
+    time_delay(3)
+end
+
 Main
     colores()
     if not single_instance("TrasfondoPanel")
@@ -357,6 +368,13 @@ Main
         Panel.open                   # de 1 x 1 en la esquina: a su sitio y luego a su tamaño (no se ve saltar)
         gfx_mode(0)                  # el texto sin fondo: encima de las tarjetas
         sx = (rtg_get_width() - ANCHO) / 2
+        px = Int(tooltype("X", "-1"))        # la barra en la de título: debajo de la hora (X, su izquierda)
+        if px >= 0
+            sx = px
+            if sx + ANCHO > rtg_get_width() - 6
+                sx = rtg_get_width() - 6 - ANCHO
+            end
+        end
         window_move(0, sx, ALTO_BARRA + 4)
         k = 0
         while (Panel.left != sx or Panel.top != ALTO_BARRA + 4) and k < 100
@@ -398,7 +416,8 @@ Main
                 Stop
             end
             On Inactive
-                Stop                         # se pulsó fuera
+                apartar()                    # se pulsó fuera
+                Stop
             end
             On Close
                 Stop

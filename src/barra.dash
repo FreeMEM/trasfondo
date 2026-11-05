@@ -479,7 +479,11 @@ Main
                 # si ya estaba abierto, se está cerrando él solo (se pulsó fuera de él): no se abre otra vez
                 if click_x() >= reloj_x1 and click_x() < reloj_x2
                     if not corriendo("TrasfondoPanel")
-                        run_program(panel)
+                        if titulo                # debajo de la hora, no en medio
+                            run_program(panel + " X=#{sw - gad - ancho_t}")
+                        else
+                            run_program(panel)
+                        end
                     end
                 elif click_x() >= derecha_x
                     if not corriendo("TrasfondoRapido")

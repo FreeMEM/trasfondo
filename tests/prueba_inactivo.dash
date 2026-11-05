@@ -1,0 +1,37 @@
+# Una ventana sin bordes que se cierra al pulsar fuera o con Esc (como el panel de la barra): cuánto tarda el cierre
+# (W.close), en DH0:inactivo.txt. Para el parón al pulsar en el escritorio de Coffin.
+Window W
+    title ""
+    width 560
+    height 340
+    left 360
+    top 30
+    borderless true
+    closegadget false
+    dragbar false
+    depthgadget false
+end
+
+Main
+    W.open
+    gfx_rect(0, 0, 559, 339)
+    como = ""
+    EventLoop
+        On Inactive
+            como = "fuera"
+            Stop
+        end
+        On Key "ESC"
+            como = "esc"
+            Stop
+        end
+    end
+    t0 = time_ms()
+    W.close
+    dt = time_ms() - t0
+    previo = file_read_text("DH0:inactivo.txt")
+    if previo == nil
+        previo = ""
+    end
+    ok = file_write_text("DH0:inactivo.txt", previo + como + " #{dt} ms\n")
+end

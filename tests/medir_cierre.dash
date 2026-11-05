@@ -1,0 +1,21 @@
+# Cuánto tarda en cerrarse una ventana del tamaño del panel de la barra (lo que se repinta debajo, con las capas de
+# la pantalla bloqueadas). En DH0:cierre.txt. Con tools/vista.py, con el fondo de Trasfondo y sin él.
+
+Main
+    t = ""
+    var sitios: [Int] = [232, 28, 660, 28]
+    k = 0
+    while k < 4
+        x = sitios[k % 2 * 2]
+        y = sitios[k % 2 * 2 + 1]
+        h = window_create("", x, y, 360 + (1 - k % 2) * 200, 340, 2 + 4 + 8)
+        time_delay(50)
+        t0 = time_ms()
+        window_close(h)
+        dt = time_ms() - t0
+        t = t + "cierre #{x} #{dt} ms\n"
+        time_delay(50)
+        k = k + 1
+    end
+    ok = file_write_text("DH0:cierre.txt", t)
+end

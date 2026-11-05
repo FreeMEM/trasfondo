@@ -280,6 +280,17 @@ func colores()
     C_PELIGRO = tema_color("PELIGRO", C_PELIGRO)
 end
 
+# antes de cerrar al pulsar fuera: que el clic acabe (el botón suelto y un poco más). Cerrar la ventana mientras el
+# Workbench atiende un clic en el escritorio paraba todo el sistema, también el ratón, casi un segundo (Coffin)
+func apartar()
+    k = 0
+    while mouse_button(0) and k < 100
+        time_delay(1)
+        k = k + 1
+    end
+    time_delay(3)
+end
+
 Main
     colores()
     if not single_instance("TrasfondoRapido")
@@ -320,7 +331,8 @@ Main
                 Stop
             end
             On Inactive
-                Stop                         # se pulsó fuera
+                apartar()                    # se pulsó fuera
+                Stop
             end
             On Close
                 Stop

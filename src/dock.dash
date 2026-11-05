@@ -1074,6 +1074,12 @@ Main
             end
             On Inactive
                 if menu != 0 and event_window() == menu
+                    k = 0                    # que acabe el clic de fuera antes de cerrarlo (ver apartar del panel)
+                    while mouse_button(0) and k < 100
+                        time_delay(1)
+                        k = k + 1
+                    end
+                    time_delay(3)
                     menu_cerrar()
                 end
             end
