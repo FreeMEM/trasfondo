@@ -244,21 +244,22 @@ func pintar_titulo()
         w = w + SEP + font_text_width(d)
     end
     w = w + SEP + 14 + BORDE_T
+    # solo crece: encoger y moverse son dos pasos, y entre uno y otro se veía una raya junto al botón de profundidad
+    # cada vez que cambiaba el ancho del texto de la CPU (Ferrán García). Lo que sobra queda a la izquierda
+    sobra = 0
+    if w < ancho_t
+        sobra = ancho_t - w
+        w = ancho_t
+    end
     if w != ancho_t                      # a su sitio, pegada al botón de profundidad
-        x0 = sw - gad - w
-        if w > ancho_t
-            window_move(0, x0, 0)
-            window_resize(0, w, alto)
-        else
-            window_resize(0, w, alto)
-            window_move(0, x0, 0)
-        end
+        window_move(0, sw - gad - w, 0)
+        window_resize(0, w, alto)
         ancho_t = w
     end
     pluma(c_barra)
     gfx_rect(0, 0, w - 1, alto - 1)
     base = (alto - font_height()) / 2 + font_baseline()
-    x = BORDE_T
+    x = BORDE_T + sobra
     reloj_x1 = 0
     pluma(c_barra_t)
     gfx_text_at(x, base, hora)
