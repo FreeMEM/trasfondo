@@ -18,6 +18,7 @@ import "avisos.dash"
 import "ajustes.dash"
 import "tema.dash"
 
+var formato_hora: String = "%H:%M"   # con segundos si SEGUNDOS=SI
 var alto: Int = 24           # alto de la barra (en la barra de título, el de ella)
 var alto_p: Int = 18         # el de una píldora
 const MARGEN = 6             # entre el borde de la pantalla y la primera píldora
@@ -205,7 +206,7 @@ func medir_botones() -> Int
 end
 
 func pintar_titulo()
-    hora = date_text("%H:%M")
+    hora = date_text(formato_hora)
     fecha = date_text("%a %d %b")
     hay_tiempo = t_temp != -9999
     s = alto - 4                         # el icono del tiempo
@@ -306,7 +307,7 @@ func pintar()
     pildora_texto(MARGEN, "Trasfondo", C_ACENTO)
 
     # centro: la hora, la fecha y el tiempo
-    hora = date_text("%H:%M")
+    hora = date_text(formato_hora)
     fecha = date_text("%A, %d %B")
     hay_tiempo = t_temp != -9999
     w = ancho_pildora(hora, false) + HUECO + ancho_pildora(fecha, false)
@@ -417,6 +418,9 @@ Main
         end
         tiempo_iniciar(ajuste("BARRA_CIUDAD", "CIUDAD", ""), ajuste("BARRA_LAT", "LAT", ""), ajuste("BARRA_LON", "LON", ""))
         titulo = str_upper(ajuste("BARRA_ESTILO", "ESTILO", "COMPLETA")) == "TITULO"
+        if str_upper(ajuste("SEGUNDOS", "SEGUNDOS", "NO")) == "SI"   # (se pinta cada segundo)
+            formato_hora = "%H:%M:%S"
+        end
         tam = 13
         if titulo                    # en la barra de título de la pantalla: su alto, sus colores
             sw = ancho

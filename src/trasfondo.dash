@@ -57,6 +57,8 @@ var c_b_tarea: Int = 1       # con el fondo fijo, las barras: lo que el velo mez
 var c_b_disco: Int = 1
 var c_b_wifi: Int = 1
 var cada: Int = 2            # segundos entre dos medidas (INTERVAL)
+var segundos: Bool = false   # la hora con segundos (SEGUNDOS): se repinta cada segundo (Ferrán García: si se
+                             # paran, es la primera señal de que algo va mal)
 var fijo: Bool = false       # fondo de un color, sin velo: no lee lo de debajo (en RTG por Zorro, mucho más barato)
 var f_r: Int = 16            # el color del fondo (COLOR)
 var f_g: Int = 24
@@ -259,6 +261,8 @@ func leer_aspecto()
         cada = 60
     end
     f = str_upper(conf("FONDO", tooltype("BACKGROUND", "VELO")))
+    s_seg = str_upper(conf("SEGUNDOS", tooltype("SECONDS", "NO")))
+    segundos = s_seg == "SI" or s_seg == "YES"
     posicion = str_upper(conf("POSICION", tooltype("POSITION", "ARRIBA_DERECHA")))
     fijo = f == "FIJO" or f == "SOLID"
     var rgb: [String] = str_split(conf("COLOR", "16,24,32"), ",")
@@ -536,11 +540,19 @@ func pintar_cpu(w: Int, yy: Int)
     end
 end
 
+# la hora, con segundos si se piden
+func formato_hora() -> String
+    if segundos
+        return "%H:%M:%S"
+    end
+    return "%H:%M"
+end
+
 # la fecha a la izquierda y la hora a la derecha, en el idioma del sistema (locale.library)
 func pintar_fecha(w: Int, yy: Int)
     gfx_pen(c_texto)
     gfx_text_at(6, yy + font_baseline(), date_text("%A %d-%b-%y"))
-    t = date_text("%H:%M")              # sin segundos: no obliga a nada que no se repinte ya
+    t = date_text(formato_hora())
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
 end
 
@@ -877,7 +889,7 @@ func firma(s: String) -> String
         end
         t = t + "|" + act_nueva()
     elif s == "fecha"
-        t = date_text("%A %d-%b-%y %H:%M")
+        t = date_text("%A %d-%b-%y " + formato_hora())
     elif s == "cpu"
         t = "#{time_ms()}"
     elif s == "grafica_memoria"
@@ -1150,6 +1162,12 @@ Main
                 if act_activo() and espera > 100       # bajando o consultando: vuelve pronto
                     espera = 100
                 end
+                if segundos and lienzo != 0               # con segundos, la hora cambia cada segundo
+                    hasta = 1000 - time_ms() % 1000
+                    if hasta < espera
+                        espera = hasta
+                    end
+                end
                 if espera < 1
                     espera = 1
                 end
@@ -1177,6 +1195,10 @@ Main
                     end
                 elif orden > 0
                     obedecer(orden)
+                elif time_ms() < proximo     # solo la hora (con segundos): lo que cambió
+                    if lienzo != 0
+                        repintar()
+                    end
                 else                         # tocaba medir
                     proximo = proximo + cada * 1000
                     if proximo < time_ms()

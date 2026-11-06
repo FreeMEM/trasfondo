@@ -454,6 +454,7 @@ func pagina(n: Int, linea_version: String)
         ciclo(y, tr(MSG_COLOR, "Colour"), "COLOR", nombres, opciones)
         y = y + fila + 2
         casilla(x, y, tr(MSG_BUSCAR, "Look for new versions on GitHub"), "BUSCAR")
+        casilla(x + columna, y, tr(MSG_SEGUNDOS, "Show the seconds"), "SEGUNDOS")   # (en el fondo y en la barra)
         y = y + fila + 2
         t_actualizar = tr(MSG_ACTUALIZAR, "Update")
         ancho_act = screen_font_text_width(t_actualizar) + 24
@@ -606,7 +607,7 @@ func fichero() -> String
     end
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
-    texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
+    texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
     var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
@@ -736,6 +737,7 @@ Main
     valores["COLOR"] = str_replace(conf("COLOR", "16,24,32"), " ", "")
     valores["POSICION"] = str_upper(conf("POSICION", "ARRIBA_DERECHA"))
     valores["BUSCAR"] = si(str_upper(conf("BUSCAR", "SI")) != "NO")
+    valores["SEGUNDOS"] = si(str_upper(conf("SEGUNDOS", "NO")) == "SI")
     valores["BARRA_ESTILO"] = str_upper(conf("BARRA_ESTILO", "COMPLETA"))
     valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
     valores["BARRA_LAT"] = conf("BARRA_LAT", "")

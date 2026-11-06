@@ -173,3 +173,5 @@ const MSG_ESTILO = 152
 const MSG_ESTILOS = 153
 # "Top right|Top left|Bottom right|Bottom left"
 const MSG_ESQUINAS = 154
+# "Show the seconds"
+const MSG_SEGUNDOS = 155
