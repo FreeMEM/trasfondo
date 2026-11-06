@@ -189,3 +189,19 @@ const MSG_B_MEMORIA = 162
 const MSG_B_TEMP = 163
 # "Shows"
 const MSG_B_ENSENA = 164
+# "Dock launchers: click one to choose it"
+const MSG_L_TITULO = 165
+# "Add..."
+const MSG_L_ANADIR = 166
+# "Remove"
+const MSG_L_QUITAR = 167
+# "Up"
+const MSG_L_SUBIR = 168
+# "Down"
+const MSG_L_BAJAR = 169
+# "OK"
+const MSG_L_ACEPTAR = 170
+# "Choose a program for the dock"
+const MSG_L_ELEGIR = 171
+# "The programs of the dock, in their order"
+const MSG_L_AYUDA = 172

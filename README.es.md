@@ -46,7 +46,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
 - **TrasfondoBarra**: una barra arriba con la hora, la fecha, el tiempo, la CPU y la memoria. Al pulsarla salen
   sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
   preferencias, red, memoria, reiniciar). Puede ser una barra entera arriba o ir dentro de la barra de título de
-  la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`).
+  la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`). En la
+  misma sección se elige qué enseña: la fecha, el tiempo, la CPU, la memoria y la temperatura (la hora, los
+  avisos y el botón de los ajustes salen siempre).
 - **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en
   la lista del panel. Por ejemplo, `Avisa "Copia hecha"`. La barra tiene además un puerto ARexx, `TRASFONDO`:
   `ADDRESS TRASFONDO 'NOTIFY TITLE="Copia hecha" TEXT="12 ficheros"'` deja un aviso, `COUNT` dice cuántos hay
@@ -55,7 +57,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa. Se fija un programa
   soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
   Si se pide (TrasfondoPrefs, o `ESCONDER=SI`), se esconde solo y deja una rayita en el borde: sale al llevar el
-  ratón allí.
+  ratón allí. Sus programas se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
+  (con el selector de ficheros), Quitar, Subir y Bajar.
 - **TrasfondoVentanas**: teclas para las ventanas (maximizar, mitades, restaurar, mosaico a mano o
   automático) y moverlas o cambiarlas de tamaño con Alt y el ratón.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
@@ -165,7 +168,9 @@ hasta que vuelvan a arrancar (quitar y volver a poner su marca en Arranque lo ha
 
 ### Desde Exchange
 
-Trasfondo es una commodity: sale en Exchange (`SYS:Tools/Commodities/Exchange`).
+Trasfondo es una commodity: sale en Exchange (`SYS:Tools/Commodities/Exchange`). La barra, el dock y las
+ventanas también salen: Eliminar las para; Ocultar o Desactivar esconden la barra y el dock, y Mostrar o
+Activar los traen.
 
 | Botón | Qué hace |
 |---|---|
@@ -188,6 +193,7 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 | `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
 | `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |
 | `COLOR=16,24,32` | Color del fondo, en rojo, verde y azul (de 0 a 255). |
+| `SEGUNDOS=SI` | La hora con segundos, en el fondo y en la barra (o "Ver los segundos" en TrasfondoPrefs). |
 | `POSICION=ABAJO_IZQUIERDA` | La esquina del panel: `ARRIBA_DERECHA` (la de siempre), `ARRIBA_IZQUIERDA`, `ABAJO_DERECHA` o `ABAJO_IZQUIERDA`. |
 | `CX_POPUP=NO` | Arranca oculto. |
 | `CX_PRIORITY=0` | Prioridad de la commodity. |

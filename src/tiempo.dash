@@ -114,10 +114,31 @@ func tiempo_hay() -> Bool
     return t_ciudad != "" or (t_lat != "" and t_lon != "")
 end
 
+# "Mijas, España" o "Mijas, ES": el nombre, y lo de después de la coma, para elegir entre lugares que se llaman igual
+func ciudad_nombre() -> String
+    c = str_find(t_ciudad, ",")
+    if c < 0
+        return str_trim(t_ciudad)
+    end
+    return str_trim(t_ciudad[0:c])
+end
+
+func ciudad_pista() -> String
+    c = str_find(t_ciudad, ",")
+    if c < 0
+        return ""
+    end
+    return str_lower(str_trim(t_ciudad[c + 1:t_ciudad.length]))
+end
+
 func tiempo_pedir()
     if t_lat == "" or t_lon == ""
         t_fase = 1
-        https_empezar("geocoding-api.open-meteo.com", "/v1/search?count=1&format=json&name=" + url(t_ciudad), T_TOPE)
+        cuantos = "1"
+        if ciudad_pista() != ""
+            cuantos = "10"
+        end
+        https_empezar("geocoding-api.open-meteo.com", "/v1/search?count=" + cuantos + "&format=json&name=" + url(ciudad_nombre()), T_TOPE)
     else
         t_fase = 2
         https_empezar("api.open-meteo.com", "/v1/forecast?latitude=" + t_lat + "&longitude=" + t_lon + "&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5", T_TOPE)
@@ -191,6 +212,29 @@ func tiempo_paso()
         https_soltar()
         if t_fase == 1
             r = str_find(j, "\"results\":[")
+            # con pista ("Mijas, ES"), el primer lugar cuyo país, código de país o región la lleva (Ferrán García)
+            pista = ciudad_pista()
+            if r >= 0 and pista != ""
+                lj = str_lower(j)
+                p = r
+                hallado = -1
+                while hallado < 0 and p >= 0
+                    p = str_find_from(lj, "{\"id\":", p + 1)
+                    if p >= 0
+                        fin = str_find_from(lj, "{\"id\":", p + 1)
+                        if fin < 0
+                            fin = lj.length
+                        end
+                        bloque = lj[p:fin]
+                        if str_contains(bloque, "\"country\":\"" + pista) or str_contains(bloque, "\"country_code\":\"" + pista + "\"") or str_contains(bloque, "\"admin1\":\"" + pista)
+                            hallado = p
+                        end
+                    end
+                end
+                if hallado >= 0
+                    r = hallado
+                end
+            end
             if r < 0
                 t_error = "place not found: " + t_ciudad
                 t_ciudad = ""                  # no se insiste

@@ -246,8 +246,8 @@ MSG_115
 Longitud
 ; Longitude
 MSG_116
-El tiempo: una ciudad, o latitud y longitud
-; The weather: a city, or latitude and longitude
+El tiempo: una ciudad en inglés (Valencia, o Valencia, ES), o lat. y long.
+; Weather: a city in English (Valencia, or Valencia, ES), or lat. and long.
 MSG_117
 Posición
 ; Position
@@ -386,3 +386,27 @@ Temperatura
 MSG_164
 Enseña
 ; Shows
+MSG_165
+Lanzadores del dock: pulsa uno para elegirlo
+; Dock launchers: click one to choose it
+MSG_166
+Añadir...
+; Add...
+MSG_167
+Quitar
+; Remove
+MSG_168
+Subir
+; Up
+MSG_169
+Bajar
+; Down
+MSG_170
+Aceptar
+; OK
+MSG_171
+Elige un programa para el dock
+; Choose a program for the dock
+MSG_172
+Los programas del dock, en su orden
+; The programs of the dock, in their order

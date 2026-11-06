@@ -47,6 +47,8 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
   (quick settings: preferences, network, memory, reboot). It can be a whole bar at the top or sit inside the
   screen's title bar, on the right, without covering it (TrasfondoPrefs, Bar section, "Style"; or `ESTILO=TITULO`).
+  The same section chooses what it shows: the date, the weather, the CPU, the memory and the temperature (the
+  time, the notifications and the quick settings button always show).
 - **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
   and keeps it in the panel's list. For example, `Avisa "Backup done"`. The bar also has an ARexx port,
   `TRASFONDO`: `ADDRESS TRASFONDO 'NOTIFY TITLE="Backup done" TEXT="12 files"'` leaves a notification, `COUNT`
@@ -56,7 +58,8 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   fitted to it. When the mouse is over one, its box lights up and the program's name shows. You pin a program by
   dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If
   you ask for it (TrasfondoPrefs, or `ESCONDER=SI`), it hides by itself and leaves a thin line at the edge: it
-  comes back when the mouse gets there.
+  comes back when the mouse gets there. Its programs are edited in TrasfondoPrefs, Dock section, "Launchers...":
+  a list with Add (with the file requester), Remove, Up and Down.
 - **TrasfondoVentanas**: keys for the windows (maximize, halves, restore, tiling by hand or automatic) and
   moving or resizing them with Alt and the mouse.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
@@ -166,7 +169,8 @@ start again (unticking and ticking them in Startup does it).
 
 ### From Exchange
 
-Trasfondo is a commodity: it shows up in Exchange (`SYS:Tools/Commodities/Exchange`).
+Trasfondo is a commodity: it shows up in Exchange (`SYS:Tools/Commodities/Exchange`). The bar, the dock and the
+windows do too: Remove stops them; Hide or Disable hide the bar and the dock, and Show or Enable bring them back.
 
 | Button | What it does |
 |---|---|
@@ -189,6 +193,7 @@ They are changed in the icon (Information, in the Icons menu) or given as argume
 | `INTERVAL=2` | How many seconds between measuring and repainting (1 to 60). |
 | `BACKGROUND=SOLID` | Solid background, without the see-through veil: uses less CPU. |
 | `COLOR=16,24,32` | Background colour, in red, green and blue (0 to 255). |
+| `SEGUNDOS=SI` | The time with seconds, on the backdrop and in the bar (or "Show the seconds" in TrasfondoPrefs). |
 | `POSICION=ABAJO_IZQUIERDA` | The panel's corner: `ARRIBA_DERECHA` (top right, the default), `ARRIBA_IZQUIERDA`, `ABAJO_DERECHA` or `ABAJO_IZQUIERDA`. |
 | `CX_POPUP=NO` | Starts hidden. |
 | `CX_PRIORITY=0` | Priority of the commodity. |

@@ -479,7 +479,7 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         campo(y, tr(MSG_LON, "Longitude"), "BARRA_LON")
         y = y + fila + 2
-        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_CIUDAD_AYUDA, "The weather: a city, or latitude and longitude"))
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_CIUDAD_AYUDA, "Weather: a city in English (Valencia, or Valencia, ES), or lat. and long."))
         y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen"))
     elif n == 2
@@ -492,7 +492,7 @@ func pagina(n: Int, linea_version: String)
         ancho_l = screen_font_text_width(t_lanz) + 24
         g_lanzadores = gt_button(x_campo, y, ancho_l, alto_boton, t_lanz)
         y = y + fila + 2
-        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_DOCK_AYUDA, "One program per line"))
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_L_AYUDA, "The programs of the dock, in their order"))
     elif n == 3
         numero(y, tr(MSG_HUECO, "Gap"), "VENTANAS_HUECO", ancho_n)
         casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_MOSAICO, "Tile new windows automatically"), "VENTANAS_MOSAICO")
@@ -661,18 +661,128 @@ func poner_arranque()
     end
 end
 
-# la lista de lanzadores del dock, en Ed (la de ENVARC:, que se copia luego a ENV:)
+# los lanzadores del dock, en una página de esta ventana (Ferrán García: "hacerlo en un fichero de texto es tan
+# siglo veinte"): una fila por programa (pulsarla la elige), Añadir con el selector de ficheros, Quitar, Subir y
+# Bajar; Aceptar los deja en ENVARC: y ENV:Trasfondo.dock, y el dock arranca otra vez al Usar o Guardar
+const FILAS_L = 8
+
 func editar_lanzadores()
-    if not file_exists("ENVARC:Trasfondo.dock")
-        lista = file_read_text("ENV:Trasfondo.dock")
-        if lista == nil or str_trim(lista) == ""
-            lista = DOCK_DE_SERIE
-        end
-        file_write_text("ENVARC:Trasfondo.dock", lista)
+    t = file_read_text("ENVARC:Trasfondo.dock")
+    if t == nil or str_trim(t) == ""
+        t = file_read_text("ENV:Trasfondo.dock")
     end
-    run_command("C:Ed \"ENVARC:Trasfondo.dock\"")
-    file_copy("ENVARC:Trasfondo.dock", "ENV:Trasfondo.dock")
-    dock_editado = true
+    if t == nil or str_trim(t) == ""
+        t = DOCK_DE_SERIE
+    end
+    var lista: [String] = []
+    for l in str_split(str_replace(t, "\r", ""), "\n")
+        if str_trim(l) != ""
+            lista.push(str_trim(l))
+        end
+    end
+    sel = 0
+    arriba = 0
+    while true
+        gt_init()
+        gfx_clear()
+        y = m
+        gt_text(m, y, ancho - m * 2, f + 6, "", tr(MSG_L_TITULO, "Dock launchers: click one to choose it"))
+        y = y + fila + 2
+        y_filas = y
+        alto_f = f + 4
+        var g_filas: [Int] = []
+        i = 0
+        while i < FILAS_L
+            k = arriba + i
+            texto = ""
+            if k < lista.length
+                texto = lista[k]
+                if k == sel
+                    texto = "> " + texto + " <"
+                end
+            end
+            g_filas.push(gt_button(m, y, ancho - m * 2 - 30, alto_f, texto))
+            y = y + alto_f + 1
+            i = i + 1
+        end
+        g_arriba = gt_button(ancho - m - 26, y_filas, 26, alto_f, "^")
+        g_abajo = gt_button(ancho - m - 26, y - alto_f - 1, 26, alto_f, "v")
+        y = y + 4
+        b4 = (ancho - m * 2 - 24) / 4
+        g_anadir = gt_button(m, y, b4, alto_boton, tr(MSG_L_ANADIR, "Add..."))
+        g_quitar = gt_button(m + b4 + 8, y, b4, alto_boton, tr(MSG_L_QUITAR, "Remove"))
+        g_subir = gt_button(m + (b4 + 8) * 2, y, b4, alto_boton, tr(MSG_L_SUBIR, "Up"))
+        g_bajar = gt_button(m + (b4 + 8) * 3, y, b4, alto_boton, tr(MSG_L_BAJAR, "Down"))
+        y = alto - m - alto_boton
+        b2 = (ancho - m * 2 - 8) / 2
+        g_aceptar = gt_button(m, y, b2, alto_boton, tr(MSG_L_ACEPTAR, "OK"))
+        g_volver = gt_button(m + b2 + 8, y, b2, alto_boton, tr(MSG_CANCELAR, "Cancel"))
+        gt_attach()
+        e = -1
+        while e == -1
+            e = gt_event()
+            if e == -1
+                time_delay(5)
+            end
+        end
+        if e == -2 or e == g_volver
+            return
+        elif e == g_aceptar
+            texto = ""
+            for l in lista
+                texto = texto + l + "\n"
+            end
+            file_write_text("ENVARC:Trasfondo.dock", texto)
+            file_write_text("ENV:Trasfondo.dock", texto)
+            dock_editado = true
+            return
+        elif e == g_anadir
+            if file_open_dialog(tr(MSG_L_ELEGIR, "Choose a program for the dock"), "")
+                r = file_fullpath()
+                if r != ""
+                    if lista.length == 0
+                        lista.push(r)
+                        sel = 0
+                    else
+                        lista.insert(sel + 1, r)
+                        sel = sel + 1
+                    end
+                end
+            end
+        elif e == g_quitar and sel < lista.length
+            lista.remove(sel)
+            if sel >= lista.length and sel > 0
+                sel = lista.length - 1
+            end
+        elif e == g_subir and sel > 0 and sel < lista.length
+            a = lista[sel - 1]
+            lista[sel - 1] = lista[sel]
+            lista[sel] = a
+            sel = sel - 1
+        elif e == g_bajar and sel + 1 < lista.length
+            a = lista[sel + 1]
+            lista[sel + 1] = lista[sel]
+            lista[sel] = a
+            sel = sel + 1
+        elif e == g_arriba and arriba > 0
+            arriba = arriba - 1
+        elif e == g_abajo and arriba + FILAS_L < lista.length
+            arriba = arriba + 1
+        else
+            i = 0
+            while i < FILAS_L
+                if e == g_filas[i] and arriba + i < lista.length
+                    sel = arriba + i
+                end
+                i = i + 1
+            end
+        end
+        if sel < arriba                  # la elegida, a la vista
+            arriba = sel
+        elif sel >= arriba + FILAS_L
+            arriba = sel - FILAS_L + 1
+        end
+    end
 end
 
 Main
@@ -926,7 +1036,9 @@ Main
             ultimo = ""
             pedido = time_ms()
         elif e == g_lanzadores and g_lanzadores >= 0
+            recoger()                        # (lo de la página, que se pinta otra vez al volver)
             editar_lanzadores()
+            pagina(seccion, linea_version)
         elif seccion == 4 and de_la_pagina(e)
             recoger()                        # (las muestras, al momento)
             muestras()
