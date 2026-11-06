@@ -10,7 +10,7 @@
 # sin ellos no hay tiempo.
 
 @workbench_output "NIL:"
-@version "TrasfondoBarra 2.5"
+@version "TrasfondoBarra 2.6"
 
 import "dibujo.dash"
 import "tiempo.dash"
@@ -428,7 +428,10 @@ Main
                 c_barra = screen_pen_rgb(10)
                 c_barra_t = screen_pen_rgb(9)
             end
-            gad = medir_botones()
+            gad = wm_bar_gadgets()          # dónde empiezan los botones de la pantalla, preguntado a ella
+            if gad <= 0
+                gad = medir_botones()           # (si no lo sabe: por los píxeles)
+            end
         end
         Barra.open
         if not titulo

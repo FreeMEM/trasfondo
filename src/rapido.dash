@@ -3,7 +3,7 @@
 # un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
 
 @workbench_output "NIL:"
-@version "TrasfondoRapido 2.5"
+@version "TrasfondoRapido 2.6"
 
 import "dibujo.dash"
 import "tema.dash"

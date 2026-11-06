@@ -3,7 +3,7 @@
 # Solo con RTG.
 
 @workbench_output "NIL:"
-@version "TrasfondoAviso 2.5"
+@version "TrasfondoAviso 2.6"
 
 import "dibujo.dash"
 import "avisos.dash"

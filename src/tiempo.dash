@@ -168,7 +168,13 @@ func tiempo_paso()
     end
     if t_fase == 0
         if time_ms() >= t_proxima
-            tiempo_pedir()
+            # sin pila TCP/IP en marcha no se abre la red: se cargaría bsdsocket.library de LIBS:, y MiamiDx, que
+            # pone la suya, tendría que quitarla antes de conectar (Ferrán García). Se mira otra vez en un minuto
+            if net_stack_running()
+                tiempo_pedir()
+            else
+                t_proxima = time_ms() + 60000
+            end
         end
         return
     end
@@ -177,6 +183,7 @@ func tiempo_paso()
     if e == HTTPS_FALLO
         t_error = s_error
         https_soltar()
+        net_release()                          # bsdsocket.library suelta hasta la próxima consulta
         t_fase = 0
         t_proxima = time_ms() + T_REINTENTO
     elif e == HTTPS_HECHO
@@ -187,6 +194,7 @@ func tiempo_paso()
             if r < 0
                 t_error = "place not found: " + t_ciudad
                 t_ciudad = ""                  # no se insiste
+                net_release()
                 t_fase = 0
                 return
             end
@@ -199,6 +207,7 @@ func tiempo_paso()
             tiempo_pedir()
         else
             tiempo_guardar(j)
+            net_release()
             t_fase = 0
             t_proxima = time_ms() + T_CADA
         end
