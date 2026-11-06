@@ -323,7 +323,7 @@ end
 Main
     if not single_instance("TrasfondoVentanas")
         Print "TrasfondoVentanas was already running: stopping it"
-    elif not cx_broker("TrasfondoVentanas", "TrasfondoVentanas 0.1", "Tiles, moves and sizes windows", 0)
+    elif not cx_broker("TrasfondoVentanas", program_version(), "Tiles, moves and sizes windows", 0)
         Print "TrasfondoVentanas: no commodities.library"
     else
         hueco = Int(ajuste("VENTANAS_HUECO", "HUECO", "4"))

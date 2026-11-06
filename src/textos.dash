@@ -175,3 +175,5 @@ const MSG_ESTILOS = 153
 const MSG_ESQUINAS = 154
 # "Show the seconds"
 const MSG_SEGUNDOS = 155
+# "Program launcher at the edge of the screen"
+const MSG_CX_DOCK = 157

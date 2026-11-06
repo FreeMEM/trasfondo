@@ -18,6 +18,7 @@ import "avisos.dash"
 import "ajustes.dash"
 import "tema.dash"
 
+var oculta: Bool = false     # escondida desde Exchange (Ocultar o Desactivar)
 var formato_hora: String = "%H:%M"   # con segundos si SEGUNDOS=SI
 var alto: Int = 24           # alto de la barra (en la barra de título, el de ella)
 var alto_p: Int = 18         # el de una píldora
@@ -296,6 +297,9 @@ func pintar_titulo()
 end
 
 func pintar()
+    if oculta                            # escondida desde Exchange
+        return
+    end
     if titulo
         pintar_titulo()
         return
@@ -406,6 +410,8 @@ Main
     else
         ancho = rtg_get_width()
         ok = rexx_port("TRASFONDO")   # los avisos de notify() y de los guiones ARexx
+        # en Exchange, como el fondo (Ferrán García): Quitar la para; Ocultar o Desactivar la esconden
+        ok = cx_broker("TrasfondoBarra", program_version(), "The bar at the top of the screen", 0)
         # PROGDIR: no vale en la orden: es de cada proceso, y el de run_program es otro
         if dir_change("PROGDIR:")
             carpeta = dir_current()
@@ -469,6 +475,21 @@ Main
             On Timer 200
                 if break_check()
                     Stop
+                end
+                c = cx_command()
+                if c == 5
+                    Stop
+                elif (c == 1 or c == 3) and not oculta
+                    oculta = true                # un punto en la esquina, sin pintar
+                    window_move(0, 0, 0)
+                    window_resize(0, 1, 1)
+                elif (c == 2 or c == 4) and oculta
+                    oculta = false
+                    ancho_t = 0                  # (pintar la pone otra vez en su sitio)
+                    if not titulo
+                        window_resize(0, ancho, alto)
+                    end
+                    pintar()
                 end
                 av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR)
                 tiempo_paso()

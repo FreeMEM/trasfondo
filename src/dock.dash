@@ -34,6 +34,7 @@ const ARRASTRE = 6           # lo que se mueve el ratón con el botón pulsado p
 const FUERA = 40             # un icono soltado a más de esto del dock sale de él
 const MANTENER = 500         # ms con el botón pulsado sin moverlo: el menú (el botón derecho va a la ventana activa)
 
+var apagado: Bool = false    # escondido desde Exchange (Ocultar o Desactivar)
 var C_DOCK: Int = 0x1b1e23
 var C_BORDE: Int = 0x30353d
 var C_TEXTO: Int = 0xe8eaed
@@ -940,6 +941,9 @@ end
 
 # cada décima de segundo: el nombre del icono de debajo del ratón y, si se esconde solo, cuándo
 func vigilar()
+    if apagado                           # escondido desde Exchange: hasta que lo muestre
+        return
+    end
     if escondido
         if raton_en_borde()
             mostrar_ya()
@@ -978,6 +982,8 @@ Main
     elif rtg_get_depth() < 15
         Print "TrasfondoDock needs an RTG screen (15 bits or more)"
     else
+        # en Exchange, como el fondo (Ferrán García): Quitar lo para; Ocultar o Desactivar lo esconden
+        ok = cx_broker("TrasfondoDock", program_version(), tr(MSG_CX_DOCK, "Program launcher at the edge of the screen"), 0)
         posicion = str_upper(ajuste("DOCK_POSICION", "POSICION", "ABAJO"))
         vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
         lado_min = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
@@ -1019,6 +1025,18 @@ Main
             On Timer 100
                 if break_check()
                     Stop
+                end
+                c = cx_command()
+                if c == 5
+                    Stop
+                elif (c == 1 or c == 3) and not apagado
+                    apagado = true
+                    if not escondido
+                        esconder_ya()
+                    end
+                elif (c == 2 or c == 4) and apagado
+                    apagado = false
+                    mostrar_ya()
                 end
                 vigilar()
                 tic = tic + 1
