@@ -9,7 +9,7 @@
 # lado mínimo de un icono, 40). Se para lanzándolo otra vez, o con Ctrl-C.
 
 @workbench_output "NIL:"
-@version "TrasfondoDock 2.7"
+@version "TrasfondoDock 2.8"
 @catalog "Trasfondo.catalog" 1       # el de Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "dibujo.dash"

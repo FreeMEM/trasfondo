@@ -245,7 +245,7 @@ MSG_115 (115//)
 Longitude
 ; MSG_CIUDAD_AYUDA
 MSG_116 (116//)
-The weather: a city, or latitude and longitude
+Weather: a city in English (Valencia, or Valencia, ES), or lat. and long.
 ; MSG_POSICION
 MSG_117 (117//)
 Position
@@ -306,9 +306,6 @@ Install Trasfondo with its installer to choose this
 ; MSG_RTG
 MSG_136 (136//)
 The bar, the dock and their panels need an RTG screen
-; MSG_DOCK_AYUDA
-MSG_137 (137//)
-One program per line
 ; MSG_FIJAR
 MSG_138 (138//)
 Keep in dock
@@ -360,3 +357,51 @@ Whole bar|In the title bar
 ; MSG_ESQUINAS
 MSG_154 (154//)
 Top right|Top left|Bottom right|Bottom left
+; MSG_SEGUNDOS
+MSG_155 (155//)
+Show the seconds
+; MSG_CX_DOCK
+MSG_157 (157//)
+Program launcher at the edge of the screen
+; MSG_B_FECHA
+MSG_159 (159//)
+Date
+; MSG_B_TIEMPO
+MSG_160 (160//)
+Weather
+; MSG_B_CPU
+MSG_161 (161//)
+CPU
+; MSG_B_MEMORIA
+MSG_162 (162//)
+Memory
+; MSG_B_TEMP
+MSG_163 (163//)
+Temperature
+; MSG_B_ENSENA
+MSG_164 (164//)
+Shows
+; MSG_L_TITULO
+MSG_165 (165//)
+Dock launchers: click one to choose it
+; MSG_L_ANADIR
+MSG_166 (166//)
+Add...
+; MSG_L_QUITAR
+MSG_167 (167//)
+Remove
+; MSG_L_SUBIR
+MSG_168 (168//)
+Up
+; MSG_L_BAJAR
+MSG_169 (169//)
+Down
+; MSG_L_ACEPTAR
+MSG_170 (170//)
+OK
+; MSG_L_ELEGIR
+MSG_171 (171//)
+Choose a program for the dock
+; MSG_L_AYUDA
+MSG_172 (172//)
+The programs of the dock, in their order
