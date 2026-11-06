@@ -18,6 +18,11 @@ import "avisos.dash"
 import "ajustes.dash"
 import "tema.dash"
 
+var ver_fecha: Bool = true    # lo que enseña la barra (BARRA_VER_*): la hora, los avisos y el botón, siempre
+var ver_tiempo: Bool = true
+var ver_cpu: Bool = true
+var ver_mem: Bool = true
+var ver_temp: Bool = true
 var oculta: Bool = false     # escondida desde Exchange (Ocultar o Desactivar)
 var formato_hora: String = "%H:%M"   # con segundos si SEGUNDOS=SI
 var alto: Int = 24           # alto de la barra (en la barra de título, el de ella)
@@ -208,8 +213,11 @@ end
 
 func pintar_titulo()
     hora = date_text(formato_hora)
-    fecha = date_text("%a %d %b")
-    hay_tiempo = t_temp != -9999
+    fecha = ""
+    if ver_fecha
+        fecha = date_text("%a %d %b")
+    end
+    hay_tiempo = t_temp != -9999 and ver_tiempo
     s = alto - 4                         # el icono del tiempo
     total = mem_chip_total() + mem_fast_total()
     usada = 0
@@ -218,13 +226,15 @@ func pintar_titulo()
     end
     var der: [String] = []
     var der_c: [Int] = []
-    if cpu >= 0
+    if cpu >= 0 and ver_cpu
         der.push("CPU " + por_ciento(cpu))
         der_c.push(c_barra_t)
     end
-    der.push("MEM " + por_ciento(usada))
-    der_c.push(c_barra_t)
-    if temp >= 0
+    if ver_mem
+        der.push("MEM " + por_ciento(usada))
+        der_c.push(c_barra_t)
+    end
+    if temp >= 0 and ver_temp
         der.push(grados(temp))
         if temp >= 700
             der_c.push(C_CALIENTE)
@@ -237,7 +247,10 @@ func pintar_titulo()
         t_avisos = "#{n_avisos}"
     end
     # lo que mide todo
-    w = BORDE_T + font_text_width(hora) + SEP + font_text_width(fecha)
+    w = BORDE_T + font_text_width(hora)
+    if fecha != ""
+        w = w + SEP + font_text_width(fecha)
+    end
     if hay_tiempo
         w = w + SEP + s + 2 + font_text_width(grados(t_temp))
     end
@@ -267,7 +280,9 @@ func pintar_titulo()
     gfx_text_at(x, base, hora)
     x = x + font_text_width(hora) + SEP
     gfx_text_at(x, base, fecha)
-    x = x + font_text_width(fecha) + SEP
+    if fecha != ""
+        x = x + font_text_width(fecha) + SEP
+    end
     if hay_tiempo
         icono_tiempo(x + s / 2, alto / 2, s, t_codigo, t_de_dia, c_barra)
         x = x + s + 2
@@ -312,17 +327,25 @@ func pintar()
 
     # centro: la hora, la fecha y el tiempo
     hora = date_text(formato_hora)
-    fecha = date_text("%A, %d %B")
-    hay_tiempo = t_temp != -9999
-    w = ancho_pildora(hora, false) + HUECO + ancho_pildora(fecha, false)
+    fecha = ""
+    if ver_fecha
+        fecha = date_text("%A, %d %B")
+    end
+    hay_tiempo = t_temp != -9999 and ver_tiempo
+    w = ancho_pildora(hora, false)
+    if fecha != ""
+        w = w + HUECO + ancho_pildora(fecha, false)
+    end
     if hay_tiempo
         w = w + HUECO + ancho_pildora(grados(t_temp), true)
     end
     w = w + HUECO + ancho_avisos()
     x = (ancho - w) / 2
     reloj_x1 = x
-    x = pildora_texto(x, hora, C_TEXTO) + HUECO
-    x = pildora_texto(x, fecha, C_TEXTO)
+    x = pildora_texto(x, hora, C_TEXTO)
+    if fecha != ""
+        x = pildora_texto(x + HUECO, fecha, C_TEXTO)
+    end
     if hay_tiempo
         x = pildora_tiempo(x + HUECO)
     end
@@ -337,7 +360,7 @@ func pintar()
     end
     var textos: [String] = []
     var colores: [Int] = []
-    if temp >= 0
+    if temp >= 0 and ver_temp
         textos.push(grados(temp))
         if temp >= 700
             colores.push(C_CALIENTE)
@@ -345,9 +368,11 @@ func pintar()
             colores.push(C_TEXTO)
         end
     end
-    textos.push("MEM " + por_ciento(usada))
-    colores.push(C_TEXTO)
-    if cpu >= 0
+    if ver_mem
+        textos.push("MEM " + por_ciento(usada))
+        colores.push(C_TEXTO)
+    end
+    if cpu >= 0 and ver_cpu
         textos.push("CPU " + por_ciento(cpu))
         colores.push(C_TEXTO)
     end
@@ -424,6 +449,12 @@ Main
         end
         tiempo_iniciar(ajuste("BARRA_CIUDAD", "CIUDAD", ""), ajuste("BARRA_LAT", "LAT", ""), ajuste("BARRA_LON", "LON", ""))
         titulo = str_upper(ajuste("BARRA_ESTILO", "ESTILO", "COMPLETA")) == "TITULO"
+        # lo que enseña (Ferrán García: la CPU, por ejemplo, ya puede estar en el fondo)
+        ver_fecha = str_upper(ajuste("BARRA_VER_FECHA", "VER_FECHA", "SI")) != "NO"
+        ver_tiempo = str_upper(ajuste("BARRA_VER_TIEMPO", "VER_TIEMPO", "SI")) != "NO"
+        ver_cpu = str_upper(ajuste("BARRA_VER_CPU", "VER_CPU", "SI")) != "NO"
+        ver_mem = str_upper(ajuste("BARRA_VER_MEMORIA", "VER_MEMORIA", "SI")) != "NO"
+        ver_temp = str_upper(ajuste("BARRA_VER_TEMPERATURA", "VER_TEMPERATURA", "SI")) != "NO"
         if str_upper(ajuste("SEGUNDOS", "SEGUNDOS", "NO")) == "SI"   # (se pinta cada segundo)
             formato_hora = "%H:%M:%S"
         end

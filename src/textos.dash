@@ -177,3 +177,15 @@ const MSG_ESQUINAS = 154
 const MSG_SEGUNDOS = 155
 # "Program launcher at the edge of the screen"
 const MSG_CX_DOCK = 157
+# "Date"
+const MSG_B_FECHA = 159
+# "Weather"
+const MSG_B_TIEMPO = 160
+# "CPU"
+const MSG_B_CPU = 161
+# "Memory"
+const MSG_B_MEMORIA = 162
+# "Temperature"
+const MSG_B_TEMP = 163
+# "Shows"
+const MSG_B_ENSENA = 164

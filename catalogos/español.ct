@@ -368,3 +368,21 @@ Ver los segundos
 MSG_157
 Lanzador de programas en el borde de la pantalla
 ; Program launcher at the edge of the screen
+MSG_159
+Fecha
+; Date
+MSG_160
+Tiempo
+; Weather
+MSG_161
+CPU
+; CPU
+MSG_162
+Memoria
+; Memory
+MSG_163
+Temperatura
+; Temperature
+MSG_164
+Enseña
+; Shows
