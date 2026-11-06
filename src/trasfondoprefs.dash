@@ -38,6 +38,7 @@ var antes_v: {String: String} = {}     # y como estaba al abrir
 var antes: [String] = []               # las secciones del fondo, en su orden
 var claves: [String] = ["fecha", "cpu", "temperatura", "memoria", "grafica_memoria", "tareas", "discos", "red", "grafica_red"]
 var dock_editado: Bool = false
+var arr_antes: {String: String} = {}   # las marcas de Arranque al abrir: Usar solo toca las que cambian
 
 # los gadgets de la página que se ve: su número, su ajuste, su clase y, los ciclos, sus valores (con |)
 var g_num: [Int] = []
@@ -643,6 +644,10 @@ func poner_arranque()
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         quiere = valores["ARR_" + p] == "SI"
+        # solo las que se cambiaron: una pieza arrancada después de abrir las Prefs no se para por estar sin marcar
+        if valores["ARR_" + p] == arr_antes["ARR_" + p]
+            continue
+        end
         if quiere
             if not en_arranque(p)
                 file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
@@ -885,6 +890,7 @@ Main
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)
+        arr_antes["ARR_" + p] = valores["ARR_" + p]
     end
     for k in valores.keys()
         antes_v[k] = valores[k]
