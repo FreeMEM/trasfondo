@@ -123,7 +123,7 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-2.8.1.lha` (from the
+1. Unpack `trasfondo-2.8.2.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
 2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
    and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**
