@@ -14,7 +14,7 @@
 # desde el icono no escribe nada: una ventana de consola taparía el panel (y la de "ya estaba en marcha",
 # con WAIT, se quedaría abierta)
 @workbench_output "NIL:"
-@version "Trasfondo 2.8"
+@version "Trasfondo 2.8.1"
 @catalog "Trasfondo.catalog" 1       # los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
@@ -315,7 +315,7 @@ func alto_seccion(s: String) -> Int
     elif s == "cpu"
         return ALTO_GRAFICA
     elif s == "temperatura"
-        if temp < 0
+        if temp < 0 or temp_en_titulo()  # (si cabe, va en la línea del título, junto a la CPU)
             return 0
         end
         return linea
@@ -621,6 +621,24 @@ func pintar_temperatura(w: Int, yy: Int)
     gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
 end
 
+# La temperatura cabe en la línea del título, entre el nombre y la CPU (Ferrán García), con lo más ancho que puede
+# ser cada cosa y el piloto de versión nueva; si no (una fuente ancha), va en su línea, como antes
+var temp_titulo: Int = -1        # -1 sin mirar, 0 no cabe, 1 cabe
+
+func temp_en_titulo() -> Bool
+    if temp_titulo < 0
+        font_style(2)
+        coma = tr(MSG_COMA, ".")
+        ancho = 6 + font_text_width("Trasfondo") + 8 + (linea / 3) * 2 + 10 + font_text_width("88" + coma + "8 °C") + 10 + font_text_width("CPU 100" + coma + "0 %") + 6
+        font_style(0)
+        temp_titulo = 0
+        if ancho <= ANCHO
+            temp_titulo = 1
+        end
+    end
+    return temp_titulo == 1
+end
+
 func pintar_memoria(w: Int, yy: Int)
     gfx_pen(c_texto)
     gfx_text_at(6, yy + font_baseline(), tr(MSG_CHIP, "Chip free"))
@@ -768,6 +786,25 @@ func pintar(x, y, w, h)
         font_style(2)
         gfx_pen(c_texto)
         gfx_text_at(6, yy + font_baseline(), "Trasfondo")
+        total = 0
+        if historia.length > 0
+            total = historia[historia.length - 1]
+        end
+        t = "CPU " + por_ciento(total)
+        x_cpu = w - 6 - font_text_width(t)
+        gfx_text_at(x_cpu, yy + font_baseline(), t)
+        # la temperatura de la Pi, entre el nombre y la CPU: es de la CPU y así no gasta otra línea (Ferrán García);
+        # desde 70 °C, en naranja
+        x_fin = x_cpu
+        if hay("temperatura") and temp >= 0 and temp_en_titulo()
+            tt = "#{temp / 10}" + tr(MSG_COMA, ".") + "#{temp % 10} °C"
+            x_fin = x_cpu - 10 - font_text_width(tt)
+            if temp >= 700
+                gfx_pen(c_caliente)
+            end
+            gfx_text_at(x_fin, yy + font_baseline(), tt)
+            gfx_pen(c_texto)
+        end
         nueva = act_nueva()
         if nueva != ""                   # hay una versión nueva: un piloto verde y su número (se instala desde TrasfondoPrefs)
             x = 6 + font_text_width("Trasfondo") + 8
@@ -775,16 +812,11 @@ func pintar(x, y, w, h)
             gfx_pen(c_verde)
             gfx_circle_fill(x + r, yy + linea / 2, r)
             font_style(0)
-            gfx_text_at(x + r * 2 + 4, yy + font_baseline(), nueva)
-            font_style(2)
+            if x + r * 2 + 4 + font_text_width(nueva) + 8 <= x_fin      # el número, si cabe con la temperatura
+                gfx_text_at(x + r * 2 + 4, yy + font_baseline(), nueva)
+            end
             gfx_pen(c_texto)
         end
-        total = 0
-        if historia.length > 0
-            total = historia[historia.length - 1]
-        end
-        t = "CPU " + por_ciento(total)
-        gfx_text_at(w - 6 - font_text_width(t), yy + font_baseline(), t)
         font_style(0)
     end
     yy = yy + linea
@@ -887,7 +919,7 @@ func firma(s: String) -> String
         if historia.length > 0
             t = por_ciento(historia[historia.length - 1])
         end
-        t = t + "|" + act_nueva()
+        t = t + "|" + act_nueva() + "|#{temp}"     # (la temperatura va en la línea del título)
     elif s == "fecha"
         t = date_text("%A %d-%b-%y " + formato_hora())
     elif s == "cpu"
