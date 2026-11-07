@@ -53,6 +53,8 @@ struct Item
     icono: Int = 0           # de icon_load; 0 sin icono: una tesela con la inicial
     fijo: Bool = false
     win: Int = 0             # su ventana de delante (wm_id), 0 si no está abierto
+    imagen: String = ""      # una imagen PNG para el dock (ruta|imagen en la lista, o la de WBDock), "" sin ella
+    img: Int = 0             # esa imagen ya a la medida de la casilla (image_from_decoded_size), 0 sin ella
 end
 
 var items: [Item] = []
@@ -121,19 +123,111 @@ func leer_fijos()
     for l in str_split(texto, "\n")
         l = str_trim(l)
         if l != "" and not str_starts(l, ";")
+            im = ""
+            barra = str_find(l, "|")             # ruta|imagen: una imagen PNG propia para el dock
+            if barra > 0
+                im = str_trim(l[barra + 1:l.length])
+                l = str_trim(l[0:barra])
+            end
             r = real(l)
             if buscar(r) < 0
-                items.push(Item(r, icon_load(r), true, 0))
+                it = Item(r, icon_load(r), true, 0)
+                it.imagen = im
+                if im == ""
+                    it.imagen = imagen_wbdock(r)
+                end
+                items.push(it)
             end
         end
     end
+end
+
+# Las imágenes de WBDock (el dock de CoffinOS: SYS:WBStartup/WBDock, una ruta y debajo "IMAGE fichero"): las usa
+# este dock para los programas que no tienen la suya, y así se ven igual de bien sin configurar nada
+var wb_rutas: [String] = []
+var wb_imagenes: [String] = []
+var wb_leido: Bool = false
+
+func leer_wbdock()
+    wb_leido = true
+    t = file_read_text("SYS:WBStartup/WBDock")
+    if t == nil
+        return
+    end
+    ruta = ""
+    for l in str_split(str_replace(t, "\r", ""), "\n")
+        l = str_trim(l)
+        if str_starts(str_upper(l), "IMAGE ")
+            if ruta != ""
+                wb_rutas.push(str_lower(real(ruta)))
+                wb_imagenes.push(str_trim(l[6:l.length]))
+            end
+            ruta = ""
+        elif l != "" and not str_starts(l, ";")
+            ruta = l
+        end
+    end
+end
+
+# la imagen de WBDock para un programa: por su ruta real o, si no, por su nombre
+func imagen_wbdock(r: String) -> String
+    if not wb_leido
+        leer_wbdock()
+    end
+    rl = str_lower(r)
+    for i in (0..wb_rutas.length - 1)
+        if wb_rutas[i] == rl
+            return wb_imagenes[i]
+        end
+    end
+    n = str_lower(nombre(r))
+    for i in (0..wb_rutas.length - 1)
+        if str_lower(nombre(wb_rutas[i])) == n
+            return wb_imagenes[i]
+        end
+    end
+    return ""
+end
+
+# su imagen, a la medida de la casilla (sin deformarla), si tiene y se puede leer
+func cargar_imagen(it: Item)
+    if it.img != 0 or it.imagen == "" or not file_exists(it.imagen)
+        return
+    end
+    d = image_decode(it.imagen, lado_min * 2, lado_min * 2)
+    if d == 0
+        return
+    end
+    w = image_decoded_width(d)
+    h = image_decoded_height(d)
+    if w > 0 and h > 0
+        if w >= h
+            h = h * lado_min / w
+            w = lado_min
+        else
+            w = w * lado_min / h
+            h = lado_min
+        end
+        if w < 1
+            w = 1
+        end
+        if h < 1
+            h = 1
+        end
+        it.img = image_from_decoded_size(d, w, h)
+    end
+    image_decoded_free(d)
 end
 
 func guardar()
     texto = ""
     for it in items
         if it.fijo
-            texto = texto + it.ruta + "\n"
+            texto = texto + it.ruta
+            if it.imagen != "" and it.imagen != imagen_wbdock(it.ruta)
+                texto = texto + "|" + it.imagen
+            end
+            texto = texto + "\n"
         end
     end
     ok = file_write_text(LISTA, texto)
@@ -368,7 +462,11 @@ func pintar_icono(i: Int)
     if i == encima
         redondo(x, y, x + cw - 1, y + ch - 1, 10, C_TESELA)
     end
-    if it.icono != 0
+    if it.img != 0                          # su imagen de dock, ya a la medida
+        w = image_width(it.img)
+        h = image_height(it.img)
+        image_draw(it.img, x + (cw - w) / 2, y + (ch - h) / 2)
+    elif it.icono != 0
         w = icon_width(it.icono)
         h = icon_height(it.icono)
         if w > lado_min or h > lado_min       # más grande que su sitio: más pequeño, sin deformarlo
@@ -509,7 +607,10 @@ func refrescar() -> Int
     items = nuevos
     for k in (0..ids.length - 1)
         if rutas[k] != "" and buscar(rutas[k]) < 0
-            items.push(Item(rutas[k], icon_load(rutas[k]), false, ids[k]))
+            nuevo = Item(rutas[k], icon_load(rutas[k]), false, ids[k])
+            nuevo.imagen = imagen_wbdock(rutas[k])
+            cargar_imagen(nuevo)
+            items.push(nuevo)
             estado = 2
         end
     end
@@ -593,7 +694,10 @@ func soltado(r0: String, x: Int, y: Int)
     end
     i = buscar(r)
     if i < 0
-        items.push(Item(r, icon_load(r), true, 0))
+        suelto = Item(r, icon_load(r), true, 0)
+        suelto.imagen = imagen_wbdock(r)
+        cargar_imagen(suelto)
+        items.push(suelto)
         i = items.length - 1
     end
     mover(i, hueco_en(x, y))
@@ -1009,6 +1113,7 @@ Main
         for it in items
             icon_free(it.icono)
             it.icono = icon_load(it.ruta)
+            cargar_imagen(it)
         end
         e = refrescar()
         caja()
