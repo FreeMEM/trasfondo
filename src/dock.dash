@@ -186,6 +186,11 @@ func imagen_wbdock(r: String) -> String
             return wb_imagenes[i]
         end
     end
+    # las imágenes de dock de Barjack (en CoffinOS), por el nombre del programa: "SGrab 01.png"
+    b = "System:Icons/Barjack/Docks/" + nombre(r) + " 01.png"
+    if file_exists(b)
+        return b
+    end
     return ""
 end
 
