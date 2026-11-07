@@ -713,11 +713,12 @@ func editar_lanzadores()
         g_arriba = gt_button(ancho - m - 26, y_filas, 26, alto_f, "^")
         g_abajo = gt_button(ancho - m - 26, y - alto_f - 1, 26, alto_f, "v")
         y = y + 4
-        b4 = (ancho - m * 2 - 24) / 4
+        b4 = (ancho - m * 2 - 32) / 5
         g_anadir = gt_button(m, y, b4, alto_boton, tr(MSG_L_ANADIR, "Add..."))
-        g_quitar = gt_button(m + b4 + 8, y, b4, alto_boton, tr(MSG_L_QUITAR, "Remove"))
-        g_subir = gt_button(m + (b4 + 8) * 2, y, b4, alto_boton, tr(MSG_L_SUBIR, "Up"))
-        g_bajar = gt_button(m + (b4 + 8) * 3, y, b4, alto_boton, tr(MSG_L_BAJAR, "Down"))
+        g_imagen = gt_button(m + b4 + 8, y, b4, alto_boton, tr(MSG_L_IMAGEN, "Picture..."))
+        g_quitar = gt_button(m + (b4 + 8) * 2, y, b4, alto_boton, tr(MSG_L_QUITAR, "Remove"))
+        g_subir = gt_button(m + (b4 + 8) * 3, y, b4, alto_boton, tr(MSG_L_SUBIR, "Up"))
+        g_bajar = gt_button(m + (b4 + 8) * 4, y, b4, alto_boton, tr(MSG_L_BAJAR, "Down"))
         y = alto - m - alto_boton
         b2 = (ancho - m * 2 - 8) / 2
         g_aceptar = gt_button(m, y, b2, alto_boton, tr(MSG_L_ACEPTAR, "OK"))
@@ -752,6 +753,18 @@ func editar_lanzadores()
                         lista.insert(sel + 1, r)
                         sel = sel + 1
                     end
+                end
+            end
+        elif e == g_imagen and sel < lista.length   # ruta|imagen: una imagen PNG propia para el dock
+            if file_open_dialog(tr(MSG_L_ELEGIR_IMAGEN, "Choose a picture (PNG) for this launcher"), "#?.png")
+                r = file_fullpath()
+                if r != ""
+                    ruta = lista[sel]
+                    barra = str_find(ruta, "|")
+                    if barra > 0
+                        ruta = ruta[0:barra]
+                    end
+                    lista[sel] = ruta + "|" + r
                 end
             end
         elif e == g_quitar and sel < lista.length
