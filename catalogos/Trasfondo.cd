@@ -405,3 +405,9 @@ Choose a program for the dock
 ; MSG_L_AYUDA
 MSG_172 (172//)
 The programs of the dock, in their order
+; MSG_L_IMAGEN
+MSG_173 (173//)
+Picture...
+; MSG_L_ELEGIR_IMAGEN
+MSG_174 (174//)
+Choose a picture (PNG) for this launcher
