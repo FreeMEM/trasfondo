@@ -5,7 +5,7 @@
 # también con Esc o al pulsar fuera. Solo con RTG.
 
 @workbench_output "NIL:"
-@version "TrasfondoPanel 2.8.2"
+@version "TrasfondoPanel 2.8.3"
 
 import "dibujo.dash"
 import "avisos.dash"
