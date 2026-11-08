@@ -663,8 +663,28 @@ func pintar_icono(i: Int)
     end
 end
 
+# el dock se compone fuera de la vista, en un bitmap como la pantalla, y se copia de una vez: así no se ve el fondo
+# tapando los iconos mientras se vuelven a dibujar (parpadeaba al pasar el ratón; lo contó JaviTecH)
+var oculto_w: Int = 0
+var oculto_h: Int = 0
+var oculto_ok: Bool = false
+
+func oculto_listo() -> Bool
+    if oculto_w != ancho or oculto_h != alto
+        oculto_ok = bitmap_create(0, ancho, alto, 0)
+        oculto_w = ancho
+        oculto_h = alto
+    end
+    return oculto_ok
+end
+
 # marca: el sitio donde caería lo que se arrastra (-1 ninguno)
 func pintar(marca: Int)
+    oculto = oculto_listo()
+    if oculto
+        bitmap_draw_to(0)
+        gfx_mode(0)                    # (el texto, sin fondo, como en la ventana)
+    end
     if transparente
         hacer_fondo()
     end
@@ -691,6 +711,10 @@ func pintar(marca: Int)
         else
             gfx_rect(p, RELLENO, p + 1, alto - RELLENO - 1)
         end
+    end
+    if oculto
+        bitmap_draw_screen()
+        bitmap_blit(0, 0, 0, ancho, alto, 0, 0)
     end
 end
 
