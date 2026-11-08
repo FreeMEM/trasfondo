@@ -39,6 +39,7 @@ var C_DOCK: Int = 0x1b1e23
 var C_BORDE: Int = 0x30353d
 var C_TEXTO: Int = 0xe8eaed
 var C_TESELA: Int = 0x3c414a
+var C_PLACA: Int = 0x262a31    # la placa de cada icono: entre el dock y C_TESELA
 var C_PUNTO: Int = 0x9aa0a6
 var C_MARCA: Int = 0x8ab4f8
 var C_MENU: Int = 0x2a2e35
@@ -563,17 +564,24 @@ func pintar_icono(i: Int)
     y = icono_y(i)
     cw = celda_w(i)
     ch = celda_h(i)
+    # todas con la misma placa: así se ven iguales aunque los iconos del Workbench midan cada uno una cosa
+    c = C_PLACA
     if i == encima
-        redondo(x, y, x + cw - 1, y + ch - 1, 10, C_TESELA)
+        c = C_TESELA
     end
+    redondo(x, y, x + cw - 1, y + ch - 1, 10, c)
     if it.img != 0                          # su imagen de dock, ya a la medida
         w = image_width(it.img)
         h = image_height(it.img)
         image_draw(it.img, x + (cw - w) / 2, y + (ch - h) / 2)
     elif it.icono != 0
+        # el icono, más grande o más pequeño hasta llenar su sitio por el lado más largo, sin deformarlo
         w = icon_width(it.icono)
         h = icon_height(it.icono)
-        if w > lado_min or h > lado_min       # más grande que su sitio: más pequeño, sin deformarlo
+        if w * 2 >= h * 3                   # uno de 1.3 o 3.x, dibujado para los píxeles de dos de alto de
+            h = h * 2                         # 640x256: en una pantalla de píxeles cuadrados sale aplastado
+        end
+        if w > 0 and h > 0
             if w >= h
                 h = h * lado_min / w
                 w = lado_min
@@ -581,19 +589,16 @@ func pintar_icono(i: Int)
                 w = w * lado_min / h
                 h = lado_min
             end
-            if h < 1
-                h = 1
-            end
-            if w < 1
-                w = 1
-            end
-            icon_draw_size(it.icono, x + (cw - w) / 2, y + (ch - h) / 2, w, h)
-        else
-            icon_draw(it.icono, x + (cw - w) / 2, y + (ch - h) / 2)
         end
+        if h < 1
+            h = 1
+        end
+        if w < 1
+            w = 1
+        end
+        icon_draw_size(it.icono, x + (cw - w) / 2, y + (ch - h) / 2, w, h)
     else
-        redondo(x + PAD, y + PAD, x + cw - 1 - PAD, y + ch - 1 - PAD, 10, C_TESELA)
-        font_use(f_inicial)
+        font_use(f_inicial)                 # sin icono: su inicial, sobre la misma placa
         font_style(2)
         centrado(x + cw / 2, y + ch / 2 - font_height() / 2 + font_baseline(), str_upper(nombre(it.ruta)[0:1]), C_TEXTO)
         font_style(0)
@@ -1240,11 +1245,20 @@ func vigilar()
     end
 end
 
+# a medio camino entre dos colores
+func mezcla(a: Int, b: Int) -> Int
+    r = (((a >> 16) & 255) + ((b >> 16) & 255)) / 2
+    g = (((a >> 8) & 255) + ((b >> 8) & 255)) / 2
+    z = ((a & 255) + (b & 255)) / 2
+    return (r << 16) | (g << 8) | z
+end
+
 func colores()
     C_DOCK = tema_color("PANEL", C_DOCK)
     C_BORDE = tema_color("BORDE", C_BORDE)
     C_TEXTO = tema_color("TEXTO", C_TEXTO)
     C_TESELA = tema_color("BOTON", C_TESELA)
+    C_PLACA = mezcla(C_DOCK, C_TESELA)
     C_PUNTO = tema_color("SUAVE", C_PUNTO)
     C_MARCA = tema_color("ACENTO", C_MARCA)
     C_MENU = tema_color("TARJETA", C_MENU)
