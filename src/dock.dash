@@ -74,6 +74,12 @@ var bajo: [Int] = []         # lo que hay detrás de las cuatro esquinas, R x R 
 var leido_en: Int = 0        # time_ms de la última vez que se leyeron las esquinas
 var fuera_de: [Int] = []     # unos puntos justo fuera del dock cuando se leyeron: si cambian (el Workbench pinta su
                              # imagen después de arrancar el dock, o se cambia el fondo), se leen otra vez
+var pendiente: [Int] = []    # un cambio de esos puntos visto en la mirada anterior: cuenta si sigue igual en esta
+var franja: [Int] = []       # el fondo a lo largo del borde donde va el dock, de punta a punta: las R filas de arriba y
+                             # las R de abajo (columnas, si va de lado); de ahí salen las esquinas cuando crece o
+                             # encoge, sin apartarse para leer lo que tapa (se veía encoger y crecer otra vez)
+var franja_de: Int = -1      # dónde empieza (dy; dx si va de lado) y su grueso (alto; ancho) al leerla
+var franja_grueso: Int = -1
 var wbrun: Bool = false
 var f_inicial: Int = 0
 var vistos_id: [Int] = []    # las ventanas ya vistas y la ruta de su programa (wm_path va al disco)
@@ -186,8 +192,9 @@ func imagen_wbdock(r: String) -> String
             return wb_imagenes[i]
         end
     end
-    # las imágenes de dock de Barjack (en CoffinOS), por el nombre del programa: "SGrab 01.png"
-    b = "System:Icons/Barjack/Docks/" + nombre(r) + " 01.png"
+    # las imágenes de dock de Barjack (en CoffinOS), por el nombre del programa: "SGrab 01.png". SYS:, no System:
+    # (el disco de arranque de CoffinOS): sin un volumen System, el sistema pedía meterlo
+    b = "SYS:Icons/Barjack/Docks/" + nombre(r) + " 01.png"
     if file_exists(b)
         return b
     end
@@ -366,53 +373,145 @@ end
 
 # ---- pintar ----
 
-# los puntos de alrededor del dock, junto a cada esquina, por fuera
+# los puntos de alrededor del dock, junto a cada esquina, por fuera; -1 el que tapa una ventana (un cajón abierto
+# hasta abajo, una que se arrastra, un menú...): no es el fondo
 func alrededor() -> [Int]
+    var fondos: [Int] = []
+    n = wm_read()
+    for i in (0..n - 1)
+        if (wm_flags(i) & 2) != 0
+            fondos.push(wm_id(i))
+        end
+    end
+    var xs: [Int] = [dx - 2, dx + R / 2, dx + ancho + 1, dx + ancho - R / 2, dx - 2, dx + R / 2, dx + ancho + 1,
+                     dx + ancho - R / 2]
+    var ys: [Int] = [dy + R / 2, dy - 2, dy + R / 2, dy - 2, dy + alto - R / 2, dy + alto + 1, dy + alto - R / 2,
+                     dy + alto + 1]
     var r: [Int] = []
-    r.push(screen_pixel_rgb(dx - 2, dy + R / 2))
-    r.push(screen_pixel_rgb(dx + R / 2, dy - 2))
-    r.push(screen_pixel_rgb(dx + ancho + 1, dy + R / 2))
-    r.push(screen_pixel_rgb(dx + ancho - R / 2, dy - 2))
-    r.push(screen_pixel_rgb(dx - 2, dy + alto - R / 2))
-    r.push(screen_pixel_rgb(dx + R / 2, dy + alto + 1))
-    r.push(screen_pixel_rgb(dx + ancho + 1, dy + alto - R / 2))
-    r.push(screen_pixel_rgb(dx + ancho - R / 2, dy + alto + 1))
+    for k in (0..7)
+        w = wm_at(xs[k], ys[k])
+        libre = w == 0
+        for f in fondos
+            if f == w
+                libre = true
+            end
+        end
+        if libre
+            r.push(screen_pixel_rgb(xs[k], ys[k]))
+        else
+            r.push(-1)
+        end
+    end
     return r
 end
 
-# ¿cambió lo de alrededor desde que se leyeron las esquinas?
+# ¿cambió el fondo de alrededor desde que se leyeron las esquinas? Solo cuenta un punto que se ve ahora y lo que
+# había cambiado ya en la mirada anterior y sigue igual: lo que pasa por encima un momento (iconos arrastrados,
+# una ventana movida, la selección) no hace mover el dock. Con un botón del ratón pulsado, nada.
 func cambio_alrededor() -> Bool
-    var ahora: [Int] = alrededor()
-    if ahora.length != fuera_de.length
-        return true
+    if mouse_button(0) or mouse_button(1)
+        return false
     end
-    for k in (0..ahora.length - 1)
-        if ahora[k] != fuera_de[k]
-            return true
+    var ahora: [Int] = alrededor()
+    distinto = ahora.length != fuera_de.length
+    if not distinto
+        for k in (0..ahora.length - 1)
+            if ahora[k] >= 0 and ahora[k] != fuera_de[k]
+                distinto = true
+            end
         end
     end
-    return false
+    if not distinto
+        pendiente = []
+        return false
+    end
+    igual_antes = pendiente.length == ahora.length
+    if igual_antes
+        for k in (0..ahora.length - 1)
+            if ahora[k] != pendiente[k]
+                igual_antes = false
+            end
+        end
+    end
+    pendiente = ahora
+    return igual_antes
+end
+
+# el fondo de la franja, con el dock donde no la tape
+func leer_franja()
+    franja = []
+    if vertical
+        for b in (0..1)
+            x0 = dx
+            if b == 1
+                x0 = dx + ancho - R
+            end
+            for i in (0..R - 1)
+                for y in (0..sh - 1)
+                    franja.push(screen_pixel_rgb(x0 + i, y))
+                end
+            end
+        end
+        franja_de = dx
+        franja_grueso = ancho
+    else
+        for b in (0..1)
+            y0 = dy
+            if b == 1
+                y0 = dy + alto - R
+            end
+            for j in (0..R - 1)
+                for x in (0..sw - 1)
+                    franja.push(screen_pixel_rgb(x, y0 + j))
+                end
+            end
+        end
+        franja_de = dy
+        franja_grueso = alto
+    end
+end
+
+# ¿sirve la franja para el dock de ahora? (otro grueso, por un icono más grande, u otro sitio: no)
+func franja_vale() -> Bool
+    if franja.length == 0
+        return false
+    end
+    if vertical
+        return franja_de == dx and franja_grueso == ancho
+    end
+    return franja_de == dy and franja_grueso == alto
+end
+
+# lo que hay detrás de las cuatro esquinas del dock, R x R cada una, sacado de la franja
+func bajo_de_franja()
+    bajo = []
+    for c in (0..3)
+        ox = 0
+        if c % 2 == 1
+            ox = ancho - R
+        end
+        oy = 0
+        if c >= 2
+            oy = alto - R
+        end
+        for j in (0..R - 1)
+            for i in (0..R - 1)
+                if vertical
+                    bajo.push(franja[((c % 2) * R + i) * sh + dy + oy + j])
+                else
+                    bajo.push(franja[((c / 2) * R + j) * sw + dx + ox + i])
+                end
+            end
+        end
+    end
 end
 
 # lo que hay en la pantalla detrás de las esquinas del dock, con la ventana sin taparlas
 func leer_bajo()
+    leer_franja()
+    bajo_de_franja()
     fuera_de = alrededor()
-    bajo = []
-    for c in (0..3)
-        ox = dx
-        if c % 2 == 1
-            ox = dx + ancho - R
-        end
-        oy = dy
-        if c >= 2
-            oy = dy + alto - R
-        end
-        for j in (0..R - 1)
-            for i in (0..R - 1)
-                bajo.push(screen_pixel_rgb(ox + i, oy + j))
-            end
-        end
-    end
+    pendiente = []
 end
 
 func pintar_esquinas()
@@ -550,8 +649,15 @@ func colocar()
     caja()
     window_resize(0, 40, 20)
     esperar_tamano(40, 20)
-    window_move(0, dx + (ancho - 40) / 2, dy + (alto - 20) / 2)
-    esperar_sitio(dx + (ancho - 40) / 2, dy + (alto - 20) / 2)
+    # (en medio del dock, si cabe entre las dos mitades de la franja; si no, en medio de la pantalla)
+    px = dx + (ancho - 40) / 2
+    py = dy + (alto - 20) / 2
+    if (vertical and ancho < 2 * R + 44) or (not vertical and alto < 2 * R + 24)
+        px = (sw - 40) / 2
+        py = (sh - 20) / 2
+    end
+    window_move(0, px, py)
+    esperar_sitio(px, py)
     time_delay(10)                     # (el Workbench repinta lo que deja ver)
     leer_bajo()
     window_move(0, dx, dy)
@@ -559,6 +665,67 @@ func colocar()
     window_resize(0, ancho, alto)
     esperar_tamano(ancho, alto)
     pintar(-1)
+end
+
+# a su sitio y tamaño nuevos sin apartarse (cuando entra o sale un programa): las esquinas, de la franja; si no
+# sirve, colocar(). Al crecer, primero se mueve; al encoger, primero cambia de tamaño (siempre dentro de la pantalla)
+func recolocar()
+    caja()
+    if not franja_vale()
+        colocar()
+        return
+    end
+    bajo_de_franja()
+    if ancho >= Dock.width and alto >= Dock.height
+        window_move(0, dx, dy)
+        esperar_sitio(dx, dy)
+        window_resize(0, ancho, alto)
+        esperar_tamano(ancho, alto)
+    else
+        window_resize(0, ancho, alto)
+        esperar_tamano(ancho, alto)
+        window_move(0, dx, dy)
+        esperar_sitio(dx, dy)
+    end
+    pintar(-1)
+    time_delay(10)                     # (el Workbench repinta lo que deja ver al encoger)
+    fuera_de = alrededor()
+    pendiente = []
+end
+
+# el punto de los programas abiertos, sin pintar todo el dock (que parpadea): su sitio con el color del dock y
+# su trozo de borde, y el punto si está abierto
+func pintar_puntos()
+    for i in (0..items.length - 1)
+        cx = 0
+        cy = 0
+        if vertical
+            cy = icono_y(i) + tam[i] / 2
+            cx = 3
+            if posicion == "DERECHA"
+                cx = ancho - 4
+            end
+        else
+            cx = icono_x(i) + tam[i] / 2
+            cy = alto - 3
+            if posicion == "ARRIBA"
+                cy = 2
+            end
+        end
+        pluma(C_DOCK)
+        gfx_rect(cx - 2, cy - 2, cx + 2, cy + 2)
+        if not vertical
+            pluma(C_BORDE)
+            if posicion == "ARRIBA"
+                gfx_rect(cx - 2, 0, cx + 2, 0)
+            else
+                gfx_rect(cx - 2, alto - 1, cx + 2, alto - 1)
+            end
+        end
+        if items[i].win != 0
+            punto(i)
+        end
+    end
 end
 
 # ---- los programas abiertos ----
@@ -867,7 +1034,7 @@ func menu_elegir(y: Int)
         n = items.length
         quitar(i)
         if items.length != n
-            colocar()
+            recolocar()
         else
             pintar(-1)
         end
@@ -1045,7 +1212,7 @@ func mostrar_ya()
     lejos_desde = 0
     window_move(0, dx, dy)             # antes de crecer, donde quepa (pegada al borde no puede)
     esperar_sitio(dx, dy)
-    colocar()
+    recolocar()
 end
 
 # cada décima de segundo: el nombre del icono de debajo del ratón y, si se esconde solo, cuándo
@@ -1164,11 +1331,14 @@ Main
                     if menu == 0 and time_ms() - leido_en > 2000
                         releer = cambio_alrededor()
                     end
-                    if cambio or e == 2 or releer
+                    if releer
                         colocar()
                         leido_en = time_ms()
+                    elif cambio or e == 2
+                        recolocar()
+                        leido_en = time_ms()
                     elif e == 1
-                        pintar(-1)
+                        pintar_puntos()
                     end
                 end
             end
@@ -1181,7 +1351,7 @@ Main
                     if i >= 0
                         a = arrastrar(i)
                         if a == 1
-                            colocar()
+                            recolocar()
                         elif a == 2
                             menu_abrir(i)
                         else
