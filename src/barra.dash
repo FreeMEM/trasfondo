@@ -10,7 +10,7 @@
 # sin ellos no hay tiempo.
 
 @workbench_output "NIL:"
-@version "TrasfondoBarra 2.8.4"
+@version "TrasfondoBarra 2.8.5"
 
 import "dibujo.dash"
 import "tiempo.dash"
