@@ -413,3 +413,9 @@ Imagen...
 MSG_174
 Elige una imagen (PNG) para este lanzador
 ; Choose a picture (PNG) for this launcher
+MSG_175
+Del tema|Transparente|Color
+; Theme|See-through|Colour
+MSG_176
+Color (R,G,B)
+; Colour (R,G,B)

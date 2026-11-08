@@ -5,8 +5,9 @@
 # o abrir otro. Un icono soltado encima desde el Workbench se fija donde cae; arrastrando un icono fijado se cambia
 # de sitio, y sacándolo del dock se quita. Las esquinas dejan ver lo que hay detrás. Solo con RTG.
 #
-# Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no) e ICONO (el
-# lado mínimo de un icono, 40). Se para lanzándolo otra vez, o con Ctrl-C.
+# Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no), ICONO (el
+# lado mínimo de un icono, 40), HUECO (entre dos iconos, 4), FONDO (TEMA, TRANSPARENTE o COLOR) y COLOR (R,G,B).
+# Se para lanzándolo otra vez, o con Ctrl-C.
 
 @workbench_output "NIL:"
 @version "TrasfondoDock 2.8.4"
@@ -23,7 +24,7 @@ const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock
 const ALTO_BARRA = 24        # la barra de arriba: el dock de arriba o de los lados sale debajo
 const MARGEN = 6             # entre el dock y el borde de la pantalla
 const RELLENO = 6            # dentro del dock, alrededor de las casillas
-const HUECO = 4              # entre dos casillas
+const HUECO = 4              # entre dos casillas, si no se dice otro (DOCK_HUECO)
 const PAD = 5                # dentro de una casilla, alrededor del icono
 const R = 16                 # radio del dock
 const PILDORA = 64           # escondido: lo largo de la rayita que queda en el borde
@@ -40,6 +41,9 @@ var C_BORDE: Int = 0x30353d
 var C_TEXTO: Int = 0xe8eaed
 var C_TESELA: Int = 0x3c414a
 var C_PLACA: Int = 0x262a31    # la placa de cada icono: entre el dock y C_TESELA
+var hueco: Int = HUECO       # entre dos casillas
+var transparente: Bool = false   # DOCK_FONDO=TRANSPARENTE: sin placa de fondo, se ve el escritorio
+var img_fondo: Int = 0       # transparente: lo que hay detrás del dock, ya hecho imagen (0 sin hacer)
 var C_PUNTO: Int = 0x9aa0a6
 var C_MARCA: Int = 0x8ab4f8
 var C_MENU: Int = 0x2a2e35
@@ -280,7 +284,7 @@ func medir()
         end
         pos.push(p)
         tam.push(mide(i, true))
-        p = p + mide(i, true) + HUECO
+        p = p + mide(i, true) + hueco
     end
 end
 
@@ -347,11 +351,11 @@ func icono_en(x: Int, y: Int) -> Int
         p = y
         q = x
     end
-    if q < RELLENO - HUECO or q >= RELLENO + lado + HUECO
+    if q < RELLENO - hueco or q >= RELLENO + lado + hueco
         return -1
     end
     for i in (0..items.length - 1)
-        if p >= pos[i] - HUECO / 2 and p < pos[i] + tam[i] + HUECO / 2
+        if p >= pos[i] - hueco / 2 and p < pos[i] + tam[i] + hueco / 2
             return i
         end
     end
@@ -439,32 +443,54 @@ func cambio_alrededor() -> Bool
 end
 
 # el fondo de la franja, con el dock donde no la tape
+# cuántas filas (columnas, si va de lado) lee la franja: las de las esquinas, R arriba y R abajo; transparente, todas
+func lineas_franja(grueso: Int) -> Int
+    if transparente
+        return grueso
+    end
+    return 2 * R
+end
+
+# la fila (columna) del dock que es la línea l de la franja
+func linea_franja(l: Int, grueso: Int) -> Int
+    if transparente or l < R
+        return l
+    end
+    return grueso - 2 * R + l
+end
+
+# el color de la pantalla detrás del punto (x, y) del dock, sacado de la franja (que vale y tiene esa línea)
+func franja_px(x: Int, y: Int) -> Int
+    if vertical
+        c = x
+        if not transparente and x >= R
+            c = R + x - (ancho - R)
+        end
+        return franja[c * sh + dy + y]
+    end
+    r = y
+    if not transparente and y >= R
+        r = R + y - (alto - R)
+    end
+    return franja[r * sw + dx + x]
+end
+
 func leer_franja()
     franja = []
     if vertical
-        for b in (0..1)
-            x0 = dx
-            if b == 1
-                x0 = dx + ancho - R
-            end
-            for i in (0..R - 1)
-                for y in (0..sh - 1)
-                    franja.push(screen_pixel_rgb(x0 + i, y))
-                end
+        for l in (0..lineas_franja(ancho) - 1)
+            x0 = dx + linea_franja(l, ancho)
+            for y in (0..sh - 1)
+                franja.push(screen_pixel_rgb(x0, y))
             end
         end
         franja_de = dx
         franja_grueso = ancho
     else
-        for b in (0..1)
-            y0 = dy
-            if b == 1
-                y0 = dy + alto - R
-            end
-            for j in (0..R - 1)
-                for x in (0..sw - 1)
-                    franja.push(screen_pixel_rgb(x, y0 + j))
-                end
+        for l in (0..lineas_franja(alto) - 1)
+            y0 = dy + linea_franja(l, alto)
+            for x in (0..sw - 1)
+                franja.push(screen_pixel_rgb(x, y0))
             end
         end
         franja_de = dy
@@ -485,6 +511,7 @@ end
 
 # lo que hay detrás de las cuatro esquinas del dock, R x R cada una, sacado de la franja
 func bajo_de_franja()
+    soltar_fondo()
     bajo = []
     for c in (0..3)
         ox = 0
@@ -497,13 +524,41 @@ func bajo_de_franja()
         end
         for j in (0..R - 1)
             for i in (0..R - 1)
-                if vertical
-                    bajo.push(franja[((c % 2) * R + i) * sh + dy + oy + j])
-                else
-                    bajo.push(franja[((c / 2) * R + j) * sw + dx + ox + i])
-                end
+                bajo.push(franja_px(ox + i, oy + j))
             end
         end
+    end
+end
+
+# transparente: lo que hay detrás del dock, como imagen, de la franja (se hace al pintar, ya con la ventana)
+func hacer_fondo()
+    if img_fondo != 0 or not franja_vale()
+        return
+    end
+    b = buffer_alloc(ancho * alto * 3)
+    if b == 0
+        return
+    end
+    o = 0
+    for y in (0..alto - 1)
+        for x in (0..ancho - 1)
+            c = franja_px(x, y)
+            if c < 0
+                c = 0
+            end
+            buffer_set_word(b, o, c >> 8)
+            buffer_set_byte(b, o + 2, c & 255)
+            o = o + 3
+        end
+    end
+    img_fondo = image_from_rgb(b, ancho, alto, false)
+    buffer_free(b)
+end
+
+func soltar_fondo()
+    if img_fondo != 0
+        image_free(img_fondo)
+        img_fondo = 0
     end
 end
 
@@ -610,18 +665,25 @@ end
 
 # marca: el sitio donde caería lo que se arrastra (-1 ninguno)
 func pintar(marca: Int)
-    pintar_esquinas()
-    redondo(0, 0, ancho - 1, alto - 1, R, C_BORDE)
-    redondo(1, 1, ancho - 2, alto - 2, R - 1, C_DOCK)
+    if transparente
+        hacer_fondo()
+    end
+    if img_fondo != 0
+        image_draw(img_fondo, 0, 0)
+    else
+        pintar_esquinas()
+        redondo(0, 0, ancho - 1, alto - 1, R, C_BORDE)
+        redondo(1, 1, ancho - 2, alto - 2, R - 1, C_DOCK)
+    end
     for i in (0..items.length - 1)
         pintar_icono(i)
     end
     if marca >= 0
         p = RELLENO / 2
         if marca < items.length
-            p = pos[marca] - HUECO / 2 - 1
+            p = pos[marca] - hueco / 2 - 1
         elif items.length > 0
-            p = pos[items.length - 1] + tam[items.length - 1] + HUECO / 2 - 1
+            p = pos[items.length - 1] + tam[items.length - 1] + hueco / 2 - 1
         end
         pluma(C_MARCA)
         if vertical
@@ -657,7 +719,7 @@ func colocar()
     # (en medio del dock, si cabe entre las dos mitades de la franja; si no, en medio de la pantalla)
     px = dx + (ancho - 40) / 2
     py = dy + (alto - 20) / 2
-    if (vertical and ancho < 2 * R + 44) or (not vertical and alto < 2 * R + 24)
+    if transparente or (vertical and ancho < 2 * R + 44) or (not vertical and alto < 2 * R + 24)
         px = (sw - 40) / 2
         py = (sh - 20) / 2
     end
@@ -701,6 +763,10 @@ end
 # el punto de los programas abiertos, sin pintar todo el dock (que parpadea): su sitio con el color del dock y
 # su trozo de borde, y el punto si está abierto
 func pintar_puntos()
+    if transparente                    # el fondo no es de un color: todo de nuevo (es copiar la imagen)
+        pintar(-1)
+        return
+    end
     for i in (0..items.length - 1)
         cx = 0
         cy = 0
@@ -1253,11 +1319,46 @@ func mezcla(a: Int, b: Int) -> Int
     return (r << 16) | (g << 8) | z
 end
 
+# un color escrito R,G,B (0 a 255 cada uno), como 0xRRGGBB; -1 si no lo es
+func color_rgb(t: String) -> Int
+    var p: [String] = str_split(str_replace(t, " ", ""), ",")
+    if p.length != 3
+        return -1
+    end
+    c = 0
+    for s in p
+        if s == ""
+            return -1
+        end
+        n = Int(s)
+        if n < 0 or n > 255
+            return -1
+        end
+        c = (c << 8) | n
+    end
+    return c
+end
+
 func colores()
     C_DOCK = tema_color("PANEL", C_DOCK)
     C_BORDE = tema_color("BORDE", C_BORDE)
     C_TEXTO = tema_color("TEXTO", C_TEXTO)
     C_TESELA = tema_color("BOTON", C_TESELA)
+    hueco = Int(ajuste("DOCK_HUECO", "HUECO", "4"))
+    if hueco < 0
+        hueco = 0
+    elif hueco > 64
+        hueco = 64
+    end
+    fondo = str_upper(ajuste("DOCK_FONDO", "FONDO", "TEMA"))
+    transparente = fondo == "TRANSPARENTE"
+    if fondo == "COLOR"
+        c = color_rgb(ajuste("DOCK_COLOR", "COLOR", ""))
+        if c >= 0
+            C_DOCK = c
+            C_BORDE = mezcla(c, C_TESELA)
+        end
+    end
     C_PLACA = mezcla(C_DOCK, C_TESELA)
     C_PUNTO = tema_color("SUAVE", C_PUNTO)
     C_MARCA = tema_color("ACENTO", C_MARCA)

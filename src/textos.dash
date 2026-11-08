@@ -209,3 +209,7 @@ const MSG_L_AYUDA = 172
 const MSG_L_IMAGEN = 173
 # "Choose a picture (PNG) for this launcher"
 const MSG_L_ELEGIR_IMAGEN = 174
+# "Theme|See-through|Colour"
+const MSG_D_FONDOS = 175
+# "Colour (R,G,B)"
+const MSG_D_COLOR = 176

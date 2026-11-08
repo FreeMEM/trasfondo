@@ -58,7 +58,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
   Si se pide (TrasfondoPrefs, o `ESCONDER=SI`), se esconde solo y deja una rayita en el borde: sale al llevar el
   ratón allí. Sus programas se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
-  (con el selector de ficheros), Quitar, Subir y Bajar.
+  (con el selector de ficheros), Quitar, Subir y Bajar. En la misma sección, el hueco entre los iconos y el fondo:
+  el del tema, transparente (se ve el escritorio y quedan solo las placas de los iconos) o de un color R,G,B.
 - **TrasfondoVentanas**: teclas para las ventanas (maximizar, mitades, restaurar, mosaico a mano o
   automático) y moverlas o cambiarlas de tamaño con Alt y el ratón.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,

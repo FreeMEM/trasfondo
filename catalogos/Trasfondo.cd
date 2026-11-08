@@ -411,3 +411,9 @@ Picture...
 ; MSG_L_ELEGIR_IMAGEN
 MSG_174 (174//)
 Choose a picture (PNG) for this launcher
+; MSG_D_FONDOS
+MSG_175 (175//)
+Theme|See-through|Colour
+; MSG_D_COLOR
+MSG_176 (176//)
+Colour (R,G,B)

@@ -59,7 +59,9 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If
   you ask for it (TrasfondoPrefs, or `ESCONDER=SI`), it hides by itself and leaves a thin line at the edge: it
   comes back when the mouse gets there. Its programs are edited in TrasfondoPrefs, Dock section, "Launchers...":
-  a list with Add (with the file requester), Remove, Up and Down.
+  a list with Add (with the file requester), Remove, Up and Down. In the same section, the gap between the icons
+  and the background: the theme's, see-through (the desktop shows and only the icons' plates are left) or an
+  R,G,B colour.
 - **TrasfondoVentanas**: keys for the windows (maximize, halves, restore, tiling by hand or automatic) and
   moving or resizing them with Alt and the mouse.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
