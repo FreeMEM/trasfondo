@@ -10,7 +10,7 @@
 # Se para lanzándolo otra vez, o con Ctrl-C.
 
 @workbench_output "NIL:"
-@version "TrasfondoDock 2.8.5"
+@version "TrasfondoDock 2.8.6"
 @catalog "Trasfondo.catalog" 1       # el de Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "dibujo.dash"
