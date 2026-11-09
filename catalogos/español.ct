@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (08.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (09.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -419,3 +419,9 @@ Del tema|Transparente|Color
 MSG_176
 Color (R,G,B)
 ; Colour (R,G,B)
+MSG_177
+Tecla de captura
+; Screenshot key
+MSG_178
+Capturas en
+; Screenshots to

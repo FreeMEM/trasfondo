@@ -487,6 +487,11 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_CIUDAD_AYUDA, "Weather: a city in English (Valencia, or Valencia, ES), or lat. and long."))
         y = y + fila + 2
+        # las capturas de la pantalla (JaviTecH): la tecla y dónde van; también desde los ajustes rápidos
+        campo(y, tr(MSG_CAPTURA_TECLA, "Screenshot key"), "CAPTURA_TECLA")
+        y = y + fila + 2
+        campo(y, tr(MSG_CAPTURA_CARPETA, "Screenshots to"), "CAPTURA_CARPETA")
+        y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen"))
     elif n == 2
         ciclo(y, tr(MSG_POSICION, "Position"), "DOCK_POSICION", tr(MSG_POSICIONES, "Bottom|Top|Left|Right"), "ABAJO|ARRIBA|IZQUIERDA|DERECHA")
@@ -572,6 +577,10 @@ func alto_ventana() -> Int
     if ventanas > fondo
         fondo = ventanas
     end
+    barra = m + fila + hueco + 10 * (fila + 2)
+    if barra > fondo
+        fondo = barra
+    end
     return fondo + hueco * 2 + alto_boton + m
 end
 
@@ -630,7 +639,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -891,6 +900,8 @@ Main
     valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
     valores["BARRA_LAT"] = conf("BARRA_LAT", "")
     valores["BARRA_LON"] = conf("BARRA_LON", "")
+    valores["CAPTURA_TECLA"] = conf("CAPTURA_TECLA", "ctrl lalt s")
+    valores["CAPTURA_CARPETA"] = conf("CAPTURA_CARPETA", "RAM:")
     for k in ["FECHA", "TIEMPO", "CPU", "MEMORIA", "TEMPERATURA"]
         valores["BARRA_VER_" + k] = si(str_upper(conf("BARRA_VER_" + k, "SI")) != "NO")
     end

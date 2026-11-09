@@ -17,6 +17,7 @@ import "tiempo.dash"
 import "avisos.dash"
 import "ajustes.dash"
 import "tema.dash"
+import "captura.dash"
 
 var ver_fecha: Bool = true    # lo que enseña la barra (BARRA_VER_*): la hora, los avisos y el botón, siempre
 var ver_tiempo: Bool = true
@@ -58,6 +59,7 @@ var sw: Int = 0              # el ancho de la pantalla
 var gad: Int = 0             # lo que ocupa el botón de profundidad de la pantalla, a la derecha
 var c_barra: Int = 0xaaaaaa  # los colores de la barra de título: su fondo y su texto
 var c_barra_t: Int = 0x000000
+var captura_en: Int = 0       # time_ms en que toca la captura pedida; 0, ninguna (JaviTecH)
 
 # el ancho de una píldora con ese texto (y un icono delante, si icono)
 func ancho_pildora(texto: String, icono: Bool) -> Int
@@ -437,6 +439,11 @@ Main
         ok = rexx_port("TRASFONDO")   # los avisos de notify() y de los guiones ARexx
         # en Exchange, como el fondo (Ferrán García): Quitar la para; Ocultar o Desactivar la esconden
         ok = cx_broker("TrasfondoBarra", program_version(), "The bar at the top of the screen", 0)
+        # las capturas (JaviTecH): su tecla
+        tecla = ajuste("CAPTURA_TECLA", "SCREENSHOT_KEY", "ctrl lalt s")
+        if tecla != "" and not cx_hotkey(tecla)
+            Print "TrasfondoBarra: the screenshot key is not valid: " + tecla
+        end
         # PROGDIR: no vale en la orden: es de cada proceso, y el de run_program es otro
         if dir_change("PROGDIR:")
             carpeta = dir_current()
@@ -508,6 +515,9 @@ Main
                     Stop
                 end
                 c = cx_command()
+                if c == 6                        # la tecla de las capturas
+                    captura_en = time_ms()
+                end
                 if c == 5
                     Stop
                 elif (c == 1 or c == 3) and not oculta
@@ -522,7 +532,15 @@ Main
                     end
                     pintar()
                 end
-                av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR)
+                av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR, SCREENSHOT)
+                if av_captura                # la orden SCREENSHOT de un guion: en un momento
+                    av_captura = false
+                    captura_en = time_ms() + 800
+                end
+                if captura_en != 0 and time_ms() >= captura_en
+                    captura_en = 0
+                    capturar()
+                end
                 tiempo_paso()
                 tic = tic + 1
                 if tic >= 5

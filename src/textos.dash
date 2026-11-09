@@ -213,3 +213,6 @@ const MSG_L_ELEGIR_IMAGEN = 174
 const MSG_D_FONDOS = 175
 # "Colour (R,G,B)"
 const MSG_D_COLOR = 176
+# las capturas de pantalla (JaviTecH)
+const MSG_CAPTURA_TECLA = 177
+const MSG_CAPTURA_CARPETA = 178
