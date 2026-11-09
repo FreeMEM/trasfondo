@@ -54,6 +54,10 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   `TRASFONDO`: `ADDRESS TRASFONDO 'NOTIFY TITLE="Backup done" TEXT="12 files"'` leaves a notification, `COUNT`
   says how many there are (in `RESULT`) and `CLEAR` removes them. Programs written in Dash notify with
   `notify(title, text)`.
+- **Screenshots** (asked for by JaviTecH): Ctrl + left Alt + S, the camera button in the quick settings, or
+  `ADDRESS TRASFONDO 'SCREENSHOT'` save the screen in front as a PNG, named with the date and time
+  (`Trasfondo-20261109-192634.png`). They go to `RAM:` unless another folder is set; the key and the folder are
+  in TrasfondoPrefs, Bar section. A notification says where the picture went.
 - **TrasfondoDock**: a dock with the open programs and the ones you pin, each in an equal box with its icon
   fitted to it. When the mouse is over one, its box lights up and the program's name shows. You pin a program by
   dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If

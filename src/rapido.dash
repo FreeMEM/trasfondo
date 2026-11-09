@@ -1,5 +1,5 @@
 # TrasfondoRapido: el panel de ajustes rápidos que abre la barra desde su derecha. Arriba la máquina (memoria) con
-# los botones de Prefs y de reiniciar; en medio la red, los discos y la memoria; abajo, los Prefs del sistema a
+# los botones de captura, Prefs y reiniciar; en medio la red, los discos y la memoria; abajo, los Prefs del sistema a
 # un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
 
 @workbench_output "NIL:"
@@ -7,8 +7,9 @@
 
 import "dibujo.dash"
 import "tema.dash"
+import "captura.dash"
 
-const ANCHO = 360
+const ANCHO = 400
 const ALTO = 300            # = PREFS_Y + dos filas de Prefs + el margen
 const ALTO_BARRA = 24
 const M = 12
@@ -38,8 +39,10 @@ const PREFS_Y = TARJETAS_Y + 2 * (TARJETA_ALTO + 8)
 
 var f_normal: Int = 0
 var f_negrita: Int = 0
-var b_prefs_x: Int = 0       # dónde están los botones de arriba
+var b_captura_x: Int = 0     # dónde están los botones de arriba
+var b_prefs_x: Int = 0
 var b_reiniciar_x: Int = 0
+var captura: Bool = false    # se pulsó la cámara: la captura, ya cerrado el panel
 var confirmar: Bool = false  # se pulsó reiniciar una vez: la segunda reinicia
 var confirmar_desde: Int = 0 # time_ms de la primera (un doble clic no cuenta como dos)
 
@@ -77,6 +80,17 @@ func engranaje(cx: Int, cy: Int, rgb: Int, fondo: Int)
     gfx_circle_fill(cx, cy, 3)
 end
 
+# una cámara de fotos
+func camara(cx: Int, cy: Int, rgb: Int, fondo: Int)
+    pluma(rgb)
+    redondo(cx - 9, cy - 5, cx + 9, cy + 7, 3, rgb)
+    gfx_rect(cx - 4, cy - 8, cx + 3, cy - 5)
+    pluma(fondo)
+    gfx_circle_fill(cx, cy + 1, 4)
+    pluma(rgb)
+    gfx_circle_fill(cx, cy + 1, 2)
+end
+
 # el símbolo de encender
 func encendido(cx: Int, cy: Int, rgb: Int, fondo: Int)
     pluma(rgb)
@@ -110,10 +124,13 @@ func pintar_cabecera()
         texto = "Click again to restart"
     end
     gfx_text_at(M + 62, CABECERA_Y + 36 + font_baseline(), texto)
-    # los botones: Prefs y reiniciar
+    # los botones: captura (JaviTecH), Prefs y reiniciar
     y = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
     b_reiniciar_x = ANCHO - M - 12 - BOTON
     b_prefs_x = b_reiniciar_x - 8 - BOTON
+    b_captura_x = b_prefs_x - 8 - BOTON
+    redondo(b_captura_x, y, b_captura_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
+    camara(b_captura_x + BOTON / 2, y + BOTON / 2, C_TEXTO, C_BOTON)
     redondo(b_prefs_x, y, b_prefs_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
     engranaje(b_prefs_x + BOTON / 2, y + BOTON / 2, C_TEXTO, C_BOTON)
     color = C_BOTON
@@ -217,6 +234,10 @@ end
 func pulsar(x: Int, y: Int) -> Bool
     by = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
     if y >= by and y < by + BOTON
+        if x >= b_captura_x and x < b_captura_x + BOTON
+            captura = true
+            return true
+        end
         if x >= b_prefs_x and x < b_prefs_x + BOTON
             run_program("C:WBRun SYS:Prefs")
             return true
@@ -337,6 +358,11 @@ Main
             On Close
                 Stop
             end
+        end
+        if captura                   # sin el panel delante
+            Rapido.close
+            time_delay(25)
+            capturar()
         end
     end
 end

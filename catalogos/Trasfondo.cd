@@ -417,3 +417,9 @@ Theme|See-through|Colour
 ; MSG_D_COLOR
 MSG_176 (176//)
 Colour (R,G,B)
+; MSG_CAPTURA_TECLA
+MSG_177 (177//)
+Screenshot key
+; MSG_CAPTURA_CARPETA
+MSG_178 (178//)
+Screenshots to

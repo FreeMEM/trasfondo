@@ -1,0 +1,26 @@
+# Las capturas de la pantalla (JaviTecH): la de delante, tal como se ve, a un PNG en la carpeta de los ajustes
+# (CAPTURA_CARPETA, RAM: de serie), con la fecha y la hora en el nombre; un aviso dice dónde quedó. Las hacen la
+# barra (su tecla, CAPTURA_TECLA, y la orden SCREENSHOT de su puerto) y los ajustes rápidos (su botón).
+
+import "ajustes.dash"
+import "avisos.dash"
+
+func captura_carpeta() -> String
+    c = ajuste("CAPTURA_CARPETA", "SCREENSHOT_DIR", "RAM:")
+    if c == ""
+        return "RAM:"
+    end
+    if not str_ends(c, ":") and not str_ends(c, "/")
+        return c + "/"
+    end
+    return c
+end
+
+func capturar()
+    nombre = captura_carpeta() + "Trasfondo-" + date_text("%Y%m%d-%H%M%S") + ".png"
+    if screen_save_png(nombre)
+        avisos_nuevo("Trasfondo", "Screenshot saved", nombre)
+    else
+        avisos_nuevo("Trasfondo", "Screenshot not saved", "Not enough memory, or cannot write " + nombre)
+    end
+end

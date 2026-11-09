@@ -53,6 +53,10 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   la lista del panel. Por ejemplo, `Avisa "Copia hecha"`. La barra tiene además un puerto ARexx, `TRASFONDO`:
   `ADDRESS TRASFONDO 'NOTIFY TITLE="Copia hecha" TEXT="12 ficheros"'` deja un aviso, `COUNT` dice cuántos hay
   (en `RESULT`) y `CLEAR` los quita. Los programas escritos en Dash avisan con `notify(titulo, texto)`.
+- **Capturas de pantalla** (las pidió JaviTecH): Ctrl + Alt izquierdo + S, el botón de la cámara en los ajustes
+  rápidos o `ADDRESS TRASFONDO 'SCREENSHOT'` guardan la pantalla de delante como PNG, con la fecha y la hora en el
+  nombre (`Trasfondo-20261109-192634.png`). Van a `RAM:` si no se elige otra carpeta; la tecla y la carpeta están
+  en TrasfondoPrefs, sección Barra. Un aviso dice dónde quedó la imagen.
 - **TrasfondoDock**: un dock con los programas abiertos y los que fijes, cada uno en una casilla igual, con su
   icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa. Se fija un programa
   soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.

@@ -10,6 +10,7 @@ var av_hora: [String] = []
 var av_de: [String] = []
 var av_titulo: [String] = []
 var av_texto: [String] = []
+var av_captura: Bool = false     # llegó SCREENSHOT: la barra hace la captura en cuanto puede
 
 # un texto que se pueda guardar en una línea con tabuladores
 func av_limpio(t: String) -> String
@@ -81,6 +82,8 @@ end
 #   NOTIFY TITLE="..." [TEXT="..."] [FROM="..."]   (o NOTIFY "título" "texto" "quién"; también TITULO, TEXTO, DE)
 #   COUNT                                          cuántos avisos hay (en RESULT)
 #   CLEAR                                          los quita todos
+#   SCREENSHOT                                     una captura de la pantalla de delante, en un momento (CAPTURA
+#                                                  también; la hace la barra, que es la que tiene el puerto)
 # Lo que manda notify() de Dash, y lo que quiera cualquier guion: ADDRESS TRASFONDO 'NOTIFY "Copia hecha"'.
 
 # las palabras de una orden, con las comillas quitadas ("a b" es una)
@@ -172,6 +175,9 @@ func av_orden(orden: String)
         rexx_reply(0, "#{avisos_cuantos()}")
     elif que == "CLEAR"
         file_delete(AVISOS)
+        rexx_reply(0, "")
+    elif que == "SCREENSHOT" or que == "CAPTURA"
+        av_captura = true
         rexx_reply(0, "")
     else
         rexx_reply(10, "")
