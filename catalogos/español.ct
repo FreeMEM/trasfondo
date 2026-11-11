@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (11.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (12.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -428,3 +428,39 @@ Capturas en
 MSG_179
 Unidades
 ; Disks shown
+MSG_300
+Maximizar
+; Maximize
+MSG_301
+Como estaba
+; Restore
+MSG_302
+Mitad izquierda
+; Left half
+MSG_303
+Mitad derecha
+; Right half
+MSG_304
+Cuarto de arriba a la izquierda
+; Top left quarter
+MSG_305
+Cuarto de arriba a la derecha
+; Top right quarter
+MSG_306
+Cuarto de abajo a la izquierda
+; Bottom left quarter
+MSG_307
+Cuarto de abajo a la derecha
+; Bottom right quarter
+MSG_308
+Delante de todas
+; Bring to front
+MSG_309
+Detrás de todas
+; Send to back
+MSG_310
+Encoger / agrandar
+; Shrink / grow (zoom)
+MSG_311
+Cerrar
+; Close

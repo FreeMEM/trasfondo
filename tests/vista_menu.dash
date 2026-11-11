@@ -1,0 +1,19 @@
+# Para ver el menú de ventana (lo lanza tests/vista_menu.py con capturas): dos ventanas y el clic central en la
+# barra de título de la de delante; el menú queda abierto un rato, con la tercera opción bajo el puntero.
+
+Main
+    run_program("DH0:ventanas")
+    time_delay(100)
+    b = window_create("Shell", 30, 30, 360, 150, 1)
+    a = window_create("Notas", 200, 70, 300, 140, 1)
+    time_delay(50)
+    input_move_screen(320, 75, 0)
+    time_delay(5)
+    input_button(3, true)
+    input_button(3, false)
+    time_delay(20)
+    input_move_screen(340, 125, 0)
+    time_delay(3000)
+    window_close(a)
+    window_close(b)
+end

@@ -1,0 +1,159 @@
+# Prueba de TrasfondoVentanas con el ratón (la lanza tests/prueba_ventanas.py, con DH0:ventanas): arrastrar una
+# ventana por su barra de título y soltarla contra un borde la encaja (izquierda: la mitad; esquina de arriba a la
+# derecha: ese cuarto; arriba: entera); arrastrarla otra vez lejos recupera su tamaño; un doble clic en la barra la
+# maximiza y otro la deja como estaba. El clic central en la barra abre el menú de la ventana: con flechas y
+# Return, la mitad izquierda; Esc lo cierra sin hacer nada; un clic en "Close" pide al programa que la cierre. Los
+# clics y arrastres van por input.device, como los de una persona.
+
+var sw: Int = 640
+var sh: Int = 256
+
+func propia() -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_title(i) == "Prueba" and wm_flags(i) & 32 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+func caja() -> String
+    i = propia()
+    return "#{wm_box(i, 0)},#{wm_box(i, 1)} #{wm_box(i, 2)}x#{wm_box(i, 3)}"
+end
+
+# arrastra la ventana por su barra de título hasta (x, y) del puntero, como una persona: pulsar, mover y soltar
+func arrastrar(x: Int, y: Int)
+    i = propia()
+    px = wm_box(i, 0) + (wm_box(i, 12) + wm_box(i, 13)) / 2
+    py = wm_box(i, 1) + wm_box(i, 9) / 2
+    input_move_screen(px, py, 0)
+    time_delay(5)
+    input_button(1, true)
+    time_delay(5)
+    input_move_screen(x, y, 1)
+    time_delay(5)
+    input_button(1, false)
+    time_delay(40)
+end
+
+# clic central en la barra de título: el menú
+func menu()
+    i = propia()
+    px = wm_box(i, 0) + (wm_box(i, 12) + wm_box(i, 13)) / 2
+    py = wm_box(i, 1) + wm_box(i, 9) / 2
+    input_move_screen(px, py, 0)
+    time_delay(5)
+    input_button(3, true)
+    input_button(3, false)
+    time_delay(30)
+end
+
+# la ventana del menú (sin título, de TrasfondoVentanas): su índice, o -1
+func el_menu() -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_task(i) == "ventanas" and wm_flags(i) & 4 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+func doble_clic()
+    i = propia()
+    px = wm_box(i, 0) + (wm_box(i, 12) + wm_box(i, 13)) / 2
+    py = wm_box(i, 1) + wm_box(i, 9) / 2
+    input_move_screen(px, py, 0)
+    time_delay(5)
+    input_button(1, true)
+    input_button(1, false)
+    time_delay(3)
+    input_button(1, true)
+    input_button(1, false)
+    time_delay(40)
+end
+
+Main
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    Print "pantalla #{sw}x#{sh}"
+    run_program("DH0:ventanas")
+    time_delay(150)
+    a = window_create("Prueba", 100, 60, 200, 100, 1)
+    time_delay(50)
+    Print "al abrir " + caja()
+    arrastrar(0, sh / 2)
+    i = propia()
+    Print "izquierda #{wm_box(i, 0) < 10} #{abs(wm_box(i, 2) - sw / 2) < 12} #{wm_box(i, 3) > sh / 2}  " + caja()
+    arrastrar(sw / 2, sh / 2)
+    i = propia()
+    Print "recupera #{wm_box(i, 2) == 200 and wm_box(i, 3) == 100}  " + caja()
+    doble_clic()
+    i = propia()
+    Print "maximizada #{wm_box(i, 2) > sw - 20 and wm_box(i, 3) > sh - 40}  " + caja()
+    doble_clic()
+    i = propia()
+    Print "como estaba #{wm_box(i, 2) == 200 and wm_box(i, 3) == 100}  " + caja()
+    arrastrar(sw - 1, 20)
+    i = propia()
+    Print "cuarto #{wm_box(i, 0) > sw / 2 - 10} #{abs(wm_box(i, 2) - sw / 2) < 12} #{wm_box(i, 3) < sh / 2 + 4}  " + caja()
+    arrastrar(sw / 2, 0)
+    i = propia()
+    Print "arriba #{wm_box(i, 2) > sw - 20}  " + caja()
+    # como estaba (doble clic) y el menú: Abajo, Abajo, Return = mitad izquierda
+    doble_clic()
+    menu()
+    Print "menu abierto #{el_menu() >= 0}"
+    input_key(0x4D, 0)
+    time_delay(5)
+    input_key(0x4D, 0)
+    time_delay(5)
+    input_key(0x44, 0)
+    time_delay(40)
+    i = propia()
+    Print "menu izquierda #{el_menu() < 0} #{wm_box(i, 0) < 10} #{abs(wm_box(i, 2) - sw / 2) < 12}  " + caja()
+    antes = caja()
+    menu()
+    input_key(0x45, 0)
+    time_delay(30)
+    Print "menu esc #{el_menu() < 0} #{caja() == antes}"
+    menu()
+    m = el_menu()
+    # "Close", la última opción: un clic en ella
+    input_move_screen(wm_box(m, 0) + 20, wm_box(m, 1) + wm_box(m, 3) - 10, 0)
+    time_delay(10)
+    input_button(1, true)
+    input_button(1, false)
+    time_delay(40)
+    n = 0
+    cerrar = false
+    while n < 50 and not cerrar
+        ok = window_use(a)
+        cerrar = window_check_close()
+        time_delay(2)
+        n = n + 1
+    end
+    Print "menu cerrar #{cerrar}"
+    window_close(a)
+    # Alt+Tab: con "Dos" activa (la última abierta), Alt+Tab va a "Uno" y otra vez a "Dos"
+    b = window_create("Uno", 60, 40, 200, 80, 1)
+    c = window_create("Dos", 300, 80, 200, 80, 1)
+    time_delay(30)
+    Print "alt-tab antes " + input_active_title()
+    input_key(0x42, 4)
+    time_delay(30)
+    Print "alt-tab uno #{input_active_title() == \"Uno\"}"
+    input_key(0x42, 4)
+    time_delay(30)
+    Print "alt-tab dos #{input_active_title() == \"Dos\"}"
+    input_key(0x42, 5)
+    time_delay(30)
+    Print "alt-mayus-tab uno #{input_active_title() == \"Uno\"}"
+    window_close(c)
+    window_close(b)
+    run_program("DH0:ventanas")                # otra vez: la primera se para
+    time_delay(50)
+    Print "fin"
+end

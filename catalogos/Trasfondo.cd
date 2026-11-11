@@ -1,4 +1,4 @@
-; Texts of /home/freemem/Projects/trasfondo/src/trasfondo.dash, /home/freemem/Projects/trasfondo/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/src/dock.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondo.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/dock.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/ventanas.dash (tools/catalogo.py)
 ;
 ; MSG_COMA
 MSG_1 (1//)
@@ -426,3 +426,39 @@ Screenshots to
 ; MSG_UNIDADES
 MSG_179 (179//)
 Disks shown
+; MSG_V_MAXIMIZAR
+MSG_300 (300//)
+Maximize
+; MSG_V_COMO_ESTABA
+MSG_301 (301//)
+Restore
+; MSG_V_IZQUIERDA
+MSG_302 (302//)
+Left half
+; MSG_V_DERECHA
+MSG_303 (303//)
+Right half
+; MSG_V_ARRIBA_IZQ
+MSG_304 (304//)
+Top left quarter
+; MSG_V_ARRIBA_DER
+MSG_305 (305//)
+Top right quarter
+; MSG_V_ABAJO_IZQ
+MSG_306 (306//)
+Bottom left quarter
+; MSG_V_ABAJO_DER
+MSG_307 (307//)
+Bottom right quarter
+; MSG_V_DELANTE
+MSG_308 (308//)
+Bring to front
+; MSG_V_DETRAS
+MSG_309 (309//)
+Send to back
+; MSG_V_ENCOGER
+MSG_310 (310//)
+Shrink / grow (zoom)
+; MSG_V_CERRAR
+MSG_311 (311//)
+Close

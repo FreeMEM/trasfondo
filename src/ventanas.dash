@@ -8,16 +8,27 @@
 #   Ctrl Alt A           mosaico automático, sí o no: cada ventana nueva entra y las demás se reparten
 #   Alt + botón izq.     mover la ventana de debajo del puntero, desde cualquier punto
 #   Alt + botón der.     cambiar su tamaño
+#   doble clic en la barra de título: maximizar (otra vez: como estaba)
+#   clic central en la barra de título, o Ctrl Alt Espacio: el menú de la ventana (maximizar, mitades, cuartos,
+#                        delante, detrás, encoger, cerrar), con el ratón o con flechas, Return y Esc
+#   soltar una ventana arrastrada contra un borde: a esa mitad (izquierda, derecha), arriba maximizada, en una
+#                        esquina a ese cuarto; al arrastrarla otra vez lejos del borde, recupera su tamaño
 #
 # Las teclas, en TrasfondoPrefs o por tooltypes: TECLA_MAXIMIZAR, TECLA_IZQUIERDA, TECLA_DERECHA, TECLA_RESTAURAR, TECLA_MOSAICO y
 # TECLA_AUTOMATICO, en el formato de Commodities ("ctrl alt up"); MOSAICO=SI arranca en automático; HUECO, los
-# píxeles entre ventanas (4). Deja libres la barra y el dock de Trasfondo si están.
+# píxeles entre ventanas (4); ENCAJAR=NO, DOBLE_CLIC=NO y MENU=NO quitan lo del ratón; TECLA_MENU, la del menú; ALT_TAB=NO quita
+# Alt+Tab. Deja libres la barra y el dock de
+# Trasfondo si están. No parchea nada: mira los clics sin quitárselos a nadie (cx_watch_add, Dash 2.12).
 # Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
 
 @workbench_output "NIL:"
 @version "TrasfondoVentanas 2.8.7"
+@catalog "Trasfondo.catalog" 1       # los textos del menú de ventana, en inglés; el castellano, en el catálogo
 
 import "ajustes.dash"
+import "dibujo.dash"
+import "textos.dash"
+import "tema.dash"
 
 const K_MAXIMIZAR = 1        # las teclas de cx_key_add: cx_command da 100 + n
 const K_IZQUIERDA = 2
@@ -29,6 +40,26 @@ const K_MOVER = 7
 const K_TAMANO = 8
 const K_SOLTAR_MOVER = 9     # solo mientras se arrastra: el botón al soltarse
 const K_SOLTAR_TAMANO = 10
+const W_PULSA = 11           # cx_watch_add: el botón izquierdo, al pulsar y al soltar (no se lo quita a nadie)
+const W_SUELTA = 12
+const BORDE = 3              # a cuántos píxeles del borde de la pantalla se encaja al soltar
+const W_CENTRAL = 13         # cx_watch_add: el botón central (el menú de la ventana)
+const K_MENU = 14            # la tecla del menú
+const K_M_ARRIBA = 15        # mientras el menú está abierto: flechas, Return y Esc
+const K_M_ABAJO = 16
+const K_M_ELEGIR = 17
+const K_M_FUERA = 18
+const K_ALT_TAB = 19         # cambiar de ventana: Alt+Tab y Alt+Mayús+Tab
+const K_ALT_TAB_ATRAS = 20
+
+# lo que hace cada opción del menú (las de 1 a 6 son las de caja_de)
+const OP_MAXIMIZAR = 0
+const OP_DELANTE = 20
+const OP_DETRAS = 21
+const OP_ENCOGER = 22
+const OP_CERRAR = 23
+const OP_COMO_ESTABA = 24
+const OP_IR = 1000           # Alt+Tab: OP_IR + k es la ventana k de m_ids
 
 const CADA = 500             # ms entre dos miradas a las ventanas, en automático
 
@@ -38,6 +69,44 @@ var guardado_id: [Int] = []  # la caja de antes de maximizar o encajar, por vent
 var guardado_caja: [String] = []
 var orden: [Int] = []        # el orden del mosaico automático: ids, la primera la grande
 var vistas: String = ""      # las ventanas del mosaico la última vez (para ver si cambiaron)
+var con_encajar: Bool = true
+var con_doble: Bool = true
+var p_id: Int = 0            # al pulsar en una barra de título: la ventana, dónde, cuándo y su caja de entonces
+var p_x: Int = 0
+var p_y: Int = 0
+var p_ms: Int = 0
+var p_caja: String = ""
+var clic_id: Int = 0         # el último clic (sin arrastrar) en una barra de título, para el doble clic
+var clic_ms: Int = 0
+var con_menu: Bool = true
+var m_win: Int = 0           # el menú abierto (su ventana), de qué ventana es, sus opciones y la elegida
+var m_id: Int = 0
+var m_ops: [Int] = []
+var m_textos: [String] = []
+var m_sel: Int = -1
+var m_alto: Int = 16
+var m_ancho: Int = 120
+var m_x: Int = 0
+var m_y: Int = 0
+var m_letra: Int = 0
+var m_alt: Bool = false      # el menú es el de Alt+Tab: se elige al soltar Alt
+var m_ids: [Int] = []        # las ventanas de Alt+Tab
+var con_alt_tab: Bool = true
+var C_M_FONDO: Int = 0x2a2e35
+var C_M_SEL: Int = 0x3c4250
+var C_M_BORDE: Int = 0x5f6368
+var C_M_TEXTO: Int = 0xe8eaed
+var m_paleta: Bool = false   # pantalla de 256 colores o menos: los del Workbench (como sus menús), no los del tema
+
+# un color del menú: el del tema, o en pantallas de paleta ese número de color del Workbench (0 gris, 1 negro,
+# 2 blanco, 3 azul)
+func m_pluma(rgb: Int, pen: Int)
+    if m_paleta
+        gfx_pen(pen)
+    else
+        pluma(rgb)
+    end
+end
 
 # --- la zona útil: la pantalla sin la barra ni el dock de Trasfondo ---
 
@@ -141,7 +210,49 @@ func poner_caja(id: Int, caja: String)
     end
 end
 
-# encaja la ventana activa: 0 entera, 1 mitad izquierda, 2 mitad derecha
+# la caja de cada encaje en la zona útil: 0 entera, 1 mitad izquierda, 2 mitad derecha, 3 a 6 los cuartos (arriba
+# izquierda, arriba derecha, abajo izquierda, abajo derecha)
+func caja_de(como: Int) -> String
+    calcular_zona()
+    mitad = (z_w - hueco) / 2
+    alto = (z_h - hueco) / 2
+    x = z_x
+    w = z_w
+    y = z_y
+    h = z_h
+    if como == 1 or como == 3 or como == 5
+        w = mitad
+    elif como == 2 or como == 4 or como == 6
+        x = z_x + mitad + hueco
+        w = z_w - mitad - hueco
+    end
+    if como == 3 or como == 4
+        h = alto
+    elif como == 5 or como == 6
+        y = z_y + alto + hueco
+        h = z_h - alto - hueco
+    end
+    return "#{x},#{y},#{w},#{h}"
+end
+
+# encaja la ventana id; antes es su caja de antes de encajarla ("": la de ahora)
+func encajar_id(id: Int, como: Int, antes: String)
+    i = buscar(id)
+    if i < 0 or not manejable(i)
+        return
+    end
+    if not tiene_guardada(id)
+        if antes != ""
+            guardado_id.push(id)
+            guardado_caja.push(antes)
+        else
+            guardar(id, i)
+        end
+    end
+    poner_caja(id, caja_de(como))
+end
+
+# encaja la ventana activa (las teclas): 0 entera (otra vez: como estaba), 1 mitad izquierda, 2 mitad derecha
 func encajar(como: Int)
     id = wm_active()
     i = buscar(id)
@@ -152,18 +263,7 @@ func encajar(como: Int)
         poner_caja(id, recuperar(id))          # maximizada: vuelve a como estaba
         return
     end
-    if not tiene_guardada(id)
-        guardar(id, i)
-    end
-    calcular_zona()
-    mitad = (z_w - hueco) / 2
-    if como == 0
-        wm_set_box(id, z_x, z_y, z_w, z_h)
-    elif como == 1
-        wm_set_box(id, z_x, z_y, mitad, z_h)
-    else
-        wm_set_box(id, z_x + mitad + hueco, z_y, z_w - mitad - hueco, z_h)
-    end
+    encajar_id(id, como, "")
 end
 
 func restaurar()
@@ -313,6 +413,437 @@ func arrastrar(tamano: Bool)
     cx_key_add("", soltar)
 end
 
+# --- la barra de título con el ratón: doble clic y encajar al soltar ---
+
+# el botón izquierdo se pulsa: si es en la parte libre de la barra de título de una ventana manejable, se apunta
+# cuál, dónde y su caja de ese momento (wm_box_now: Intuition ya puede estar arrastrándola)
+func al_pulsar()
+    p_id = 0
+    id = wm_active()                           # (Intuition ya la activó con este clic)
+    if id == 0
+        return
+    end
+    x = cx_event_x()
+    y = cx_event_y()
+    wx = wm_box_now(id, 0)
+    wy = wm_box_now(id, 1)
+    arriba = wm_box_now(id, 9)
+    if wx < 0 or y < wy or y >= wy + arriba or x < wx + wm_box_now(id, 12) or x >= wx + wm_box_now(id, 13)
+        return
+    end
+    p_id = id
+    p_x = x
+    p_y = y
+    p_ms = cx_event_ms()
+    p_caja = "#{wx},#{wy},#{wm_box_now(id, 2)},#{wm_box_now(id, 3)}"
+end
+
+# dónde se soltó, respecto a los bordes de la pantalla: 0 lejos, 1 izquierda, 2 derecha, 7 arriba (maximizar), 3 a
+# 6 las esquinas (los cuartos, como caja_de). Mientras se arrastra, Intuition no deja salir la ventana de la
+# pantalla y para el puntero con ella: llegar al borde es que la ventana (wx, wy, ancho) quede pegada a él
+func borde_de(x: Int, y: Int, wx: Int, wy: Int, ancho: Int) -> Int
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    alto_esquina = sh / 6
+    izq = x <= BORDE or wx <= 0
+    der = x >= sw - 1 - BORDE or wx + ancho >= sw
+    if izq or der
+        if y < alto_esquina
+            if izq
+                return 3
+            end
+            return 4
+        elif y >= sh - alto_esquina
+            if izq
+                return 5
+            end
+            return 6
+        end
+        if izq
+            return 1
+        end
+        return 2
+    end
+    if y <= BORDE or wy <= 0
+        return 7
+    end
+    return 0
+end
+
+# el botón se suelta: un clic en la barra (sin moverse) o el final de un arrastre
+func al_soltar()
+    id = p_id
+    p_id = 0
+    if id == 0 or wm_read() == 0
+        return
+    end
+    x = cx_event_x()
+    y = cx_event_y()
+    movido = abs(x - p_x) > 3 or abs(y - p_y) > 3
+    if not movido
+        if con_doble and id == clic_id and p_ms - clic_ms <= wm_double_click_ms()
+            clic_id = 0
+            if tiene_guardada(id)
+                poner_caja(id, recuperar(id))
+            else
+                encajar_id(id, 0, "")
+            end
+        else
+            clic_id = id
+            clic_ms = p_ms
+        end
+        return
+    end
+    clic_id = 0
+    if not con_encajar
+        return
+    end
+    # la caja después del arrastre (Intuition ya la movió) y la de antes: solo cuenta un borde al que se llegó en
+    # este arrastre
+    wx = wm_box_now(id, 0)
+    wy = wm_box_now(id, 1)
+    ancho = wm_box_now(id, 2)
+    p = str_split(p_caja, ",")
+    if wx < 0 or p.length != 4
+        return
+    end
+    lado = borde_de(x, y, wx, wy, ancho)
+    sw = rtg_get_width()
+    if (lado == 1 or lado == 3 or lado == 5) and Int(p[0]) <= 0
+        lado = 0
+    elif (lado == 2 or lado == 4 or lado == 6) and Int(p[0]) + Int(p[2]) >= sw
+        lado = 0
+    elif lado == 7 and Int(p[1]) <= 0
+        lado = 0
+    end
+    if lado == 7
+        encajar_id(id, 0, p_caja)
+    elif lado != 0
+        encajar_id(id, lado, p_caja)
+    elif tiene_guardada(id)
+        # una encajada que se aleja: recupera su tamaño, con el puntero en el mismo sitio de la barra
+        antes = str_split(recuperar(id), ",")
+        i = buscar(id)
+        if i >= 0 and antes.length == 4
+            ancho = Int(antes[2])
+            ancho_antes = Int(p[2])
+            if ancho_antes < 1
+                ancho_antes = 1
+            end
+            dx = (p_x - Int(p[0])) * ancho / ancho_antes
+            wm_set_box(id, x - dx, wm_box(i, 1), ancho, Int(antes[3]))
+        end
+    end
+end
+
+# --- el menú de la ventana ---
+
+func m_pintar()
+    if m_win == 0
+        return
+    end
+    ok = window_use(m_win)
+    h = m_textos.length * m_alto + 8
+    m_pluma(C_M_BORDE, 1)
+    gfx_rect(0, 0, m_ancho - 1, h - 1)
+    m_pluma(C_M_FONDO, 2)
+    gfx_rect(1, 1, m_ancho - 2, h - 2)
+    if m_letra != 0
+        font_use(m_letra)
+    end
+    for k in (0..m_textos.length - 1)
+        y = 4 + k * m_alto
+        if k > 0 and (m_ops[k] == OP_DELANTE or m_ops[k] == OP_CERRAR)
+            m_pluma(C_M_BORDE, 0)          # una raya entre grupos: tamaño, delante y detrás, cerrar
+            gfx_line(8, y, m_ancho - 9, y)
+        end
+        if k == m_sel
+            m_pluma(C_M_SEL, 3)
+            gfx_rect(3, y + 1, m_ancho - 4, y + m_alto - 1)
+            m_pluma(C_M_TEXTO, 2)
+        else
+            m_pluma(C_M_TEXTO, 1)
+        end
+        gfx_text_at(12, y + (m_alto - font_height()) / 2 + font_baseline(), m_textos[k])
+    end
+end
+
+func m_opcion(op: Int, texto: String)
+    m_ops.push(op)
+    m_textos.push(texto)
+end
+
+func m_cerrar()
+    if m_win != 0
+        window_close(m_win)
+        m_win = 0
+        ok = window_use(0)
+    end
+    cx_key_add("", K_M_ARRIBA)
+    cx_key_add("", K_M_ABAJO)
+    cx_key_add("", K_M_ELEGIR)
+    cx_key_add("", K_M_FUERA)
+    m_alt = false
+end
+
+# Alt+Tab: la lista de ventanas (la activa primero, luego de delante a detrás), con la siguiente elegida; soltar Alt
+# va a ella, Tab avanza, Mayús+Tab vuelve, Esc no hace nada
+func a_abrir(atras: Bool)
+    m_cerrar()
+    n = wm_read()
+    activa = wm_active()
+    m_ids = []
+    m_ops = []
+    m_textos = []
+    for pasada in (0..1)
+        for i in (0..n - 1)
+            id = wm_id(i)
+            f = wm_flags(i)
+            elegible = f & (2 + 4 + 32) == 0 and wm_title(i) != ""
+            if elegible and ((pasada == 0) == (id == activa))
+                m_ids.push(id)
+                m_ops.push(OP_IR + m_ids.length - 1)
+                t = wm_title(i)
+                if t.length > 60
+                    t = t[:56] + "..."
+                end
+                m_textos.push(t)
+            end
+        end
+    end
+    if m_ids.length == 0
+        return
+    end
+    m_sel = 0
+    if m_ids.length > 1
+        m_sel = 1
+        if atras
+            m_sel = m_ids.length - 1
+        end
+    end
+    m_mostrar(0, 0, true)
+    m_alt = m_win != 0
+end
+
+# abre el menú de la ventana id junto a (x, y)
+func m_abrir(id: Int, x: Int, y: Int)
+    m_cerrar()
+    i = buscar(id)
+    if i < 0
+        return
+    end
+    m_id = id
+    m_ops = []
+    m_textos = []
+    if manejable(i)
+        if tiene_guardada(id)
+            m_opcion(OP_COMO_ESTABA, tr(MSG_V_COMO_ESTABA, "Restore"))
+        end
+        m_opcion(OP_MAXIMIZAR, tr(MSG_V_MAXIMIZAR, "Maximize"))
+        m_opcion(1, tr(MSG_V_IZQUIERDA, "Left half"))
+        m_opcion(2, tr(MSG_V_DERECHA, "Right half"))
+        m_opcion(3, tr(MSG_V_ARRIBA_IZQ, "Top left quarter"))
+        m_opcion(4, tr(MSG_V_ARRIBA_DER, "Top right quarter"))
+        m_opcion(5, tr(MSG_V_ABAJO_IZQ, "Bottom left quarter"))
+        m_opcion(6, tr(MSG_V_ABAJO_DER, "Bottom right quarter"))
+    end
+    m_opcion(OP_DELANTE, tr(MSG_V_DELANTE, "Bring to front"))
+    m_opcion(OP_DETRAS, tr(MSG_V_DETRAS, "Send to back"))
+    m_opcion(OP_ENCOGER, tr(MSG_V_ENCOGER, "Shrink / grow (zoom)"))
+    if wm_box(i, 14) >= 0
+        m_opcion(OP_CERRAR, tr(MSG_V_CERRAR, "Close"))
+    end
+    m_mostrar(x, y, false)
+end
+
+# abre la ventana del menú con las opciones de m_textos, junto a (x, y) o en el centro de la pantalla
+func m_mostrar(x: Int, y: Int, centrado: Bool)
+    if m_letra != 0
+        font_use(m_letra)
+    end
+    m_alto = font_height() + 6
+    m_ancho = 100
+    if centrado
+        m_ancho = 260
+    end
+    for t in m_textos
+        if font_text_width(t) + 28 > m_ancho
+            m_ancho = font_text_width(t) + 28
+        end
+    end
+    h = m_textos.length * m_alto + 8
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    if m_ancho > sw - 40
+        m_ancho = sw - 40
+    end
+    m_x = x
+    m_y = y
+    if centrado
+        m_x = (sw - m_ancho) / 2
+        m_y = (sh - h) / 2
+    end
+    if m_x + m_ancho > sw
+        m_x = sw - m_ancho
+    end
+    if m_y + h > sh
+        m_y = sh - h
+    end
+    if m_x < 0
+        m_x = 0
+    end
+    if m_y < 0
+        m_y = 0
+    end
+    if not centrado
+        m_sel = -1
+    end
+    m_win = window_create("", m_x, m_y, m_ancho, h, 2 + 4 + 8)
+    if m_win == 0
+        return
+    end
+    gfx_mode(0)
+    m_pintar()
+    cx_key_add("up", K_M_ARRIBA)
+    cx_key_add("down", K_M_ABAJO)
+    cx_key_add("return", K_M_ELEGIR)
+    cx_key_add("esc", K_M_FUERA)
+end
+
+# la opción bajo el puntero, o -1
+func m_bajo(x: Int, y: Int) -> Int
+    if x < m_x or x >= m_x + m_ancho or y < m_y + 4
+        return -1
+    end
+    k = (y - m_y - 4) / m_alto
+    if k >= m_ops.length
+        return -1
+    end
+    return k
+end
+
+func m_hacer(op: Int)
+    id = m_id
+    if op >= 1 and op <= 6
+        encajar_id(id, op, "")
+    elif op == OP_MAXIMIZAR
+        encajar_id(id, 0, "")
+    elif op == OP_COMO_ESTABA
+        poner_caja(id, recuperar(id))
+    elif op == OP_DELANTE
+        wm_front(id)
+    elif op == OP_DETRAS
+        wm_back(id)
+    elif op == OP_ENCOGER
+        wm_zip(id)
+    elif op == OP_CERRAR
+        wm_close(id)
+    elif op >= OP_IR and op - OP_IR < m_ids.length
+        id = m_ids[op - OP_IR]
+        wm_front(id)
+        wm_activate(id)
+    end
+end
+
+# el menú abierto: sigue al puntero hasta que se elige (clic o Return) o se cierra (clic fuera, Esc, otro clic
+# central); devuelve la orden de commodity que lo cerró si no es suya (para que el bucle principal la atienda)
+func m_bucle() -> Int
+    vueltas = 0
+    while m_win != 0
+        c = cx_wait(30)
+        x = wm_pointer_x()
+        y = wm_pointer_y()
+        if m_alt and c == 0 and input_qualifiers() & (16 + 32) == 0
+            k = m_sel                  # Alt+Tab: Alt suelto, a la elegida
+            m_cerrar()
+            if k >= 0
+                m_hacer(m_ops[k])
+            end
+        elif c == 100 + K_ALT_TAB or c == 100 + K_ALT_TAB_ATRAS
+            if c == 100 + K_ALT_TAB
+                m_sel = (m_sel + 1) % m_ops.length
+            else
+                m_sel = (m_sel + m_ops.length - 1) % m_ops.length
+            end
+            m_pintar()
+        elif c == 0 and m_alt
+            vueltas = vueltas + 1
+            if vueltas > 2000
+                m_cerrar()
+            end
+        elif c == 0
+            k = m_bajo(x, y)
+            if k >= 0 and k != m_sel
+                m_sel = k
+                m_pintar()
+            end
+            vueltas = vueltas + 1
+            if vueltas > 2000            # un minuto sin hacer nada: se cierra
+                m_cerrar()
+            end
+        elif c == 100 + K_M_ARRIBA
+            if m_sel > 0
+                m_sel = m_sel - 1
+            else
+                m_sel = m_ops.length - 1
+            end
+            m_pintar()
+        elif c == 100 + K_M_ABAJO
+            m_sel = (m_sel + 1) % m_ops.length
+            m_pintar()
+        elif c == 100 + K_M_ELEGIR
+            k = m_sel
+            m_cerrar()
+            if k >= 0
+                m_hacer(m_ops[k])
+            end
+        elif c == 100 + K_M_FUERA or c == 100 + W_CENTRAL
+            m_cerrar()
+        elif c == 100 + W_SUELTA
+            k = m_bajo(cx_event_x(), cx_event_y())
+            if k >= 0
+                m_cerrar()
+                m_hacer(m_ops[k])
+            elif cx_event_x() < m_x or cx_event_x() >= m_x + m_ancho or cx_event_y() < m_y or cx_event_y() >= m_y + m_textos.length * m_alto + 8
+                m_cerrar()                 # un clic fuera
+            end
+        elif c == 100 + W_PULSA
+            vueltas = 0
+        else
+            m_cerrar()
+            return c
+        end
+    end
+    return 0
+end
+
+# clic central: el menú si es en la barra de título de una ventana
+func al_central()
+    x = cx_event_x()
+    y = cx_event_y()
+    id = wm_at(x, y)
+    i = buscar(id)
+    if i < 0 or wm_flags(i) & 2 != 0 or wm_flags(i) & 4 != 0
+        return
+    end
+    wx = wm_box(i, 0)
+    wy = wm_box(i, 1)
+    if y < wy or y >= wy + wm_box(i, 9) or x < wx + wm_box(i, 12) or x >= wx + wm_box(i, 13)
+        return
+    end
+    m_abrir(id, x, y)
+end
+
+# la tecla del menú: el de la ventana activa, en su esquina de arriba
+func menu_tecla()
+    id = wm_active()
+    i = buscar(id)
+    if i < 0
+        return
+    end
+    m_abrir(id, wm_box(i, 0) + wm_box(i, 12), wm_box(i, 1) + wm_box(i, 9))
+end
+
 func tecla(nombre: String, defecto: String, n: Int)
     d = ajuste("VENTANAS_" + nombre, nombre, defecto)
     if d != "" and not cx_key_add(d, n)
@@ -328,6 +859,29 @@ Main
     else
         hueco = Int(ajuste("VENTANAS_HUECO", "HUECO", "4"))
         automatico = str_upper(ajuste("VENTANAS_MOSAICO", "MOSAICO", "NO")) == "SI"
+        con_encajar = str_upper(ajuste("VENTANAS_ENCAJAR", "ENCAJAR", "SI")) != "NO"
+        con_doble = str_upper(ajuste("VENTANAS_DOBLE_CLIC", "DOBLE_CLIC", "SI")) != "NO"
+        con_menu = str_upper(ajuste("VENTANAS_MENU", "MENU", "SI")) != "NO"
+        cx_watch_add("rawmouse mouse_leftpress", W_PULSA)
+        cx_watch_add("rawmouse upstroke mouse_leftpress", W_SUELTA)
+        if con_menu
+            cx_watch_add("rawmouse mouse_middlepress", W_CENTRAL)
+            tecla("TECLA_MENU", "ctrl alt space", K_MENU)
+        end
+        con_alt_tab = str_upper(ajuste("VENTANAS_ALT_TAB", "ALT_TAB", "SI")) != "NO"
+        if con_alt_tab
+            cx_key_add("alt tab", K_ALT_TAB)
+            cx_key_add("alt shift tab", K_ALT_TAB_ATRAS)
+        end
+        m_paleta = rtg_get_depth() <= 8
+        C_M_FONDO = tema_color("TARJETA", C_M_FONDO)
+        C_M_SEL = tema_color("BOTON", C_M_SEL)
+        C_M_BORDE = tema_color("BORDE", C_M_BORDE)
+        C_M_TEXTO = tema_color("TEXTO", C_M_TEXTO)
+        m_letra = font_open("CGTriumvirate.font", 13)
+        if m_letra == 0
+            m_letra = font_open("helvetica.font", 13)
+        end
         tecla("TECLA_MAXIMIZAR", "ctrl alt up", K_MAXIMIZAR)
         tecla("TECLA_IZQUIERDA", "ctrl alt left", K_IZQUIERDA)
         tecla("TECLA_DERECHA", "ctrl alt right", K_DERECHA)
@@ -344,6 +898,16 @@ Main
                 espera = CADA
             end
             c = cx_wait(espera)
+            if c == 100 + W_CENTRAL and activo and con_menu
+                al_central()
+                c = m_bucle()
+            elif c == 100 + K_MENU and activo
+                menu_tecla()
+                c = m_bucle()
+            elif (c == 100 + K_ALT_TAB or c == 100 + K_ALT_TAB_ATRAS) and activo
+                a_abrir(c == 100 + K_ALT_TAB_ATRAS)
+                c = m_bucle()
+            end
             if c == -1 or c == 5
                 seguir = false
             elif c == 3
@@ -368,6 +932,10 @@ Main
                 arrastrar(false)
             elif c == 100 + K_TAMANO
                 arrastrar(true)
+            elif c == 100 + W_PULSA and activo and (con_encajar or con_doble)
+                al_pulsar()
+            elif c == 100 + W_SUELTA and activo and (con_encajar or con_doble)
+                al_soltar()
             end
             if automatico and activo and seguir
                 mirar_mosaico()

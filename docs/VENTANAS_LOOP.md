@@ -1,0 +1,122 @@
+# Ventanas modernas y explorador de archivos: plan y bitácora
+
+Encargo del usuario (2026-11-12, por Tachyon2): "controles que mejoren la experiencia y que lo acerquen a un modo
+moderno de trabajar con ventanas y también un explorador de archivos en condiciones, moderno y que permita hacer
+copias con ficheros y borrados y movimientos, etc, todo lo que permite un nautilus o un opus5". Pidió estudiar muy
+bien el UX. Se hace en la rama `ventanas-modernas` (worktree `.worktrees/ventanas`), sin tocar `src/barra.dash`.
+Nada hacia fuera (push, release, web, Telegram) sin el usuario.
+
+## 1. Estudio del UX
+
+### Lo que hace bueno a un gestor de ventanas moderno
+
+| Gesto | Windows 10/11 | macOS 14 | KDE Plasma | GNOME | Para Trasfondo |
+|---|---|---|---|---|---|
+| Maximizar | doble clic en título, botón | doble clic (zoom), botón verde | doble clic, botón | doble clic, botón | doble clic en la barra de título |
+| Encajar a media pantalla | arrastrar al borde izq/der, vista previa translúcida | (14: arrastrar al borde con Opción) | arrastrar al borde, vista previa | arrastrar al borde, vista previa | arrastrar al borde con un marco de vista previa |
+| Maximizar arrastrando | arrastrar al borde de arriba | — | borde de arriba | borde de arriba | borde de arriba |
+| Cuartos | arrastrar a una esquina | — | esquinas | — | esquinas (cuarto de pantalla) |
+| Volver al tamaño de antes | arrastrar una encajada fuera del borde | — | igual | igual | al arrastrarla otra vez, recupera su tamaño bajo el puntero |
+| Menú de ventana | Alt+Espacio, clic dcho. en título | — | Alt+F3, clic dcho. en título | Alt+Espacio | clic central en la barra de título y una tecla |
+| Cambiar de ventana | Alt+Tab con lista, soltar Alt elige | Cmd+Tab (programas) | Alt+Tab | Alt+Tab | Alt+Tab: lista con icono/título, Tab avanza, Mayús+Tab vuelve, soltar Alt elige, Esc cancela |
+| Lista de ventanas | barra de tareas | Dock | panel | Actividades | en la barra de Trasfondo, un menú "Ventanas" |
+| Mover desde cualquier punto | — | — | Alt+arrastrar | Super+arrastrar | ya está (Alt+botón izq.) |
+
+Principios que se sacan de ahí:
+
+1. **Lo directo con el ratón primero, las teclas para quien las quiera.** El usuario medio arrastra y hace doble
+   clic; no aprende atajos.
+2. **Vista previa antes de soltar**: al llegar al borde se ve dónde quedará; si te arrepientes, te alejas del borde.
+   Nada se hace por sorpresa.
+3. **Todo se deshace**: una ventana encajada o maximizada recuerda su tamaño de antes (ya lo hace TrasfondoVentanas).
+4. **No romper lo de siempre del Amiga**: el botón derecho es de los menús, y el doble clic en un gadget es de su
+   programa. Solo se mira la barra de título, y solo la parte que no tiene gadgets.
+5. **Sin parchear el sistema**: commodity que observa los eventos (no se los come salvo los suyos) y mueve ventanas
+   con las funciones de Intuition. Si algo no se puede sin parche, se dice y se deja.
+
+### Límites del Amiga que cambian el diseño
+
+- **Arrastre de Intuition con contorno (3.1)**: mientras se arrastra una ventana, Intuition bloquea las capas
+  (layers) y dibuja un contorno. No se puede abrir ni pintar otra ventana hasta soltar: la vista previa durante el
+  arrastre normal no es posible sin pintar debajo de Intuition. Solución: al soltar en un borde, encajar (como
+  Windows 7 sin vista previa) y, en la opción "movimiento propio", hacer el arrastre Trasfondo mismo (ventana opaca,
+  como el Alt+arrastrar de ahora), con vista previa. Decidir con capturas qué se ve mejor.
+- **Minimizar no existe en 3.1** (3.2 tiene iconificar solo para programas que lo piden). Lo más parecido: al fondo
+  (ya está) o encoger a la barra de título (`ZipWindow`, `wm_zip`).
+- **Cerrar una ventana ajena**: solo su programa puede. Se puede pulsar su botón de cerrar por él (un clic simulado
+  en el gadget de cierre), que es lo que haría el usuario.
+- **Botones nuevos en la barra de título de otros**: necesitan pintar en ventanas ajenas o parchear Intuition. Se
+  deja para el final, como opción, y solo si se ve estable.
+
+### El explorador: qué toma de cada uno
+
+| | Nautilus (GNOME Files) | Directory Opus 5 | Finder | Dolphin | Para TrasfondoArchivos |
+|---|---|---|---|---|---|
+| Disposición | barra lateral + una vista; pestañas | dos listers (origen/destino) + botonera | barra lateral + vista; pestañas | lateral + vista, dividir en dos (F3) | lateral (discos, asignaciones, favoritos, papelera) + vista; F3 divide en dos paneles |
+| Vistas | iconos / lista | lista con columnas, iconos | iconos / lista / columnas | iconos / detalles / compacta | iconos (los .info de cada fichero) y lista con columnas (nombre, tamaño, fecha, tipo, comentario) |
+| Ruta | barra de ruta en botones, Ctrl+L la escribe | campo de ruta | barra de ruta | migas + editable | migas que se pulsan; clic en ellas o Ctrl+L para escribirla |
+| Seleccionar | clic, Ctrl+clic, Mayús+clic, lazo | clic y arrastrar sobre la lista | igual | igual | lo mismo, con lazo en iconos |
+| Copiar/mover | Ctrl+C/X/V, arrastrar (Mayús mueve) | botones Copiar/Mover a la otra lista | arrastrar (Opción copia) | arrastrar con menú | Amiga+C/X/V, arrastrar (mismo disco: mover; otro: copiar; Mayús cambia), F5 copiar y F6 mover al otro panel |
+| Progreso | panel de operaciones con barra, pausa y cancelar | ventana de progreso | barra en el icono | aviso con barra | ventana de progreso en segundo plano: fichero actual, total, velocidad, cancelar; varias a la vez en cola |
+| Conflictos | "Reemplazar / Saltar / Renombrar / para todos" | igual | igual | igual | igual, con "para todos" |
+| Borrar | a la papelera; Mayús+Supr borra del todo | borra (pregunta) | papelera | papelera | papelera por volumen (`.Papelera` en la raíz) con restaurar y vaciar; Mayús+Supr del todo con pregunta |
+| Renombrar | F2 en sitio | campo | Return | F2 | F2 en el sitio, con el nombre sin la extensión elegido |
+| Abrir | doble clic, con el programa por defecto | doble clic, tipos de fichero | igual | igual | doble clic: herramienta por defecto del .info (`wb_open`) |
+| Buscar | escribir filtra | filtro | campo | Ctrl+F filtra | escribir filtra la carpeta; Ctrl+F busca en subcarpetas |
+| Deshacer | Ctrl+Z deshace copiar/mover/renombrar/borrar | — | Cmd+Z | Ctrl+Z | Amiga+Z para renombrar, mover y borrar a la papelera |
+| Miniaturas | sí | visor | sí | sí | de las imágenes (datatypes), en segundo plano, después |
+
+Principios para el explorador:
+
+1. **Nunca bloquear la ventana**: leer carpetas grandes y copiar van en una tarea aparte; se puede seguir navegando.
+2. **Nada se pierde sin querer**: borrar va a la papelera; reemplazar pregunta; una copia a medias se borra al
+   cancelar; los permisos, la fecha y el comentario se copian iguales.
+3. **Lo que ve el Workbench, igual**: los iconos `.info` van con su fichero (copiar, mover, renombrar y borrar los
+   dos), y la vista de iconos usa los suyos.
+4. **Teclado completo**: flechas, Return abre, Retroceso sube, Tab cambia de panel, escribir busca.
+5. **Rápido en un 68020**: listas virtuales (solo se pinta lo que se ve), carpetas leídas una vez y avisos de cambios
+   (`file_notify`) para refrescar.
+
+## 2. Plan por partes
+
+**Parte 1: TrasfondoVentanas moderno** (sin parches)
+- 1a. Doble clic en la barra de título (zona sin gadgets): maximiza / vuelve.
+- 1b. Encajar al soltar una ventana arrastrada contra un borde: izquierda, derecha, arriba (maximizar), esquinas
+  (cuartos). Al volver a arrastrar una encajada, recupera su tamaño.
+- 1c. Movimiento propio opcional (opaco, con vista previa del encaje).
+- 1d. Menú de ventana: clic central en la barra de título (y tecla): maximizar, mitades, cuartos, mosaico, al fondo,
+  delante de todas, encoger, cerrar.
+- 1e. Alt+Tab con lista dibujada por Trasfondo.
+- 1f. Opciones en TrasfondoPrefs (sección Ventanas) y textos en los catálogos.
+
+**Parte 2: lo que falta en Dash** (rama en `~/Projects/FreeMEMLang/.worktrees/`, los dos caminos, PR y visto bueno;
+coordinar con freememlang-40)
+- Observar eventos sin comérselos (filtro de commodity que no traduce a nada), con posición y momento del evento.
+- La altura de la barra de título y la zona de gadgets de una ventana ajena (`wm_border`...).
+- Para el explorador: permisos, comentario y fecha de un fichero (leer y poner), copiar a trozos con progreso,
+  mover entre volúmenes, leer carpetas grandes de golpe (ExAll).
+
+**Parte 3: TrasfondoArchivos** (en dos entregas)
+- 3a. Ventana con lateral, migas, vista de lista y de iconos, abrir, seleccionar, copiar/mover/borrar/renombrar con
+  progreso y conflictos, papelera.
+- 3b. Dos paneles, arrastrar y soltar (dentro y desde el Workbench), deshacer, filtro y búsqueda, miniaturas.
+
+## 3. Bitácora
+
+- 2026-11-12: estudio del UX y plan. Worktree `ventanas-modernas` desde `efbb759`.
+- 2026-11-12: Dash (rama `wm-eventos`): `cx_watch_add` (mirar clics sin comérselos) con `cx_event_x/y/ms`,
+  `wm_box` 8-15 (bordes, zona libre de la barra, botón de cerrar), `wm_box_now`, `wm_double_click_ms`, `wm_close`.
+  Arreglado: un filtro "rawmouse mouse_leftpress" nunca casaba (los botones contaban como teclas pulsadas).
+- 2026-11-12: 1a, 1b y 1d escritos. Primera prueba en el emulador: el doble clic va; el encaje al soltar no. Causa:
+  `wm_active` usaba `LockIBase`, que Intuition tiene cogido mientras se arrastra, así que el clic se atendía al
+  soltar, con la ventana ya movida. Ahora lee bajo `Forbid`.
+- 2026-11-12: textos del menú en el catálogo (300-311, con castellano). 1e: Alt+Tab y Alt+Mayús+Tab con la lista
+  dibujada (la activa primero, luego de delante a detrás); al soltar Alt va a la elegida, Esc cancela.
+- 2026-11-12: el encaje al soltar no saltaba porque, mientras se arrastra, Intuition no deja salir la ventana de
+  la pantalla y para el puntero con ella (el puntero se queda en x=87, no llega a 0). Ahora llegar al borde es que
+  la ventana quede pegada a él en ese arrastre. `tests/prueba_ventanas.py`: todo bien (encajar a la izquierda, al
+  cuarto de arriba a la derecha, arriba; recuperar el tamaño; doble clic; menú con teclas, Esc y Cerrar; Alt+Tab
+  y Alt+Mayús+Tab).
+- 2026-11-12: capturas del menú (`tests/vista_menu.py` en 640x256 de 4 colores; `tools/vista.py --ventanas ""
+  --tecla 0x40,6,25` en RTG con el tema). En pantallas de paleta usa los colores del Workbench (fondo blanco, texto
+  negro, la elegida en azul); rayas entre grupos (tamaño, delante/detrás, cerrar).
