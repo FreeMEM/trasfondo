@@ -483,7 +483,8 @@ Main
             end
         end
         # la barra completa ocupa el sitio de la del Workbench: de fondo, siempre detrás de las demás ventanas (lo
-        # contó Ferrán García), y el título de la pantalla detrás de ella. En la barra de título, como siempre
+        # contó Ferrán García), y el título de la pantalla detrás de ella. En la barra de título, una ventana normal
+        # que se manda atrás en cada vuelta del temporizador
         if not titulo
             window_next_backdrop(true)
         end
@@ -542,6 +543,9 @@ Main
                     end
                     pintar()
                 end
+                if titulo and not oculta     # a la altura de la barra de título: detrás de las ventanas que se
+                    window_to_back(0)        # manden al fondo (Ferrán García); una ventana de fondo quedaría
+                end                          # tapada por el título, así que se aparta ella sola
                 av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR, SCREENSHOT)
                 if av_captura                # la orden SCREENSHOT de un guion: en un momento
                     av_captura = false
