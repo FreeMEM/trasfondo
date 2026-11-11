@@ -46,7 +46,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
 - **TrasfondoBarra**: una barra arriba con la hora, la fecha, el tiempo, la CPU y la memoria. Al pulsarla salen
   sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
   preferencias, red, memoria, reiniciar). Puede ser una barra entera arriba o ir dentro de la barra de título de
-  la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`). En la
+  la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`). Se queda
+  detrás de las demás ventanas, como la barra de título del Workbench, o siempre delante ("Profundidad"; o
+  `PROFUNDIDAD=DELANTE`). En la
   misma sección se elige qué enseña: la fecha, el tiempo, la CPU, la memoria y la temperatura (la hora, los
   avisos y el botón de los ajustes salen siempre).
 - **Avisos**: la orden `Avisa` (en `C:`) saca un aviso arriba a la derecha (**TrasfondoAviso**) y lo deja en

@@ -47,6 +47,8 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
   (quick settings: preferences, network, memory, reboot). It can be a whole bar at the top or sit inside the
   screen's title bar, on the right, without covering it (TrasfondoPrefs, Bar section, "Style"; or `ESTILO=TITULO`).
+  It stays behind the other windows, like the Workbench title bar, or always in front of them ("Depth"; or
+  `PROFUNDIDAD=DELANTE`).
   The same section chooses what it shows: the date, the weather, the CPU, the memory and the temperature (the
   time, the notifications and the quick settings button always show).
 - **Notifications**: the `Avisa` command (in `C:`) shows a notification at the top right (**TrasfondoAviso**)
