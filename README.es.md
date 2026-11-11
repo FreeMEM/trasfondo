@@ -194,6 +194,7 @@ Se cambian en el icono (Información, en el menú Iconos) o se dan como argument
 |---|---|
 | `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Qué secciones salen y en qué orden (DATE es la fecha y la hora; TEMP, la temperatura de la PiStorm, que sin Emu68 no sale). Se pueden añadir `MEMGRAPH` y `NETGRAPH`, las gráficas de la memoria y de la red, que no salen de serie. Por ejemplo, `SHOW=CPU,DISKS` enseña solo la CPU y los discos. Lo que no sale tampoco se mide. En castellano también vale: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
 | `TASKS=6` | Cuántas tareas enseña (de 1 a 20). También `TAREAS=6`. |
+| `VOLUMES=Work,Descargas` | Qué discos salen, y en ese orden, aunque sean más de ocho. Sin él, todos hasta ocho, menos RAM: y los vacíos (menos de 1 MB ocupado, como un "Empty" recién formateado). También `UNIDADES=`, y en TrasfondoPrefs, "Unidades" (lo pidió Ferrán García). |
 | `CX_POPKEY=ctrl alt t` | Tecla rápida para ocultar y mostrar el panel. En el icono viene entre paréntesis, apagada: quítaselos para usarla. |
 | `INTERVAL=2` | Cada cuántos segundos mide y repinta (de 1 a 60). |
 | `BACKGROUND=SOLID` | Fondo fijo, sin velo transparente: gasta menos CPU. |

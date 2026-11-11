@@ -195,6 +195,7 @@ They are changed in the icon (Information, in the Icons menu) or given as argume
 |---|---|
 | `SHOW=DATE,CPU,TEMP,MEMORY,TASKS,DISKS,NET` | Which sections appear and in what order (DATE is the date and time; TEMP, the PiStorm temperature, which doesn't appear without Emu68). You can add `MEMGRAPH` and `NETGRAPH`, the memory and network graphs, which don't appear by default. For example, `SHOW=CPU,DISKS` shows only the CPU and the disks. Whatever isn't shown isn't measured either. Spanish works too: `MOSTRAR=FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED`. |
 | `TASKS=6` | How many tasks it shows (1 to 20). Also `TAREAS=6`. |
+| `VOLUMES=Work,Downloads` | Which disks appear, and in that order, even more than eight. Without it, all of them up to eight, except RAM: and empty ones (under 1 MB used, like a freshly formatted "Empty"). Also `UNIDADES=`, and in TrasfondoPrefs, "Disks shown" (asked for by Ferrán García). |
 | `CX_POPKEY=ctrl alt t` | Hotkey to hide and show the panel. In the icon it comes in parentheses, switched off: remove them to use it. |
 | `INTERVAL=2` | How many seconds between measuring and repainting (1 to 60). |
 | `BACKGROUND=SOLID` | Solid background, without the see-through veil: uses less CPU. |

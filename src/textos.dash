@@ -216,3 +216,5 @@ const MSG_D_COLOR = 176
 # las capturas de pantalla (JaviTecH)
 const MSG_CAPTURA_TECLA = 177
 const MSG_CAPTURA_CARPETA = 178
+# las unidades que se enseñan (Ferrán García)
+const MSG_UNIDADES = 179

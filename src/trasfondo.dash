@@ -25,7 +25,9 @@ const HISTORIA = 60          # medidas de historia de la CPU (dos minutos, midie
 const TAREAS = 6             # tareas que se enseñan, si el tooltype TAREAS no dice otra cosa
 const SECCIONES = "FECHA,CPU,TEMPERATURA,MEMORIA,TAREAS,DISCOS,RED"
 const ALTO_GRAFICA = 32
-const DISCOS = 8             # volúmenes que se enseñan, como mucho
+const DISCOS = 8             # volúmenes que se enseñan solos, como mucho (con UNIDADES=, los que se digan, hasta 16)
+const DISCOS_ELEGIDOS = 16
+const VACIA_KB = 1024        # una unidad con menos de 1 MB ocupado está vacía ("Empty" recién formateada): no sale sola
 const REDES = 3              # interfaces de red, como mucho
 const CADA_DISCOS = 10       # segundos entre dos lecturas de los discos: cambian despacio, y cada una pregunta a todos
 const CADA_TEMP = 10         # y de la temperatura de la PiStorm: cambia despacio
@@ -364,18 +366,41 @@ func alto_panel() -> Int
     return alto + 6
 end
 
+# UNIDADES=Work, Descargas, DH0 (lo pidió Ferrán García): las que se enseñan y en ese orden, aunque sean más de
+# ocho. Sin él, todas (hasta ocho) menos RAM: y las vacías
 func leer_discos()
     d_nombre = []
     d_kb = []
     d_libre = []
     n = disks_read(500)
-    for i in (0..n - 1)
+    elegidas = str_trim(conf("UNIDADES", tooltype("VOLUMES", "")))
+    if elegidas != ""
+        for e in str_split(elegidas, ",")
+            buscada = str_lower(str_trim(str_replace(e, ":", "")))
+            if buscada != "" and d_nombre.length < DISCOS_ELEGIDOS
+                i = 0
+                while i < n
+                    if str_lower(disk_name(i)) == buscada
+                        d_nombre.push(disk_name(i))
+                        d_kb.push(disk_kb(i))
+                        d_libre.push(disk_free_kb(i))
+                    end
+                    i = i + 1
+                end
+            end
+        end
+        return
+    end
+    i = 0
+    while i < n
         nombre = disk_name(i)
-        if nombre != "RAM Disk" and d_nombre.length < DISCOS
+        vacia = disk_kb(i) - disk_free_kb(i) < VACIA_KB
+        if nombre != "RAM Disk" and not vacia and d_nombre.length < DISCOS
             d_nombre.push(nombre)
             d_kb.push(disk_kb(i))
             d_libre.push(disk_free_kb(i))
         end
+        i = i + 1
     end
 end
 

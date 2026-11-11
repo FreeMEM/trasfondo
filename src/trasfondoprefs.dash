@@ -445,6 +445,9 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         campo(y, tr(MSG_TECLA, "Hotkey"), "CX_POPKEY")
         y = y + fila + 2
+        # las unidades que se enseñan (Ferrán García): "Work, Descargas"; vacío, todas menos las vacías
+        campo(y, tr(MSG_UNIDADES, "Disks shown"), "UNIDADES")
+        y = y + fila + 2
         ciclo(y, tr(MSG_CADA, "Measure every"), "CADA", "1 s|2 s|5 s|10 s", "1|2|5|10")
         y = y + fila + 2
         ciclo(y, tr(MSG_FONDO, "Background"), "FONDO", tr(MSG_FONDOS, "See-through|Solid"), "VELO|FIJO")
@@ -572,7 +575,7 @@ end
 
 # el alto de dentro de la ventana: el de la página más alta (el fondo o las ventanas, como las pone pagina) y los botones
 func alto_ventana() -> Int
-    fondo = m + fila + hueco + filas_s * fila + 4 + 7 * (fila + 2) + alto_boton
+    fondo = m + fila + hueco + filas_s * fila + 4 + 8 * (fila + 2) + alto_boton
     ventanas = m + fila + hueco + 9 * (fila + 2)
     if ventanas > fondo
         fondo = ventanas
@@ -639,7 +642,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -880,6 +883,7 @@ Main
     valores["TAREAS"] = conf("TAREAS", "6")
     valores["OCULTO"] = si(str_upper(conf("CX_POPUP", "YES")) == "NO")
     valores["CX_POPKEY"] = conf("CX_POPKEY", "")
+    valores["UNIDADES"] = conf("UNIDADES", "")
     cada = Int(conf("CADA", "2"))
     valores["CADA"] = "1"
     for s in [2, 5, 10]
@@ -942,7 +946,7 @@ Main
     end
     alto_boton = f + 6
     # el ancho de las etiquetas de la izquierda: el de la más larga de todas las páginas
-    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_UNIDADES, "Disks shown"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
     for t in izquierdas
         if x_campo < m + screen_font_text_width(t) + 10
             x_campo = m + screen_font_text_width(t) + 10

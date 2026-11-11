@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (09.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (11.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -425,3 +425,6 @@ Tecla de captura
 MSG_178
 Capturas en
 ; Screenshots to
+MSG_179
+Unidades
+; Disks shown
