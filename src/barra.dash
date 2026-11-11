@@ -545,7 +545,11 @@ Main
                 end
                 if titulo and not oculta     # a la altura de la barra de título: detrás de las ventanas que se
                     window_to_back(0)        # manden al fondo (Ferrán García); una ventana de fondo quedaría
-                end                          # tapada por el título, así que se aparta ella sola
+                                             # tapada por el título, así que se aparta ella sola
+                elif not oculta              # la completa: el Workbench saca otra vez su título al dejar de ir de
+                    screen_show_title(false) # fondo, y una ventana de fondo abierta después la taparía (las dos
+                    window_to_front(0)       # no hacen nada si ya está así)
+                end
                 av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR, SCREENSHOT)
                 if av_captura                # la orden SCREENSHOT de un guion: en un momento
                     av_captura = false
