@@ -91,7 +91,7 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   filtering (Amiga+F), searching subdrawers (Amiga+B), information with comment and permissions (Amiga+I) and
   drag and drop, icons from the Workbench too. .info files always go with their file. At the bottom, a row of
   buttons with their key underneath ("Copy F5", "Rename F2"...), to use the mouse or the key (asked for by Ferrán
-  García); View > Buttons hides it.
+  García); View > Buttons hides it. It comes pinned to the dock (the last icon); removing it from the dock does not put it back.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
   with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
 - **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup). In Startup, ticking
@@ -153,7 +153,7 @@ window.
 
 ## Installation and use
 
-1. Unpack `trasfondo-2.9.3.lha` (from the
+1. Unpack `trasfondo-2.9.4.lha` (from the
    [releases](https://github.com/FreeMEM/trasfondo/releases) page) into any drawer: you get the `Trasfondo` drawer.
 2. Double-click **Instalar** (the installer). It asks where to put the `Trasfondo` drawer with all the pieces
    and which ones start with the Workbench (it puts their icons in `SYS:WBStartup`). It puts **TrasfondoPrefs**

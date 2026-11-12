@@ -90,7 +90,7 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   filtrar (Amiga+F), buscar en los subcajones (Amiga+B), información con comentario y permisos (Amiga+I) y
   arrastrar y soltar, también iconos desde el Workbench. Los .info van siempre con su fichero. Abajo, una fila
   de botones con su tecla debajo ("Copiar F5", "Renombrar F2"...), para usar el ratón o la tecla (lo pidió Ferrán
-  García); Ver > Botones la quita.
+  García); Ver > Botones la quita. Viene fijado en el dock (el último icono); quitarlo del dock no lo vuelve a poner.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
   con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
 - **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque). En Arranque, marcar
@@ -152,7 +152,7 @@ Sin probar todavía: AmigaOS 3.0, 3.1 y 3.9, un 68000 real, OCS/ECS y el Workben
 
 ## Instalación y uso
 
-1. Descomprime `trasfondo-2.9.3.lha` (de la página de
+1. Descomprime `trasfondo-2.9.4.lha` (de la página de
    [releases](https://github.com/FreeMEM/trasfondo/releases)) en cualquier cajón: sale el cajón `Trasfondo`.
 2. Doble clic en **Instalar**. Pregunta dónde dejar el cajón `Trasfondo` con todas las piezas y cuáles
    arrancan con el Workbench (pone sus iconos en `SYS:WBStartup`). Pone **TrasfondoPrefs** en `SYS:Prefs`, la
