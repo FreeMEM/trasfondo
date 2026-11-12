@@ -157,3 +157,6 @@ coordinar con freememlang-40)
   borde sale un marco del color del acento donde quedará la ventana (cuatro ventanas finas sin borde); al alejarse se
   quita; al soltar con el marco puesto, encaja. `GUION=prueba_mover.dash tests/prueba_ventanas.py`: bien; captura
   bien. Con el arrastre de Intuition (la barra de título) sigue encajando al soltar, sin marco.
+- 2026-11-12: miniaturas de imágenes (PNG, JPEG, GIF, BMP, WebP, SVG) en la vista de iconos: una a una en un
+  proceso aparte (image_decode_start), reducidas a 56 x 56 sin deformar, con su marco; Ver > Miniaturas las quita.
+  Captura bien; `prueba_archivos.py` bien; compila también por `--gcc`.

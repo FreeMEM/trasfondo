@@ -318,3 +318,4 @@ const MSG_A_FILTRO = 475
 const MSG_A_M_FILTRO = 476
 const MSG_A_BUSCAR = 477
 const MSG_A_M_BUSCAR = 478
+const MSG_A_M_MINIS = 479

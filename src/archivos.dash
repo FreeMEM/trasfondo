@@ -58,7 +58,9 @@ const ID_M_DOS = 37
 const ID_M_INFO_DE = 17
 const ID_M_DESHACER = 25
 const ID_M_FILTRO = 45
-const ID_M_BUSCAR = 46      # la ventana de información
+const ID_M_BUSCAR = 46
+const ID_MINI = 6
+const ID_M_MINIS = 38      # la ventana de información
 const ID_I_GUARDAR = 50
 const ID_I_CANCELAR = 51
 
@@ -129,6 +131,13 @@ var primera: Int = 0         # la primera fila que se ve (lista) o la primera fi
 var cursor: Int = -1         # en el orden de "orden"
 var ancla: Int = -1          # desde dónde va Mayús+clic
 var iconos: [Int] = []       # icon_load de cada uno en la vista de iconos (0: aún no)
+var minis: [Int] = []        # la miniatura de cada imagen (image_from_decoded): 0 aún no, -1 no es imagen o falló,
+                             # -2 decodificándose
+var con_minis: Bool = true
+var mini_t: Int = 0          # el image_decode_start en marcha, de qué fichero y para qué entrada
+var mini_ruta: String = ""
+var mini_i: Int = -1
+var mini_pedir: Int = -1     # la primera imagen a la vista sin miniatura (la pinta pintar_iconos)
 var vigilado: Int = 0        # file_notify del cajón
 var libre_kb: Int = -1
 
@@ -159,6 +168,7 @@ var b_primera: Int = 0
 var b_cursor: Int = -1
 var b_ancla: Int = -1
 var b_iconos: [Int] = []
+var b_minis: [Int] = []
 var b_vigilado: Int = 0
 var b_libre_kb: Int = -1
 var b_atras: [String] = []
@@ -496,14 +506,10 @@ func leer(r: String, guardar: Bool)
             end
         end
     end
-    for ic in iconos
-        if ic != 0
-            icon_free(ic)
-        end
-    end
-    iconos = []
+    soltar_iconos()
     for k in (0..nombres.length - 1)
         iconos.push(0)
+        minis.push(0)
     end
     ordenar()
     if not guardar
@@ -637,6 +643,9 @@ func cambiar_panel()
     ti = iconos
     iconos = b_iconos
     b_iconos = ti
+    tz = minis
+    minis = b_minis
+    b_minis = tz
     ta = atras
     atras = b_atras
     b_atras = ta
@@ -1159,11 +1168,21 @@ func pintar_iconos()
             elif k == cursor or k == encima
                 redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_TARJETA)
             end
-            if iconos[i] == 0
+            imagen = con_minis and not es_cajon[i] and es_imagen(nombres[i])
+            if imagen and minis[i] == 0 and mini_pedir < 0 and panel_pintado == panel_activo
+                mini_pedir = i
+            end
+            if iconos[i] == 0 and not (imagen and minis[i] > 0)
                 iconos[i] = icon_load(unir(ruta, nombres[i]))
             end
             ic = iconos[i]
-            if ic != 0
+            if imagen and minis[i] > 0
+                mw = image_width(minis[i])
+                mh = image_height(minis[i])
+                pluma(C_BORDE)
+                gfx_box(cx + (cw - mw) / 2 - 1, cy + 3 + (56 - mh) / 2, cx + (cw + mw) / 2, cy + 4 + (56 + mh) / 2)
+                image_draw(minis[i], cx + (cw - mw) / 2, cy + 4 + (56 - mh) / 2)
+            elif ic != 0
                 iw = icon_width(ic)
                 ihh = icon_height(ic)
                 if iw > cw - 8 or ihh > 56
@@ -1787,6 +1806,105 @@ func tecla(c: Int, q: Int, ch: String)
     end
 end
 
+# --- iconos y miniaturas ---
+
+func soltar_iconos()
+    for ic in iconos
+        if ic != 0
+            icon_free(ic)
+        end
+    end
+    for m in minis
+        if m > 0
+            image_free(m)
+        end
+    end
+    iconos = []
+    minis = []
+end
+
+# ¿un fichero que image_decode sabe leer?
+func es_imagen(n: String) -> Bool
+    l = str_lower(n)
+    for e in [".png", ".jpg", ".jpeg", ".gif", ".bmp", ".webp", ".svg"]
+        if str_ends(l, e)
+            return true
+        end
+    end
+    return false
+end
+
+# una miniatura más: la imagen que pidió pintar_iconos, decodificada en un proceso aparte (la ventana sigue)
+func mini_empezar()
+    if mini_t != 0 or mini_pedir < 0 or mini_pedir >= minis.length
+        return
+    end
+    i = mini_pedir
+    mini_pedir = -1
+    mini_ruta = unir(ruta, nombres[i])
+    mini_t = image_decode_start(mini_ruta, 56, 56)
+    if mini_t == 0
+        minis[i] = -1
+        return
+    end
+    minis[i] = -2
+    mini_i = i
+    mui_timer(80, ID_MINI)
+end
+
+# ¿acabó? la miniatura, a su sitio (si se sigue viendo ese cajón)
+func mini_mirar()
+    if mini_t == 0
+        return
+    end
+    if not image_decode_ready(mini_t)
+        mui_timer(80, ID_MINI)
+        return
+    end
+    d = image_decode_finish(mini_t)
+    mini_t = 0
+    img = 0
+    if d != 0
+        # a 56 x 56 como mucho, sin deformarla (image_decode solo reduce algunos formatos)
+        w = image_decoded_width(d)
+        h = image_decoded_height(d)
+        if w > 0 and h > 0
+            nw = w
+            nh = h
+            if nw > 56
+                nh = nh * 56 / nw
+                nw = 56
+            end
+            if nh > 56
+                nw = nw * 56 / nh
+                nh = 56
+            end
+            if nw < 1
+                nw = 1
+            end
+            if nh < 1
+                nh = 1
+            end
+            if nw == w and nh == h
+                img = image_from_decoded(d)
+            else
+                img = image_from_decoded_size(d, nw, nh)
+            end
+        end
+        image_decoded_free(d)
+    end
+    if mini_i >= 0 and mini_i < minis.length and unir(ruta, nombres[mini_i]) == mini_ruta
+        if img != 0
+            minis[mini_i] = img
+        else
+            minis[mini_i] = -1
+        end
+    elif img != 0
+        image_free(img)
+    end
+    mini_i = -1
+end
+
 # --- buscar en los subcajones ---
 
 func empezar_busqueda(t: String)
@@ -1802,12 +1920,7 @@ func empezar_busqueda(t: String)
     fechas = []
     comentarios = []
     elegido = []
-    for ic in iconos
-        if ic != 0
-            icon_free(ic)
-        end
-    end
-    iconos = []
+    soltar_iconos()
     orden = []
     filtro = ""
     primera = 0
@@ -1843,6 +1956,7 @@ func paso_busqueda()
             comentarios.push(dir_entry_comment(i))
             elegido.push(false)
             iconos.push(0)
+            minis.push(0)
             orden.push(nombres.length - 1)       # (en el orden en que salen; al acabar, ordenados)
         end
     end
@@ -2615,6 +2729,7 @@ func menus()
         x = mui_menu_item(tr(MSG_A_M_POR_FECHA, "Sort by date"), "", ID_M_POR_FECHA)
         mui_menu_separator()
         x = mui_menu_check(tr(MSG_A_M_INFO, "Show the .info files"), "", ID_M_INFO, false)
+        x = mui_menu_check(tr(MSG_A_M_MINIS, "Thumbnails of pictures"), "", ID_M_MINIS, true)
         x = mui_menu_item(tr(MSG_A_M_ACTUALIZAR, "Refresh"), "U", ID_M_ACTUALIZAR)
     mui_menu_end()
     m = mui_menu_begin(tr(MSG_A_M_IR, "Go"))
@@ -2679,6 +2794,8 @@ func menu(ev: Int) -> Bool
     elif ev == ID_M_INFO
         con_info = not con_info
         ordenar()
+    elif ev == ID_M_MINIS
+        con_minis = not con_minis
     elif ev == ID_M_ACTUALIZAR
         lateral()
         leer(ruta, true)
@@ -2734,6 +2851,9 @@ Main
     end
     seguir = true
     while seguir
+        if vista_iconos
+            mini_empezar()
+        end
         ev = 0
         if op_activa or buscando
             ev = mui_poll_event()
@@ -2785,6 +2905,9 @@ Main
                 clic(mui_canvas_mouse_x(lienzo), mui_canvas_mouse_y(lienzo), q)
             end
             repintar()
+        elif ev == ID_MINI
+            mini_mirar()
+            repintar()
         elif ev == ID_ARRASTRE
             arrastre(mui_canvas_drag(lienzo), mui_canvas_mouse_x(lienzo), mui_canvas_mouse_y(lienzo), mui_canvas_qualifiers(lienzo))
             repintar()
@@ -2821,6 +2944,12 @@ Main
     end
     if op_copia != 0
         ok = file_copy_end(op_copia, false)
+    end
+    if mini_t != 0                               # (su proceso tiene que acabar antes que el programa)
+        d = image_decode_finish(mini_t)
+        if d != 0
+            image_decoded_free(d)
+        end
     end
     mui_app_end()
 end
