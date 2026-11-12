@@ -55,6 +55,10 @@ const ID_M_ARRIBA = 42
 const ID_M_IR = 43
 const ID_M_DEVOLVER = 44
 const ID_M_DOS = 37
+const ID_M_INFO_DE = 17
+const ID_M_DESHACER = 25      # la ventana de información
+const ID_I_GUARDAR = 50
+const ID_I_CANCELAR = 51
 
 const K_ARRIBA = 0x4C        # teclas en bruto
 const K_ABAJO = 0x4D
@@ -202,6 +206,23 @@ var op_borrar_luego: [String] = []   # al mover entre discos: los originales, al
 var op_cancelar: Bool = false
 var op_todos: Int = 0        # ante un conflicto: 0 preguntar, 1 reemplazar todos, 2 saltar todos
 var op_fallos: Int = 0
+var op_hechos_de: [String] = []   # lo que se movió de verdad (para deshacerlo): de dónde y adónde
+var op_hechos_a: [String] = []
+var op_deshacer: Int = 0     # qué deshace la operación en marcha: 0 nada, 4 mover, 6 sacar de la papelera
+
+# deshacer (Amiga+Z): lo último que se renombró, movió o mandó a la papelera
+var des_tipo: Int = 0        # 0 nada; 4 mover de des_de a des_a; 6 sacar de la papelera
+var des_de: [String] = []
+var des_a: [String] = []
+
+# la ventana de información (Amiga+I): nombre, tamaño, fecha, comentario y permisos de lo elegido
+var i_win: Int = 0
+var i_ruta: String = ""
+var i_nombre: Int = 0
+var i_detalle: Int = 0
+var i_coment: Int = 0
+var i_bits: [Int] = []       # las casillas: leer, escribir, ejecutar, borrar, guion, puro, archivado, oculto
+var i_abierta: Bool = false
 
 # --- utilidades ---
 
@@ -1815,8 +1836,13 @@ func acabar_edicion(guardar: Bool)
             if file_exists(a) and str_lower(t) != str_lower(viejo)
                 mui_request(win, "Archivos", tr(MSG_A_YA_HAY, "There is already one with that name:") + "\n" + t, "_OK")
             elif file_rename(de, a)
+                des_tipo = 4
+                des_de = [a]
+                des_a = [de]
                 if file_exists(de + ".info")
                     ok = file_rename(de + ".info", a + ".info")
+                    des_de.push(a + ".info")
+                    des_a.push(de + ".info")
                 end
                 leer(ruta, true)
                 elegir_nombre(t)
@@ -1879,6 +1905,9 @@ func op_empezar(titulo: String)
     op_cancelar = false
     op_todos = 0
     op_fallos = 0
+    op_hechos_de = []
+    op_hechos_a = []
+    op_deshacer = 0
 end
 
 func op_poner(tipo: Int, de: String, a: String)
@@ -1946,6 +1975,7 @@ func copiar_a(rutas: [String], destino: String, mover: Bool)
             continue                             # (un cajón dentro de sí mismo)
         end
         if mover and mismo
+            op_deshacer = 4
             op_poner(4, p, a)
         else
             poner_copia(p, a)
@@ -1975,6 +2005,7 @@ func a_la_papelera()
         end
     end
     op_empezar(tr(MSG_A_A_PAPELERA, "To the trash"))
+    op_deshacer = 6
     for p in todas
         op_poner(5, p, pap)
     end
@@ -2048,20 +2079,21 @@ func devolver()
     end
     lineas = str_split(indice, "\n")
     op_empezar(tr(MSG_A_DEVOLVIENDO, "Restoring"))
+    op_deshacer = 4
     for p in elegidas()
         nm = nombre_de(p)
         for l in lineas
             t = str_split(l, "\t")
             if t.length == 2 and t[0] == nm
-                op_poner(4, p, t[1])
+                op_poner(6, p, t[1])
             end
         end
     end
     op_activa = op_tipo.length > 0
 end
 
-# en la papelera: un nombre libre y apuntar de dónde vino
-func a_papelera_uno(p: String, pap: String) -> Bool
+# en la papelera: un nombre libre y apuntar de dónde vino; da dónde quedó ("" si no se pudo)
+func a_papelera_uno(p: String, pap: String) -> String
     nm = nombre_de(p)
     a = unir(pap, nm)
     n = 2
@@ -2070,14 +2102,32 @@ func a_papelera_uno(p: String, pap: String) -> Bool
         n = n + 1
     end
     if not file_rename(p, a)
-        return false
+        return ""
     end
     indice = file_read_text(pap + "/.indice")
     if indice == nil
         indice = ""
     end
     ok = file_write_text(pap + "/.indice", indice + nombre_de(a) + "\t" + p + "\n")
-    return true
+    return a
+end
+
+# lo que sale de la papelera (su ruta allí) deja de estar en el índice
+func quitar_del_indice(en: String)
+    pap = padre(en)
+    indice = file_read_text(pap + "/.indice")
+    if indice == nil
+        return
+    end
+    nm = nombre_de(en)
+    nuevo = ""
+    for l in str_split(indice, "\n")
+        t = str_split(l, "\t")
+        if l != "" and not (t.length == 2 and t[0] == nm)
+            nuevo = nuevo + l + "\n"
+        end
+    end
+    ok = file_write_text(pap + "/.indice", nuevo)
 end
 
 # ante un destino que ya existe: true para seguir (reemplazándolo), false para saltarlo
@@ -2182,11 +2232,30 @@ func op_paso()
                 return
             end
         end
-        if not file_rename(de, a)
+        if file_rename(de, a)
+            op_hechos_de.push(a)                 # (para deshacerlo: de a hacia de)
+            op_hechos_a.push(de)
+        else
             op_fallos = op_fallos + 1
         end
     elif t == 5
-        if not a_papelera_uno(de, a)
+        en = a_papelera_uno(de, a)
+        if en == ""
+            op_fallos = op_fallos + 1
+        else
+            op_hechos_de.push(en)
+            op_hechos_a.push(de)
+        end
+    elif t == 6
+        if file_exists(a) and not conflicto(a)
+            op_i = op_i + 1
+            return
+        end
+        if file_rename(de, a)
+            quitar_del_indice(de)
+            op_hechos_de.push(a)
+            op_hechos_a.push(padre(de))
+        else
             op_fallos = op_fallos + 1
         end
     end
@@ -2195,6 +2264,13 @@ end
 
 func op_acabar()
     op_activa = false
+    if op_hechos_de.length > 0 and op_deshacer != 0
+        des_tipo = op_deshacer
+        des_de = op_hechos_de
+        des_a = op_hechos_a
+    elif op_deshacer == 0 and op_tipo.length > 0
+        des_tipo = 0                             # (después de otra cosa, lo de antes ya no se deshace)
+    end
     if op_fallos > 0
         mui_request(win, "Archivos", "#{op_fallos} " + tr(MSG_A_FALLOS, "could not be done (write-protected, in use or the disk is full)"), "_OK")
     end
@@ -2205,6 +2281,23 @@ func op_acabar()
         cambiar_panel()
         mui_set_text(win, "Archivos: " + ruta)
     end
+end
+
+func deshacer()
+    if des_tipo == 0 or des_de.length == 0
+        return
+    end
+    op_empezar(tr(MSG_A_DESHACIENDO, "Undoing"))
+    for k in (0..des_de.length - 1)
+        if des_tipo == 6
+            op_poner(6, des_de[k], des_a[k])     # de la papelera a su sitio
+        elif des_tipo == 4
+            op_poner(4, des_de[k], des_a[k])
+        end
+    end
+    op_deshacer = 0
+    des_tipo = 0
+    op_activa = true
 end
 
 func pegar()
@@ -2254,6 +2347,99 @@ func arrastre(estado: Int, mx: Int, my: Int, q: Int)
     end
 end
 
+# --- la ventana de información ---
+
+func crear_info()
+    i_win = mui_window_begin(tr(MSG_A_INFO, "Information"), 2)
+        mui_columns_begin(2)
+            l = mui_label(tr(MSG_A_NOMBRE, "Name"))
+            i_nombre = mui_text("")
+            l = mui_label("")
+            i_detalle = mui_text("")
+            l = mui_label(tr(MSG_A_COMENTARIO, "Comment"))
+            i_coment = mui_string("", 79)
+        mui_group_end()
+        var nombres_b: [String] = [tr(MSG_A_P_LEER, "Read"), tr(MSG_A_P_ESCRIBIR, "Write"), tr(MSG_A_P_EJECUTAR, "Execute"), tr(MSG_A_P_BORRAR, "Delete"), tr(MSG_A_P_GUION, "Script"), tr(MSG_A_P_PURO, "Pure"), tr(MSG_A_P_ARCHIVADO, "Archived"), tr(MSG_A_P_OCULTO, "Hidden")]
+        f = mui_frame_begin(tr(MSG_A_PERMISOS, "Permissions"), false)
+            mui_columns_begin(8)
+                for k in (0..7)
+                    i_bits.push(mui_checkbox(false))
+                    l = mui_label(nombres_b[k])
+                end
+            mui_group_end()
+        mui_group_end()
+        mui_hgroup_begin()
+            g = mui_button(tr(MSG_A_GUARDAR, "_Save"))
+            mui_on_press(g, ID_I_GUARDAR)
+            mui_space()
+            c = mui_button(tr(MSG_A_CANCELAR, "Cancel"))
+            mui_on_press(c, ID_I_CANCELAR)
+        mui_group_end()
+    mui_window_end()
+    mui_on_close(i_win, ID_I_CANCELAR)
+end
+
+# los bits del sistema de ficheros por casilla: rwed van al revés (puesto = no se permite)
+func bit_de(k: Int) -> Int
+    var b: [Int] = [8, 4, 2, 1, 64, 32, 16, 128]
+    return b[k]
+end
+
+func abrir_info()
+    if cursor < 0 or cursor >= orden.length
+        return
+    end
+    i = orden[cursor]
+    i_ruta = unir(ruta, nombres[i])
+    p = file_protection(i_ruta)
+    if p < 0
+        return
+    end
+    mui_set_text(i_nombre, nombres[i])
+    d = fecha_texto(file_date(i_ruta))
+    if not es_cajon[i]
+        d = tamano_texto(tamanos[i]) + "   " + d
+    end
+    mui_set_text(i_detalle, d)
+    mui_set_text(i_coment, file_comment(i_ruta))
+    for k in (0..7)
+        puesto = p & bit_de(k) != 0
+        if k < 4
+            puesto = not puesto
+        end
+        v = 0
+        if puesto
+            v = 1
+        end
+        mui_set_value(i_bits[k], v)
+    end
+    i_abierta = mui_window_open(i_win)
+end
+
+func guardar_info()
+    p = file_protection(i_ruta)
+    if p >= 0
+        nuevo = p & (0xFFFFFF00)
+        for k in (0..7)
+            marcado = mui_get_value(i_bits[k]) == 1
+            if k < 4
+                marcado = not marcado
+            end
+            if marcado
+                nuevo = nuevo + bit_de(k)
+            end
+        end
+        ok = file_set_protection(i_ruta, nuevo)
+        ok2 = file_set_comment(i_ruta, mui_get_text(i_coment))
+        if not ok or not ok2
+            mui_request(i_win, "Archivos", tr(MSG_A_NO_GUARDA, "It could not be changed (a write-protected disk?)"), "_OK")
+        end
+    end
+    mui_window_close(i_win)
+    i_abierta = false
+    leer(ruta, true)
+end
+
 # --- los menús ---
 
 func menus()
@@ -2261,6 +2447,7 @@ func menus()
         x = mui_menu_item(tr(MSG_A_M_NUEVO, "New drawer"), "N", ID_M_NUEVO)
         x = mui_menu_item(tr(MSG_A_M_ABRIR, "Open"), "O", ID_M_ABRIR)
         x = mui_menu_item(tr(MSG_A_M_RENOMBRAR, "Rename (F2)"), "R", ID_M_RENOMBRAR)
+        x = mui_menu_item(tr(MSG_A_M_INFO_DE, "Information..."), "I", ID_M_INFO_DE)
         mui_menu_separator()
         x = mui_menu_item(tr(MSG_A_M_PAPELERA, "Move to the trash (Del)"), "", ID_M_PAPELERA)
         x = mui_menu_item(tr(MSG_A_M_DEVOLVER, "Restore from the trash"), "", ID_M_DEVOLVER)
@@ -2270,6 +2457,8 @@ func menus()
         x = mui_menu_item(tr(MSG_A_M_SALIR, "Close"), "Q", ID_M_SALIR)
     mui_menu_end()
     m = mui_menu_begin(tr(MSG_A_M_EDITAR, "Edit"))
+        x = mui_menu_item(tr(MSG_A_M_DESHACER, "Undo"), "Z", ID_M_DESHACER)
+        mui_menu_separator()
         x = mui_menu_item(tr(MSG_A_M_CORTAR, "Cut"), "X", ID_M_CORTAR)
         x = mui_menu_item(tr(MSG_A_M_COPIAR, "Copy"), "C", ID_M_COPIAR)
         x = mui_menu_item(tr(MSG_A_M_PEGAR, "Paste"), "V", ID_M_PEGAR)
@@ -2306,6 +2495,13 @@ func menu(ev: Int) -> Bool
         end
     elif ev == ID_M_RENOMBRAR
         empezar_edicion(1)
+    elif ev == ID_M_INFO_DE
+        abrir_info()
+    elif ev == ID_I_GUARDAR
+        guardar_info()
+    elif ev == ID_I_CANCELAR
+        mui_window_close(i_win)
+        i_abierta = false
     elif ev == ID_M_PAPELERA
         a_la_papelera()
     elif ev == ID_M_DEVOLVER
@@ -2321,6 +2517,8 @@ func menu(ev: Int) -> Bool
         porta_cortar = ev == ID_M_CORTAR
     elif ev == ID_M_PEGAR
         pegar()
+    elif ev == ID_M_DESHACER
+        deshacer()
     elif ev == ID_M_TODO
         for k in (0..orden.length - 1)
             elegido[orden[k]] = true
@@ -2371,6 +2569,7 @@ Main
         lienzo = mui_canvas(420, 240)
     mui_window_end()
     mui_window_size(win, 70, 70)
+    crear_info()
     mui_canvas_buffered(lienzo, true)
     mui_canvas_on_draw(lienzo, pintar)
     mui_canvas_on_input(lienzo, ID_LIENZO)

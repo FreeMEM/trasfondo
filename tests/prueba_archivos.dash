@@ -69,6 +69,23 @@ Main
     tecla(0x54, 0)                 # F5
     time_delay(50)
     Print "dos paneles #{file_exists(\"RAM:pa/d/bx.txt\")} #{file_exists(\"RAM:pa/bx.txt\")}"
+    # información de bx.txt (Amiga+I) y "s" (Guardar): los permisos y el comentario quedan como estaban (s y sin w)
+    ok = file_set_protection("RAM:pa/bx.txt", 64 + 4)
+    ok = file_set_comment("RAM:pa/bx.txt", "hola")
+    tecla(0x35, 0)                 # "b": bx.txt
+    tecla(0x17, 8)                 # Amiga+I
+    time_delay(25)
+    Print "info " + input_active_title()
+    tecla(0x21, 0)                 # "s": Guardar
+    Print "info guardada #{file_protection(\"RAM:pa/bx.txt\") & 255 == 68} " + file_comment("RAM:pa/bx.txt")
+    # bx.txt a la papelera (Supr) y Amiga+Z: vuelve, y sale del índice
+    tecla(0x35, 0)                 # "b"
+    tecla(0x46, 0)                 # Supr
+    time_delay(25)
+    fuera = not file_exists("RAM:pa/bx.txt")
+    tecla(0x31, 8)                 # Amiga+Z
+    time_delay(50)
+    Print "deshacer #{fuera} #{file_exists(\"RAM:pa/bx.txt\")} #{not str_contains(file_read_text(\"RAM:.Papelera/.indice\"), \"bx.txt\")}"
     tecla(0x10, 8)                 # Amiga+Q
     time_delay(50)
     Print "cerrada #{input_active_title() != \"Archivos: RAM:pa\"}"

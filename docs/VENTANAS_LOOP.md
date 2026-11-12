@@ -136,3 +136,9 @@ coordinar con freememlang-40)
   todos, cancelar), progreso abajo con cancelar (la copia a medias se borra), los .info con su fichero, avisos de
   cambios del cajón (file_notify). Textos en el catálogo (400-458) con castellano.
   `tests/prueba_archivos.py` (con el teclado, en RTG con MUI): todo bien. Capturas de lista e iconos: bien.
+- 2026-11-12: dos paneles (F3; Tab cambia; F5 copia y F6 mueve al otro; lo elegido del que no manda, apagado; la
+  rueda mueve el de debajo), resaltado bajo el puntero, ventana de información (Amiga+I: comentario y permisos, con
+  las funciones nuevas de Dash) y deshacer (Amiga+Z: renombrar, mover, papelera; al sacar de la papelera sale del
+  índice). `tests/prueba_archivos.py`: todo bien (también dos paneles, información y deshacer).
+- 2026-11-12: Dash 2.11.0 y Forja 0.6.1 publicadas (aprobado por el usuario). `wm-eventos` con main fusionado
+  (944779a): 626/626 sin emulador; test_wm_eventos, test_file_attrs, test_ctrl_c y test_wm bien en A1200 y A500.

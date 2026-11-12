@@ -659,3 +659,48 @@ Ir a...
 MSG_459
 Dos paneles (F3)
 ; Two panes (F3)
+MSG_460
+Información
+; Information
+MSG_461
+Leer
+; Read
+MSG_462
+Escribir
+; Write
+MSG_463
+Ejecutar
+; Execute
+MSG_464
+Borrar
+; Delete
+MSG_465
+Guion
+; Script
+MSG_466
+Puro
+; Pure
+MSG_467
+Archivado
+; Archived
+MSG_468
+Oculto
+; Hidden
+MSG_469
+Permisos
+; Permissions
+MSG_470
+_Guardar
+; _Save
+MSG_471
+No se pudo cambiar (¿un disco protegido?)
+; It could not be changed (a write-protected disk?)
+MSG_472
+Información...
+; Information...
+MSG_473
+Deshaciendo
+; Undoing
+MSG_474
+Deshacer
+; Undo

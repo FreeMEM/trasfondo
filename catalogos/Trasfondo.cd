@@ -657,3 +657,48 @@ Go to...
 ; MSG_A_M_DOS
 MSG_459 (459//)
 Two panes (F3)
+; MSG_A_INFO
+MSG_460 (460//)
+Information
+; MSG_A_P_LEER
+MSG_461 (461//)
+Read
+; MSG_A_P_ESCRIBIR
+MSG_462 (462//)
+Write
+; MSG_A_P_EJECUTAR
+MSG_463 (463//)
+Execute
+; MSG_A_P_BORRAR
+MSG_464 (464//)
+Delete
+; MSG_A_P_GUION
+MSG_465 (465//)
+Script
+; MSG_A_P_PURO
+MSG_466 (466//)
+Pure
+; MSG_A_P_ARCHIVADO
+MSG_467 (467//)
+Archived
+; MSG_A_P_OCULTO
+MSG_468 (468//)
+Hidden
+; MSG_A_PERMISOS
+MSG_469 (469//)
+Permissions
+; MSG_A_GUARDAR
+MSG_470 (470//)
+_Save
+; MSG_A_NO_GUARDA
+MSG_471 (471//)
+It could not be changed (a write-protected disk?)
+; MSG_A_M_INFO_DE
+MSG_472 (472//)
+Information...
+; MSG_A_DESHACIENDO
+MSG_473 (473//)
+Undoing
+; MSG_A_M_DESHACER
+MSG_474 (474//)
+Undo
