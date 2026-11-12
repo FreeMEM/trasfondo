@@ -464,3 +464,18 @@ Encoger / agrandar
 MSG_311
 Cerrar
 ; Close
+MSG_312
+Encajar en los bordes
+; Snap at the edges
+MSG_313
+Doble clic maximiza
+; Double-click maximizes
+MSG_314
+Menú de ventana
+; Window menu
+MSG_315
+Alt+Tab
+; Alt+Tab
+MSG_316
+Menú de ventana
+; Window menu

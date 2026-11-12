@@ -232,3 +232,9 @@ const MSG_V_DELANTE = 308
 const MSG_V_DETRAS = 309
 const MSG_V_ENCOGER = 310
 const MSG_V_CERRAR = 311
+# TrasfondoPrefs, página Ventanas: lo del ratón y la tecla del menú
+const MSG_V_ENCAJAR = 312
+const MSG_V_DOBLE_CLIC = 313
+const MSG_V_MENU = 314
+const MSG_V_ALT_TAB = 315
+const MSG_V_T_MENU = 316

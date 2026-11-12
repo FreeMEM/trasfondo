@@ -120,3 +120,5 @@ coordinar con freememlang-40)
 - 2026-11-12: capturas del menú (`tests/vista_menu.py` en 640x256 de 4 colores; `tools/vista.py --ventanas ""
   --tecla 0x40,6,25` en RTG con el tema). En pantallas de paleta usa los colores del Workbench (fondo blanco, texto
   negro, la elegida en azul); rayas entre grupos (tamaño, delante/detrás, cerrar).
+- 2026-11-12: 1f: TrasfondoPrefs, página Ventanas: casillas "Encajar en los bordes", "Doble clic maximiza", "Menú de
+  ventana", "Alt+Tab" (en dos columnas si caben) y la tecla del menú. Captura en RTG: bien.

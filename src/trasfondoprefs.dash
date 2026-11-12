@@ -517,8 +517,22 @@ func pagina(n: Int, linea_version: String)
         numero(y, tr(MSG_HUECO, "Gap"), "VENTANAS_HUECO", ancho_n)
         casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_MOSAICO, "Tile new windows automatically"), "VENTANAS_MOSAICO")
         y = y + fila + 2
-        var teclas: [String] = ["TECLA_MAXIMIZAR", "TECLA_IZQUIERDA", "TECLA_DERECHA", "TECLA_RESTAURAR", "TECLA_MOSAICO", "TECLA_AUTOMATICO", "RATON_MOVER", "RATON_TAMANO"]
-        var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+        # con el ratón, como en los escritorios de ahora: en dos columnas si caben
+        c2 = v_columna()
+        casilla(x, y, tr(MSG_V_ENCAJAR, "Snap at the edges"), "VENTANAS_ENCAJAR")
+        if c2 == 0
+            y = y + fila
+        end
+        casilla(x + c2, y, tr(MSG_V_DOBLE_CLIC, "Double-click maximizes"), "VENTANAS_DOBLE_CLIC")
+        y = y + fila
+        casilla(x, y, tr(MSG_V_MENU, "Window menu"), "VENTANAS_MENU")
+        if c2 == 0
+            y = y + fila
+        end
+        casilla(x + c2, y, tr(MSG_V_ALT_TAB, "Alt+Tab"), "VENTANAS_ALT_TAB")
+        y = y + fila + 4
+        var teclas: [String] = ["TECLA_MAXIMIZAR", "TECLA_IZQUIERDA", "TECLA_DERECHA", "TECLA_RESTAURAR", "TECLA_MOSAICO", "TECLA_AUTOMATICO", "TECLA_MENU", "RATON_MOVER", "RATON_TAMANO"]
+        var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_V_T_MENU, "Window menu"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
         i = 0
         while i < teclas.length
             campo(y, nombres_t[i], "VENTANAS_" + teclas[i])
@@ -573,10 +587,32 @@ func pagina(n: Int, linea_version: String)
     end
 end
 
+# la página Ventanas: dónde va la segunda columna de casillas (lo del ratón), o 0 si no caben dos
+func v_columna() -> Int
+    a = screen_font_text_width(tr(MSG_V_ENCAJAR, "Snap at the edges"))
+    b = screen_font_text_width(tr(MSG_V_MENU, "Window menu"))
+    if b > a
+        a = b
+    end
+    c = screen_font_text_width(tr(MSG_V_DOBLE_CLIC, "Double-click maximizes"))
+    d = screen_font_text_width(tr(MSG_V_ALT_TAB, "Alt+Tab"))
+    if d > c
+        c = d
+    end
+    col = 26 + 8 + a + 16
+    if m + col + 26 + 8 + c + m > ancho
+        return 0
+    end
+    return col
+end
+
 # el alto de dentro de la ventana: el de la página más alta (el fondo o las ventanas, como las pone pagina) y los botones
 func alto_ventana() -> Int
     fondo = m + fila + hueco + filas_s * fila + 4 + 8 * (fila + 2) + alto_boton
-    ventanas = m + fila + hueco + 9 * (fila + 2)
+    ventanas = m + fila + hueco + 11 * (fila + 2) + 2 * fila + 4
+    if v_columna() == 0
+        ventanas = ventanas + 2 * fila
+    end
     if ventanas > fondo
         fondo = ventanas
     end
@@ -642,7 +678,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -929,6 +965,11 @@ Main
     valores["VENTANAS_TECLA_AUTOMATICO"] = conf("VENTANAS_TECLA_AUTOMATICO", "ctrl alt a")
     valores["VENTANAS_RATON_MOVER"] = conf("VENTANAS_RATON_MOVER", "rawmouse lalt mouse_leftpress")
     valores["VENTANAS_RATON_TAMANO"] = conf("VENTANAS_RATON_TAMANO", "rawmouse lalt mouse_rightpress")
+    valores["VENTANAS_ENCAJAR"] = si(str_upper(conf("VENTANAS_ENCAJAR", "SI")) != "NO")
+    valores["VENTANAS_DOBLE_CLIC"] = si(str_upper(conf("VENTANAS_DOBLE_CLIC", "SI")) != "NO")
+    valores["VENTANAS_MENU"] = si(str_upper(conf("VENTANAS_MENU", "SI")) != "NO")
+    valores["VENTANAS_ALT_TAB"] = si(str_upper(conf("VENTANAS_ALT_TAB", "SI")) != "NO")
+    valores["VENTANAS_TECLA_MENU"] = conf("VENTANAS_TECLA_MENU", "ctrl alt space")
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)

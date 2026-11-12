@@ -462,3 +462,18 @@ Shrink / grow (zoom)
 ; MSG_V_CERRAR
 MSG_311 (311//)
 Close
+; MSG_V_ENCAJAR
+MSG_312 (312//)
+Snap at the edges
+; MSG_V_DOBLE_CLIC
+MSG_313 (313//)
+Double-click maximizes
+; MSG_V_MENU
+MSG_314 (314//)
+Window menu
+; MSG_V_ALT_TAB
+MSG_315 (315//)
+Alt+Tab
+; MSG_V_T_MENU
+MSG_316 (316//)
+Window menu
