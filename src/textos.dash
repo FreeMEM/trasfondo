@@ -218,6 +218,9 @@ const MSG_CAPTURA_TECLA = 177
 const MSG_CAPTURA_CARPETA = 178
 # las unidades que se enseñan (Ferrán García)
 const MSG_UNIDADES = 179
+# la barra detrás o delante de las ventanas (Ferrán García)
+const MSG_PROFUNDIDAD = 180
+const MSG_PROFUNDIDADES = 181
 # TrasfondoVentanas: el menú de ventana (clic central en la barra de título; los números desde 300, aparte de
 # los de las demás piezas)
 const MSG_V_MAXIMIZAR = 300

@@ -54,6 +54,7 @@ var aviso: String = "TrasfondoAviso"   # la orden que enseña el último aviso
 var avisos_tam: Int = -1     # el tamaño de ENV:Trasfondo.avisos la última vez que se miró
 var n_avisos: Int = 0
 var titulo: Bool = false     # ESTILO=TITULO: dentro de la barra de título de la pantalla, a la derecha, sin taparla
+var delante: Bool = false    # PROFUNDIDAD=DELANTE: siempre delante de las ventanas; si no, detrás, como el título
 var ancho_t: Int = 0         # lo que mide entonces la ventana (cambia con los textos)
 var sw: Int = 0              # el ancho de la pantalla
 var gad: Int = 0             # lo que ocupa el botón de profundidad de la pantalla, a la derecha
@@ -456,6 +457,7 @@ Main
         end
         tiempo_iniciar(ajuste("BARRA_CIUDAD", "CIUDAD", ""), ajuste("BARRA_LAT", "LAT", ""), ajuste("BARRA_LON", "LON", ""))
         titulo = str_upper(ajuste("BARRA_ESTILO", "ESTILO", "COMPLETA")) == "TITULO"
+        delante = str_upper(ajuste("BARRA_PROFUNDIDAD", "PROFUNDIDAD", "DETRAS")) == "DELANTE"
         # lo que enseña (Ferrán García: la CPU, por ejemplo, ya puede estar en el fondo)
         ver_fecha = str_upper(ajuste("BARRA_VER_FECHA", "VER_FECHA", "SI")) != "NO"
         ver_tiempo = str_upper(ajuste("BARRA_VER_TIEMPO", "VER_TIEMPO", "SI")) != "NO"
@@ -485,12 +487,14 @@ Main
         # la barra completa ocupa el sitio de la del Workbench: de fondo, siempre detrás de las demás ventanas (lo
         # contó Ferrán García), y el título de la pantalla detrás de ella. En la barra de título, una ventana normal
         # que se manda atrás en cada vuelta del temporizador
-        if not titulo
+        if not titulo and not delante
             window_next_backdrop(true)
         end
         Barra.open
         if not titulo
-            screen_show_title(false)
+            if not delante
+                screen_show_title(false)
+            end
             window_resize(0, ancho, alto)
         end
         gfx_mode(0)                  # el texto sin fondo: encima de las píldoras
@@ -531,21 +535,29 @@ Main
                     oculta = true                # un punto en la esquina, sin pintar
                     window_move(0, 0, 0)
                     window_resize(0, 1, 1)
-                    if not titulo
+                    if not titulo and not delante
                         screen_show_title(true)  # (sin ella, vuelve el título del Workbench)
                     end
                 elif (c == 2 or c == 4) and oculta
                     oculta = false
                     ancho_t = 0                  # (pintar la pone otra vez en su sitio)
                     if not titulo
-                        screen_show_title(false)
+                        if not delante
+                            screen_show_title(false)
+                        end
                         window_resize(0, ancho, alto)
                     end
                     pintar()
                 end
-                if titulo and not oculta     # a la altura de la barra de título: detrás de las ventanas que se
+                if delante and not oculta    # siempre a la vista: delante de la que se ponga encima (no hace nada si ya
+                    window_to_front(0)       # lo está)
+                elif titulo and not oculta   # a la altura de la barra de título: detrás de las ventanas que se
                     window_to_back(0)        # manden al fondo (Ferrán García); una ventana de fondo quedaría
-                end                          # tapada por el título, así que se aparta ella sola
+                                             # tapada por el título, así que se aparta ella sola
+                elif not oculta              # la completa: el Workbench saca otra vez su título al dejar de ir de
+                    screen_show_title(false) # fondo, y una ventana de fondo abierta después la taparía (las dos
+                    window_to_front(0)       # no hacen nada si ya está así)
+                end
                 av_puerto()                  # lo que llegue por ARexx (NOTIFY de notify(), COUNT, CLEAR, SCREENSHOT)
                 if av_captura                # la orden SCREENSHOT de un guion: en un momento
                     av_captura = false
@@ -587,7 +599,7 @@ Main
                 Stop
             end
         end
-        if not titulo
+        if not titulo and not delante
             screen_show_title(true)          # el título del Workbench, como estaba
         end
     end

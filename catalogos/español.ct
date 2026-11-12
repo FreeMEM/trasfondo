@@ -428,6 +428,12 @@ Capturas en
 MSG_179
 Unidades
 ; Disks shown
+MSG_180
+Profundidad
+; Depth
+MSG_181
+Detrás de las ventanas|Delante de las ventanas
+; Behind the windows|In front of the windows
 MSG_300
 Maximizar
 ; Maximize

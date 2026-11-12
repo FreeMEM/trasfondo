@@ -426,6 +426,12 @@ Screenshots to
 ; MSG_UNIDADES
 MSG_179 (179//)
 Disks shown
+; MSG_PROFUNDIDAD
+MSG_180 (180//)
+Depth
+; MSG_PROFUNDIDADES
+MSG_181 (181//)
+Behind the windows|In front of the windows
 ; MSG_V_MAXIMIZAR
 MSG_300 (300//)
 Maximize

@@ -472,6 +472,9 @@ func pagina(n: Int, linea_version: String)
     elif n == 1
         ciclo(y, tr(MSG_ESTILO, "Style"), "BARRA_ESTILO", tr(MSG_ESTILOS, "Whole bar|In the title bar"), "COMPLETA|TITULO")
         y = y + fila + 2
+        # detrás de las ventanas, como la barra de título del Workbench (Ferrán García), o siempre delante, a la vista
+        ciclo(y, tr(MSG_PROFUNDIDAD, "Depth"), "BARRA_PROFUNDIDAD", tr(MSG_PROFUNDIDADES, "Behind the windows|In front of the windows"), "DETRAS|DELANTE")
+        y = y + fila + 2
         # lo que enseña la barra (Ferrán García): la hora, los avisos y el botón de los ajustes, siempre
         gt_text(m, y, x_campo - m - 4, f + 6, "", tr(MSG_B_ENSENA, "Shows"))
         paso_b = (ancho - x_campo - m) / 3
@@ -678,7 +681,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -937,6 +940,7 @@ Main
     valores["BUSCAR"] = si(str_upper(conf("BUSCAR", "SI")) != "NO")
     valores["SEGUNDOS"] = si(str_upper(conf("SEGUNDOS", "NO")) == "SI")
     valores["BARRA_ESTILO"] = str_upper(conf("BARRA_ESTILO", "COMPLETA"))
+    valores["BARRA_PROFUNDIDAD"] = str_upper(conf("BARRA_PROFUNDIDAD", "DETRAS"))
     valores["BARRA_CIUDAD"] = conf("BARRA_CIUDAD", "")
     valores["BARRA_LAT"] = conf("BARRA_LAT", "")
     valores["BARRA_LON"] = conf("BARRA_LON", "")
@@ -987,7 +991,7 @@ Main
     end
     alto_boton = f + 6
     # el ancho de las etiquetas de la izquierda: el de la más larga de todas las páginas
-    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_UNIDADES, "Disks shown"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_UNIDADES, "Disks shown"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_PROFUNDIDAD, "Depth"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
     for t in izquierdas
         if x_campo < m + screen_font_text_width(t) + 10
             x_campo = m + screen_font_text_width(t) + 10
