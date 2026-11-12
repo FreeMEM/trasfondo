@@ -717,3 +717,9 @@ Search in subdrawers...
 ; MSG_A_M_MINIS
 MSG_479 (479//)
 Thumbnails of pictures
+; MSG_A_ORIGEN
+MSG_480 (480//)
+SOURCE
+; MSG_A_DESTINO
+MSG_481 (481//)
+DEST

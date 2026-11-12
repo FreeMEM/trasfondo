@@ -997,7 +997,19 @@ func pintar_titulo_panel()
         pluma(C_BORDE)
         gfx_line(x, y + tit_h - 1, x + lw - 1, y + tit_h - 1)
     end
-    texto_en(x + 10, y + 4, cabe(ruta, lw - 20), color)
+    # como Directory Opus: el panel activo es el origen; el otro, el destino de F5 (copiar) y F6 (mover)
+    marca = tr(MSG_A_DESTINO, "DEST")
+    fondo_m = C_BOTON
+    color_m = C_SUAVE
+    if activo
+        marca = tr(MSG_A_ORIGEN, "SOURCE")
+        fondo_m = C_ACENTO
+        color_m = C_SOBRE_ACENTO
+    end
+    mw = font_text_width(marca) + 12
+    redondo(x + 6, y + 2, x + 6 + mw - 1, y + tit_h - 5, 3, fondo_m)
+    texto_en(x + 12, y + 4, marca, color_m)
+    texto_en(x + 6 + mw + 8, y + 4, cabe(ruta, lw - mw - 30), color)
     if panel_pintado == 0
         pluma(C_BORDE)
         gfx_line(x + lw - 1, y, x + lw - 1, oy + alto - pie_h - 1)
