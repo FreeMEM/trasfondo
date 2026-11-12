@@ -363,6 +363,26 @@ func esp_t_oculta(id: Int)
     end
 end
 
+# los ids de la última lectura de wm_read (una sola lectura para saber qué ventanas siguen: buscar() lee la lista
+# entera cada vez, y en un 68030 la tira gastaba un 9 % de CPU sin hacer nada)
+func vivas() -> [Int]
+    var r: [Int] = []
+    n = wm_read()
+    for i in (0..n - 1)
+        r.push(wm_id(i))
+    end
+    return r
+end
+
+func en(lista: [Int], id: Int) -> Bool
+    for x in lista
+        if x == id
+            return true
+        end
+    end
+    return false
+end
+
 func esp_buscar(id: Int) -> Int
     for k in (0..esp_id.length - 1)
         if esp_id[k] == id
@@ -374,26 +394,25 @@ end
 
 # apunta las ventanas a la vista que no estaban (al espacio de ahora) y olvida las que se cerraron
 func esp_apuntar()
-    n = wm_read()
+    ids = vivas()                              # (deja leída la lista: los wm_*(i) de abajo son de esta lectura)
     k = esp_id.length - 1
     while k >= 0
-        if buscar(esp_id[k]) < 0
+        if not en(ids, esp_id[k])
             esp_id.remove(k)
             esp_de.remove(k)
             esp_z.remove(k)
         end
         k = k - 1
     end
-    n = wm_read()
-    for i in (0..n - 1)
-        if esp_elegible(i) and wm_flags(i) & 256 == 0
-            k = esp_buscar(wm_id(i))
-            if k < 0
-                esp_id.push(wm_id(i))
+    for i in (0..ids.length - 1)
+        if wm_flags(i) & 256 == 0
+            k = esp_buscar(ids[i])
+            if k >= 0
+                esp_z[k] = i
+            elif esp_elegible(i)
+                esp_id.push(ids[i])
                 esp_de.push(esp_actual)
                 esp_z.push(i)
-            else
-                esp_z[k] = i
             end
         end
     end
@@ -666,10 +685,11 @@ func t_mirar()
         esp_apuntar()                          # (una nueva queda apuntada en el espacio de ahora)
     end
     cambio = false
-    n = wm_read()
+    ids = vivas()
+    n = ids.length
     k = t_id.length - 1
     while k >= 0
-        if buscar(t_id[k]) < 0
+        if not en(ids, t_id[k])
             if t_id[k] == t_foco
                 t_foco = 0
             end
@@ -680,10 +700,9 @@ func t_mirar()
         end
         k = k - 1
     end
-    n = wm_read()
     for i in (0..n - 1)
-        id = wm_id(i)
-        if manejable(i) and wm_flags(i) & (32 + 128) == 0 and not es_pieza(i) and t_buscar(id) < 0
+        id = ids[i]
+        if t_buscar(id) < 0 and manejable(i) and wm_flags(i) & (32 + 128) == 0 and not es_pieza(i)
             # la nueva, a la derecha de la activa (o al final), y pasa a ser la activa
             p = t_buscar(t_foco)
             if p < 0
