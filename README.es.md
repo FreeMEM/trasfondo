@@ -75,6 +75,12 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   mover o cambiar de tamaño con Alt y el ratón; al mover así, un marco enseña dónde encajará. Todo se quita o se
   cambia en TrasfondoPrefs, sección Ventanas. Va con prioridad 100 entre las commodities (tooltype CX_PRIORITY), para
   ver los clics antes que MCP o PowerWindows.
+  Con AmigaOS 3.2, también **espacios virtuales**, como en Linux: Ctrl Alt 1 a 4 cambia de espacio (las ventanas de
+  los demás se esconden), Ctrl Alt Mayús y el número lleva allí la ventana activa, y Ctrl Alt Mayús arriba o abajo
+  sube o baja de espacio. Un aviso y la barra enseñan en cuál estás. Y el **modo tira**, como Niri: cada ventana es
+  una columna de una tira más ancha que la pantalla; las nuevas entran a la derecha y la vista sigue a la activa
+  (Ctrl Alt izquierda o derecha cambia de columna, Ctrl Alt R su ancho). En TrasfondoPrefs: "Espacios" (4; 0 sin
+  ellos) y "Ventanas en tira".
 - **TrasfondoArchivos**: un explorador de ficheros moderno, como el Nautilus de Linux, dibujado con los colores de
   Trasfondo (necesita MUI). A la izquierda los sitios, los discos y la papelera; arriba atrás, adelante, subir y la
   ruta en trozos que se pulsan; en medio una lista con columnas que ordenan o iconos con miniaturas de las

@@ -765,3 +765,9 @@ Two panes
 ; MSG_A_M_BOTONES
 MSG_493 (493//)
 Buttons
+; MSG_V_ESPACIOS
+MSG_494 (494//)
+Desktops
+; MSG_V_TIRA
+MSG_495 (495//)
+Windows in a strip, like Niri

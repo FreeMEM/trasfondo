@@ -70,12 +70,29 @@ var seccion: Int = 0
 var y_muestras: Int = 0                # dónde van las muestras de los colores (página 4)
 
 # un ajuste de las preferencias (NOMBRE=valor), o el defecto
+# las claves y valores de prefs, leídos una vez (antes se partía el fichero entero en cada conf: con unas 60
+# claves, TrasfondoPrefs tardaba más de 2 s en abrirse en un 68020)
+var conf_de: String = "-"
+var conf_k: [String] = []
+var conf_v: [String] = []
+
 func conf(nombre: String, defecto: String) -> String
-    var lineas: [String] = str_split(str_replace(prefs, "\r", ""), "\n")
-    for l in lineas
-        igual = str_find(l, "=")
-        if igual > 0 and str_upper(str_trim(l[0:igual])) == nombre
-            return str_trim(l[igual + 1:l.length])
+    if conf_de != prefs
+        conf_de = prefs
+        conf_k = []
+        conf_v = []
+        var lineas: [String] = str_split(str_replace(prefs, "\r", ""), "\n")
+        for l in lineas
+            igual = str_find(l, "=")
+            if igual > 0
+                conf_k.push(str_upper(str_trim(l[0:igual])))
+                conf_v.push(str_trim(l[igual + 1:l.length]))
+            end
+        end
+    end
+    for k in (0..conf_k.length - 1)
+        if conf_k[k] == nombre
+            return conf_v[k]
         end
     end
     return defecto
@@ -534,6 +551,11 @@ func pagina(n: Int, linea_version: String)
         end
         casilla(x + c2, y, tr(MSG_V_ALT_TAB, "Alt+Tab"), "VENTANAS_ALT_TAB")
         y = y + fila + 4
+        if v_espacios                        # espacios virtuales y tira (AmigaOS 3.2)
+            numero(y, tr(MSG_V_ESPACIOS, "Desktops"), "VENTANAS_ESPACIOS", ancho_n)
+            casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_V_TIRA, "Windows in a strip, like Niri"), "VENTANAS_TIRA")
+            y = y + fila + 2
+        end
         var teclas: [String] = ["TECLA_MAXIMIZAR", "TECLA_IZQUIERDA", "TECLA_DERECHA", "TECLA_RESTAURAR", "TECLA_MOSAICO", "TECLA_AUTOMATICO", "TECLA_MENU", "RATON_MOVER", "RATON_TAMANO"]
         var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_V_T_MENU, "Window menu"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
         i = 0
@@ -610,9 +632,15 @@ func v_columna() -> Int
 end
 
 # el alto de dentro de la ventana: el de la página más alta (el fondo o las ventanas, como las pone pagina) y los botones
+var v_espacios: Bool = true  # la fila de los espacios y la tira en la página Ventanas (fuera si no cabe)
+
 func alto_ventana() -> Int
     fondo = m + fila + hueco + filas_s * fila + 4 + 8 * (fila + 2) + alto_boton
-    ventanas = m + fila + hueco + 11 * (fila + 2) + 2 * fila + 4
+    filas_v = 11
+    if v_espacios
+        filas_v = 12
+    end
+    ventanas = m + fila + hueco + filas_v * (fila + 2) + 2 * fila + 4
     if v_columna() == 0
         ventanas = ventanas + 2 * fila
     end
@@ -681,7 +709,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU", "VENTANAS_ESPACIOS", "VENTANAS_TIRA"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -974,6 +1002,8 @@ Main
     valores["VENTANAS_MENU"] = si(str_upper(conf("VENTANAS_MENU", "SI")) != "NO")
     valores["VENTANAS_ALT_TAB"] = si(str_upper(conf("VENTANAS_ALT_TAB", "SI")) != "NO")
     valores["VENTANAS_TECLA_MENU"] = conf("VENTANAS_TECLA_MENU", "ctrl alt space")
+    valores["VENTANAS_ESPACIOS"] = conf("VENTANAS_ESPACIOS", "4")
+    valores["VENTANAS_TIRA"] = si(str_upper(conf("VENTANAS_TIRA", "NO")) == "SI")
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)
@@ -1040,6 +1070,10 @@ Main
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
     cabe = screen_height() - (f + 3) - 4
+    if alto > cabe                           # primero, sin la fila de los espacios (quedan los tooltypes)
+        v_espacios = false
+        alto = alto_ventana()
+    end
     if alto > cabe
         fila = f + 4
         if fila < 12

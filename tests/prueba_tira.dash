@@ -1,4 +1,4 @@
-# Prueba del modo tira de TrasfondoVentanas (MODO=TIRA; la lanza GUION=prueba_tira.dash tests/prueba_ventanas.py,
+# Prueba del modo tira de TrasfondoVentanas (TIRA=SI; la lanza GUION=prueba_tira.dash tests/prueba_ventanas.py,
 # AmigaOS 3.2). Cada ventana nueva entra a la derecha de la activa con la mitad del ancho; la vista sigue a la activa
 # y esconde lo que no cabe. Ctrl Alt izquierda/derecha cambia de columna, Ctrl Alt R su ancho, Ctrl Alt Mayús
 # derecha la mueve, Ctrl Alt arriba la pone entera. Al parar, todas a la vista.
@@ -34,7 +34,7 @@ end
 
 Main
     Print "pantalla #{rtg_get_width()}"
-    run_program("DH0:ventanas MODO=TIRA")
+    run_program("DH0:ventanas TIRA=SI")
     time_delay(150)
     a = window_create("A", 40, 40, 200, 100, 1)
     time_delay(80)

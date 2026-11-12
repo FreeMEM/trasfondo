@@ -337,3 +337,5 @@ const MSG_A_B_INFO = 490
 const MSG_A_B_UNO = 491
 const MSG_A_B_DOS = 492
 const MSG_A_M_BOTONES = 493
+const MSG_V_ESPACIOS = 494
+const MSG_V_TIRA = 495

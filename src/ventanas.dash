@@ -15,6 +15,16 @@
 #   soltar una ventana arrastrada contra un borde: a esa mitad (izquierda, derecha), arriba maximizada, en una
 #                        esquina a ese cuarto; al arrastrarla otra vez lejos del borde, recupera su tamaño
 #
+# Espacios virtuales (AmigaOS 3.2, que puede esconder ventanas; ESPACIOS=4, 0 sin ellos), uno encima de otro:
+#   Ctrl Alt 1-9         a ese espacio (las ventanas de los demás se esconden); un aviso enseña en cuál se está,
+#                        y la barra de Trasfondo también
+#   Ctrl Alt Mayús 1-9   la ventana activa a ese espacio
+#   Ctrl Alt Mayús arriba/abajo: al espacio de arriba o de abajo (con LAmiga: lleva allí la ventana activa)
+# La tira (TIRA=SI), como Niri: cada ventana es una columna (TIRA_ANCHO=50 % de la pantalla) de una tira más ancha
+# que la pantalla; las nuevas entran a la derecha de la activa y la vista sigue a la activa. Ctrl Alt
+# izquierda/derecha cambia de columna, Ctrl Alt Mayús izquierda/derecha la mueve, Ctrl Alt R cambia su ancho (33,
+# 50, 67, 100 %) y Ctrl Alt arriba la pone entera.
+#
 # Las teclas, en TrasfondoPrefs o por tooltypes: TECLA_MAXIMIZAR, TECLA_IZQUIERDA, TECLA_DERECHA, TECLA_RESTAURAR, TECLA_MOSAICO y
 # TECLA_AUTOMATICO, en el formato de Commodities ("ctrl alt up"); MOSAICO=SI arranca en automático; HUECO, los
 # píxeles entre ventanas (4); ENCAJAR=NO, DOBLE_CLIC=NO y MENU=NO quitan lo del ratón; TECLA_MENU, la del menú; ALT_TAB=NO quita
@@ -291,7 +301,7 @@ func restaurar()
     end
 end
 
-# --- la tira (MODO=TIRA), como Niri: cada ventana es una columna de una tira más ancha que la pantalla ---
+# --- la tira (TIRA=SI), como Niri: cada ventana es una columna de una tira más ancha que la pantalla ---
 
 var modo_tira: Bool = false
 var t_id: [Int] = []         # las columnas en orden (de todos los espacios), su ancho en % de la zona útil y si
@@ -1416,7 +1426,7 @@ Main
         tecla("TECLA_MOSAICO", "ctrl alt t", K_MOSAICO)
         tecla("TECLA_AUTOMATICO", "ctrl alt a", K_AUTOMATICO)
         tecla("RATON_MOVER", "rawmouse lalt mouse_leftpress", K_MOVER)
-        modo_tira = str_upper(ajuste("VENTANAS_MODO", "MODO", "NORMAL")) == "TIRA" and wm_can_hide()
+        modo_tira = str_upper(ajuste("VENTANAS_TIRA", "TIRA", "NO")) == "SI" and wm_can_hide()
         t_ancho_nuevo = Int(ajuste("VENTANAS_TIRA_ANCHO", "TIRA_ANCHO", "50"))
         if t_ancho_nuevo < 10 or t_ancho_nuevo > 100
             t_ancho_nuevo = 50
