@@ -144,3 +144,6 @@ coordinar con freememlang-40)
   (944779a): 626/626 sin emulador; test_wm_eventos, test_file_attrs, test_ctrl_c y test_wm bien en A1200 y A500.
 - 2026-11-12: filtro (Amiga+F: solo los nombres que llevan el texto, al momento; Esc lo quita; cambiar de cajón
   también), con su píldora en la barra. Probado en `prueba_archivos.py`.
+- 2026-11-12: arrastrar con el ratón probado (`GUION=prueba_arrastre.dash tests/prueba_archivos.py`): un fichero
+  sobre un cajón de la lista y sobre un disco del lateral se mueve allí. Con `run_programs` y Workbench las capturas
+  salen de la pantalla de arranque: para ver, `tools/vista.py`.

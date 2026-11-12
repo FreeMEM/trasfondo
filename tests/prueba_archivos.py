@@ -4,6 +4,7 @@ DH0:Archivos. Usa la red del PC (bsdsocket de FS-UAE): con flock /run/user/1000/
 pruebas con red.
 
     DASH=~/Projects/FreeMEMLang python3 tests/prueba_archivos.py [SEG:captura.png...]
+    GUION=prueba_arrastre.dash ...      # otro guion de tests/
 
 Pide $DASH (una copia de Dash) y $DASH_KICKSTART_32 (la ROM de 3.2.3); el sistema, ~/.cache/dash-emu/sys32rtg32.
 """
@@ -29,7 +30,7 @@ def preparar(hd):
 
 
 capturas = [(float(a.split(":")[0]), a.split(":")[1]) for a in sys.argv[1:]] or None
-r = run_programs([raiz / "tests/prueba_archivos.dash"], timeout=600, workbench=True,
+r = run_programs([raiz / "tests" / os.environ.get("GUION", "prueba_archivos.dash")], timeout=600, workbench=True,
                  kickstart=os.environ["DASH_KICKSTART_32"],
                  system=str(Path.home() / ".cache/dash-emu/sys32rtg32"),
                  extra_config=MACHINES["rtg"]["config"] + "bsdsocket_library = 1\n",
