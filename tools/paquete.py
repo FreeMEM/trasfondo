@@ -25,7 +25,7 @@ DASH = Path(os.environ.get("DASH", Path.home() / "Projects/FreeMEMLang"))
 # fuente → nombre en el Amiga; las que arrancan con el Workbench llevan icono de herramienta y de arranque
 PIEZAS = {"trasfondo": "Trasfondo", "barra": "TrasfondoBarra", "panel": "TrasfondoPanel", "aviso": "TrasfondoAviso",
           "rapido": "TrasfondoRapido", "dock": "TrasfondoDock", "ventanas": "TrasfondoVentanas",
-          "trasfondoprefs": "TrasfondoPrefs", "avisa": "Avisa"}
+          "trasfondoprefs": "TrasfondoPrefs", "avisa": "Avisa", "archivos": "TrasfondoArchivos"}
 CON_ICONO = ["Trasfondo", "TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
 
 
@@ -61,6 +61,8 @@ def main():
     for i, nombre in enumerate(CON_ICONO[1:]):
         (caj / f"{nombre}.info").write_bytes(situar(info(icono(), WBTOOL), 90 + 80 * (i + 1), 6))
     (caj / "TrasfondoPrefs.info").write_bytes(situar(info(icono_prefs(), WBTOOL), 410, 6))
+    # el explorador: se abre cuando se quiere (doble clic), no con el Workbench
+    (caj / "TrasfondoArchivos.info").write_bytes(situar(info(icono(), WBTOOL), 490, 6))
     # los iconos de proyecto de SYS:WBStartup (su herramienta la pone el instalador, con la ruta donde quedó)
     (caj / "Arranque").mkdir()
     for nombre in CON_ICONO:

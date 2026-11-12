@@ -147,3 +147,9 @@ coordinar con freememlang-40)
 - 2026-11-12: arrastrar con el ratón probado (`GUION=prueba_arrastre.dash tests/prueba_archivos.py`): un fichero
   sobre un cajón de la lista y sobre un disco del lateral se mueve allí. Con `run_programs` y Workbench las capturas
   salen de la pantalla de arranque: para ver, `tools/vista.py`.
+- 2026-11-12: buscar en los subcajones (Amiga+B): a trozos, un cajón por vuelta, sin parar la ventana; los resultados
+  se ven como un cajón ("sub/fichero") y se puede copiar, mover y mandar a la papelera desde ahí (al acabar, se busca
+  otra vez); Esc vuelve al cajón. Probado. `tools/paquete.py` lleva TrasfondoArchivos con su icono.
+  Pendiente al publicar: `src/actualizar.dash` (el actualizador) no conoce TrasfondoArchivos (sus índices son fijos);
+  miniaturas de imágenes; vista previa del encaje (1c, movimiento propio); "lista de ventanas" en la barra (es de
+  Tachyon2).
