@@ -738,7 +738,7 @@ end
 # las columnas de la lista: dónde empiezan (desde el borde del panel); en un panel estrecho, solo el tamaño (y si
 # no cabe, solo el nombre: -1 la que no se ve)
 func col_tam() -> Int
-    if lw >= 560
+    if lw >= 480
         return lw - 330
     elif lw >= 260
         return lw - 90
@@ -747,14 +747,14 @@ func col_tam() -> Int
 end
 
 func col_fecha() -> Int
-    if lw >= 560
+    if lw >= 480
         return lw - 250
     end
     return -1
 end
 
 func col_coment() -> Int
-    if lw >= 560
+    if lw >= 480
         return lw - 120
     end
     return -1
@@ -2363,8 +2363,8 @@ func crear_info()
         f = mui_frame_begin(tr(MSG_A_PERMISOS, "Permissions"), false)
             mui_columns_begin(8)
                 for k in (0..7)
-                    i_bits.push(mui_checkbox(false))
                     l = mui_label(nombres_b[k])
+                    i_bits.push(mui_checkbox(false))
                 end
             mui_group_end()
         mui_group_end()
