@@ -1,0 +1,24 @@
+# Prueba de act_icono_archivos (la lanza tests/prueba_icono.py): en DH0:T3 hay TrasfondoArchivos sin icono y
+# TrasfondoBarra.info; tras llamarla, TrasfondoArchivos.info es el de la barra con NO_ICON_POSITION.
+import "textos.dash"
+import "actualizar.dash"
+
+Main
+    file_write_text("ENV:Trasfondo.cajon", "DH0:T3\n")
+    act_icono_archivos()
+    d = "DH0:T3/TrasfondoArchivos.info"
+    n = file_size(d)
+    Print("tam #{n} barra #{file_size("DH0:T3/TrasfondoBarra.info")}")
+    b = buffer_alloc(n)
+    file_load(d, b, n)
+    Print("magia #{buffer_get_byte(b, 0)} #{buffer_get_byte(b, 1)} tipo #{buffer_get_byte(b, 48)}")
+    Print("x #{buffer_get_long(b, 58)} y #{buffer_get_long(b, 62)}")
+    file_delete("DH0:T4/x")
+    file_write_text("ENV:Trasfondo.cajon", "DH0:T4\n")
+    act_icono_archivos()
+    Print("sin explorador: #{file_exists("DH0:T4/TrasfondoArchivos.info")}")
+    file_write_text("ENV:Trasfondo.cajon", "DH0:T5\n")
+    act_icono_archivos()
+    Print("sin otros iconos: #{file_exists("DH0:T5/TrasfondoArchivos.info")}")
+
+end

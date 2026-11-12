@@ -88,6 +88,7 @@ func act_iniciar(version: String, buscar: Bool)
     a_buscar = buscar
     a_proxima = time_ms() + PRIMERA
     file_delete("ENV:Trasfondo.orden")
+    act_icono_archivos()
     tr(MSG_COMA, ".")                     # el primer tr abre el catálogo: antes, catalog_language() no sabe
     a_falta_cat = catalog_language() == "" and act_en_castellano()
     vieja = file_read_text("ENV:Trasfondo.nueva")
@@ -582,6 +583,44 @@ func act_poner_arranque(destino: String, herramienta: String) -> Bool
     return hecho
 end
 
+# el icono de TrasfondoArchivos si le falta: la 2.9 lo bajaba sin .info y el Workbench no lo enseñaba (le pasó
+# a quien actualizó con el botón). Copia el de otra pieza, que es el mismo dibujo de herramienta, sin sitio fijo
+# (el Workbench lo coloca). Va al arrancar el fondo y al poner las piezas
+func act_icono_archivos()
+    cajon = act_cajon()
+    if cajon == ""
+        return
+    end
+    destino = cajon + "TrasfondoArchivos.info"
+    if not file_exists(cajon + "TrasfondoArchivos") or file_exists(destino)
+        return
+    end
+    var otros: [String] = ["TrasfondoBarra", "TrasfondoVentanas", "TrasfondoDock"]
+    for i in (0..otros.length - 1)
+        origen = cajon + otros[i] + ".info"
+        n = file_size(origen)
+        if n > 66 and n < 65536
+            b = buffer_alloc(n)
+            if b != 0
+                leidos = file_load(origen, b, n)
+                # un DiskObject (0xE310) de herramienta (WBTOOL = 3)
+                if leidos == n and buffer_get_byte(b, 0) == 0xE3 and buffer_get_byte(b, 1) == 0x10 and buffer_get_byte(b, 48) == 3
+                    buffer_set_long(b, 58, -2147483647 - 1)     # do_CurrentX y do_CurrentY: NO_ICON_POSITION
+                    buffer_set_long(b, 62, -2147483647 - 1)
+                    hecho = file_save(destino, b, n) == n
+                    buffer_free(b)
+                    if hecho
+                        return
+                    end
+                    file_delete(destino)
+                else
+                    buffer_free(b)
+                end
+            end
+        end
+    end
+end
+
 # las piezas en su cajón, Avisa en C: y, si el cajón es nuevo (venía de la 0.11), sus iconos de arranque y
 # ENV:Trasfondo.cajon, para que TrasfondoPrefs pueda elegir qué arranca con el Workbench
 func act_poner_piezas()
@@ -598,6 +637,7 @@ func act_poner_piezas()
     if a_cuerpo[ARCHIVOS] != 0
         act_poner(cajon + act_nombre(ARCHIVOS), a_cuerpo[ARCHIVOS], a_tam[ARCHIVOS])
     end
+    act_icono_archivos()
     if a_cuerpo[9] != 0
         act_poner("C:Avisa", a_cuerpo[9], a_tam[9])
     end
