@@ -332,10 +332,27 @@ var esp_de: [Int] = []
 var esp_z: [Int] = []
 var esp_activa: [Int] = []   # la última activa de cada espacio (posición n - 1)
 
+# de una pieza fija de Trasfondo (la barra, el dock, sus paneles): no va en los espacios ni en la tira. Las de
+# TrasfondoArchivos sí: son ventanas normales
+func es_pieza(i: Int) -> Bool
+    t = wm_task(i)
+    k = str_find(t, ":")                       # sin la ruta, si la lleva
+    while k >= 0
+        t = t[k + 1:t.length]
+        k = str_find(t, ":")
+    end
+    k = str_find(t, "/")
+    while k >= 0
+        t = t[k + 1:t.length]
+        k = str_find(t, "/")
+    end
+    return t == "TrasfondoBarra" or t == "TrasfondoDock" or t == "TrasfondoPanel" or t == "TrasfondoAviso" or t == "TrasfondoRapido" or t == "Trasfondo"
+end
+
 # una ventana que va en los espacios: con barra de arrastre, ni de fondo ni nuestra ni de una pieza de Trasfondo
 func esp_elegible(i: Int) -> Bool
     f = wm_flags(i)
-    return f & 16 != 0 and f & (2 + 32) == 0 and not str_starts(wm_task(i), "Trasfondo")
+    return f & 16 != 0 and f & (2 + 32) == 0 and not es_pieza(i)
 end
 
 # una columna de la tira que esconden los espacios: la tira la tiene por escondida (la enseñará al volver)
@@ -510,6 +527,25 @@ func esp_aviso()
     av_hasta = time_ms() + 700
 end
 
+# si se activa una ventana escondida en otro espacio (el Workbench, al abrir otra vez un cajón que está allí), se va
+# a ese espacio
+var esp_ultima_activa: Int = 0
+
+func esp_seguir()
+    a = wm_active()
+    if a == 0 or a == esp_ultima_activa
+        return
+    end
+    esp_ultima_activa = a
+    k = esp_buscar(a)
+    if k >= 0 and esp_de[k] != esp_actual
+        i = buscar(a)
+        if i >= 0 and wm_flags(i) & 256 != 0
+            esp_ir(esp_de[k])
+        end
+    end
+end
+
 # todas a la vista (al salir o al desactivar)
 func esp_todas()
     for k in (0..esp_id.length - 1)
@@ -647,7 +683,7 @@ func t_mirar()
     n = wm_read()
     for i in (0..n - 1)
         id = wm_id(i)
-        if manejable(i) and wm_flags(i) & (32 + 128) == 0 and not str_starts(wm_task(i), "Trasfondo") and t_buscar(id) < 0
+        if manejable(i) and wm_flags(i) & (32 + 128) == 0 and not es_pieza(i) and t_buscar(id) < 0
             # la nueva, a la derecha de la activa (o al final), y pasa a ser la activa
             p = t_buscar(t_foco)
             if p < 0
@@ -1465,6 +1501,9 @@ Main
             if (automatico or modo_tira) and activo
                 espera = CADA
             end
+            if espacios > 0 and activo and espera > 1000
+                espera = 1000                  # (esp_seguir)
+            end
             if av_win != 0
                 espera = 100
             end
@@ -1545,6 +1584,9 @@ Main
             end
             if modo_tira and activo and seguir
                 t_mirar()
+            end
+            if espacios > 0 and activo and seguir
+                esp_seguir()
             end
         end
         t_todas()

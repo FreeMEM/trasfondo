@@ -1070,6 +1070,10 @@ Main
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
     cabe = screen_height() - (f + 3) - 4
+    if not wm_can_hide()                     # (AmigaOS 3.1: no puede esconder ventanas, no hay espacios)
+        v_espacios = false
+        alto = alto_ventana()
+    end
     if alto > cabe                           # primero, sin la fila de los espacios (quedan los tooltypes)
         v_espacios = false
         alto = alto_ventana()

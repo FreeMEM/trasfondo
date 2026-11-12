@@ -1,7 +1,7 @@
 # Prueba de los espacios virtuales de TrasfondoVentanas (la lanza GUION=prueba_espacios.dash tests/prueba_ventanas.py,
 # con DH0:ventanas; AmigaOS 3.2, que puede esconder ventanas). Ctrl Alt 2 va al espacio 2 (las del 1 se esconden),
 # Ctrl Alt 1 vuelve; Ctrl Alt Mayús 2 lleva la ventana activa al 2; Ctrl Alt Mayús arriba sube un espacio. Al parar
-# TrasfondoVentanas, todas vuelven a la vista. Las teclas van por input.device, como las de una persona.
+# TrasfondoVentanas, todas vuelven a la vista. Si se activa una ventana escondida, se va a su espacio. Las teclas van por input.device, como las de una persona.
 
 func idx(t: String) -> Int
     n = wm_read()
@@ -58,6 +58,9 @@ Main
     ver("sube otra")
     tecla(0x4D, 7)                  # abajo: al 2
     ver("baja")
+    ok = wm_activate(wm_id(idx("Uno")))   # activar una escondida del espacio 1 (como el Workbench con un cajón)
+    time_delay(90)
+    ver("activa una escondida")
     run_program("DH0:ventanas")     # otra vez: se para y las enseña todas
     time_delay(60)
     ver("al parar")
