@@ -81,7 +81,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   mueve al otro. Copiar, mover y borrar van con barra de progreso y se pueden cancelar; si algo ya existe, pregunta.
   Borrar manda a la papelera de cada disco, y Amiga+Z deshace. También renombrar en el sitio (F2), cajón nuevo,
   filtrar (Amiga+F), buscar en los subcajones (Amiga+B), información con comentario y permisos (Amiga+I) y
-  arrastrar y soltar, también iconos desde el Workbench. Los .info van siempre con su fichero.
+  arrastrar y soltar, también iconos desde el Workbench. Los .info van siempre con su fichero. Abajo, una fila
+  de botones con su tecla debajo ("Copiar F5", "Renombrar F2"...), para usar el ratón o la tecla (lo pidió Ferrán
+  García); Ver > Botones la quita.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
   con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
 - **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque). En Arranque, marcar

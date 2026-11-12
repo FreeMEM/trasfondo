@@ -729,3 +729,39 @@ SOURCE
 ; MSG_A_DESTINO
 MSG_481 (481//)
 DEST
+; MSG_A_K_SUPR
+MSG_482 (482//)
+Del
+; MSG_A_B_COPIAR
+MSG_483 (483//)
+Copy
+; MSG_A_B_MOVER
+MSG_484 (484//)
+Move
+; MSG_A_B_CORTAR
+MSG_485 (485//)
+Cut
+; MSG_A_B_PEGAR
+MSG_486 (486//)
+Paste
+; MSG_A_B_RENOMBRAR
+MSG_487 (487//)
+Rename
+; MSG_A_B_NUEVO
+MSG_488 (488//)
+New drawer
+; MSG_A_B_PAPELERA
+MSG_489 (489//)
+Delete
+; MSG_A_B_INFO
+MSG_490 (490//)
+Info
+; MSG_A_B_UNO
+MSG_491 (491//)
+One pane
+; MSG_A_B_DOS
+MSG_492 (492//)
+Two panes
+; MSG_A_M_BOTONES
+MSG_493 (493//)
+Buttons

@@ -324,3 +324,16 @@ const MSG_A_M_BUSCAR = 478
 const MSG_A_M_MINIS = 479
 const MSG_A_ORIGEN = 480
 const MSG_A_DESTINO = 481
+# los botones de abajo del explorador (Ferrán García)
+const MSG_A_K_SUPR = 482
+const MSG_A_B_COPIAR = 483
+const MSG_A_B_MOVER = 484
+const MSG_A_B_CORTAR = 485
+const MSG_A_B_PEGAR = 486
+const MSG_A_B_RENOMBRAR = 487
+const MSG_A_B_NUEVO = 488
+const MSG_A_B_PAPELERA = 489
+const MSG_A_B_INFO = 490
+const MSG_A_B_UNO = 491
+const MSG_A_B_DOS = 492
+const MSG_A_M_BOTONES = 493

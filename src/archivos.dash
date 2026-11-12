@@ -55,6 +55,9 @@ const ID_M_ARRIBA = 42
 const ID_M_IR = 43
 const ID_M_DEVOLVER = 44
 const ID_M_DOS = 37
+const ID_B_COPIAR_OTRO = 60  # los botones de dos paneles: al otro (F5, F6)
+const ID_B_MOVER_OTRO = 61
+const ID_M_BOTONES = 39
 const ID_M_INFO_DE = 17
 const ID_M_DESHACER = 25
 const ID_M_FILTRO = 45
@@ -108,6 +111,14 @@ var negrita: Int = 0
 var fila: Int = 18           # alto de una fila de la lista
 var barra_h: Int = 34        # alto de la barra de arriba
 var pie_h: Int = 22          # alto de la de abajo
+var bot_h: Int = 0           # alto de la fila de botones (0 sin ella)
+var con_botones: Bool = true # la fila de botones de abajo, con la tecla de cada uno (lo pidió Ferrán García)
+var bt_texto: [String] = []  # los botones que se ven: texto, tecla, la orden (un ID_ de menú) y si se puede ya
+var bt_tecla: [String] = []
+var bt_id: [Int] = []
+var bt_activo: [Bool] = []
+var bt_encima: Int = -1
+var boton_pulsado: Int = 0   # la orden del botón pulsado: la atiende el bucle como un menú
 var cab_h: Int = 20          # alto de la cabecera de columnas
 var ox: Int = 0              # dónde empieza el lienzo en la ventana, y su tamaño
 var oy: Int = 0
@@ -613,6 +624,10 @@ func medir()
     cab_h = font_height() + 6
     barra_h = font_height() + 18
     pie_h = font_height() + 8
+    bot_h = 0
+    if con_botones
+        bot_h = 2 * font_height() + 12       # el nombre y, debajo, su tecla
+    end
 end
 
 func cambiar_panel()
@@ -729,8 +744,17 @@ func zona_lista_y() -> Int
     return y
 end
 
+# lo que ocupan, abajo, la línea de estado, los botones y el progreso
+func abajo_h() -> Int
+    h = pie_h + bot_h
+    if op_activa
+        h = h + pie_h
+    end
+    return h
+end
+
 func zona_lista_h() -> Int
-    h = alto - barra_h - pie_h - tit_h
+    h = alto - barra_h - pie_h - bot_h - tit_h
     if not vista_iconos
         h = h - cab_h
     end
@@ -936,7 +960,7 @@ end
 func pintar_lateral()
     x = ox
     y = oy + barra_h
-    h = alto - barra_h - pie_h
+    h = alto - barra_h - abajo_h()
     pluma(C_PANEL)
     gfx_rect(x, y, x + LATERAL - 1, y + h - 1)
     pluma(C_BORDE)
@@ -1012,7 +1036,7 @@ func pintar_titulo_panel()
     texto_en(x + 6 + mw + 8, y + 4, cabe(ruta, lw - mw - 30), color)
     if panel_pintado == 0
         pluma(C_BORDE)
-        gfx_line(x + lw - 1, y, x + lw - 1, oy + alto - pie_h - 1)
+        gfx_line(x + lw - 1, y, x + lw - 1, oy + alto - abajo_h() - 1)
     end
 end
 
@@ -1242,10 +1266,11 @@ end
 
 func pintar_pie()
     y = oy + alto - pie_h
+    if con_botones
+        pintar_botones(y - bot_h)
+    end
     if op_activa
-        y = y - pie_h
-        pintar_progreso(y)
-        y = y + pie_h
+        pintar_progreso(y - bot_h - pie_h)
     end
     pluma(C_PANEL)
     gfx_rect(ox, y, ox + ancho - 1, oy + alto - 1)
@@ -1269,6 +1294,87 @@ func pintar_pie()
     if libre_kb >= 0
         l = tamano_texto(libre_kb * 1024) + " " + tr(MSG_A_LIBRES, "free")
         texto_en(ox + ancho - 10 - font_text_width(l), y + (pie_h - font_height()) / 2, l, C_SUAVE)
+    end
+end
+
+# los botones de abajo, con su tecla: los de un panel o los de dos (como Directory Opus)
+func poner_botones()
+    bt_texto = []
+    bt_tecla = []
+    bt_id = []
+    bt_activo = []
+    hay = cuantos_elegidos() > 0 and not (editando != 0)
+    supr = tr(MSG_A_K_SUPR, "Del")
+    if dos_paneles
+        boton(tr(MSG_A_B_COPIAR, "Copy"), "F5", ID_B_COPIAR_OTRO, hay)
+        boton(tr(MSG_A_B_MOVER, "Move"), "F6", ID_B_MOVER_OTRO, hay)
+    else
+        boton(tr(MSG_A_B_COPIAR, "Copy"), "Amiga+C", ID_M_COPIAR, hay)
+        boton(tr(MSG_A_B_CORTAR, "Cut"), "Amiga+X", ID_M_CORTAR, hay)
+        boton(tr(MSG_A_B_PEGAR, "Paste"), "Amiga+V", ID_M_PEGAR, porta.length > 0)
+    end
+    boton(tr(MSG_A_B_RENOMBRAR, "Rename"), "F2", ID_M_RENOMBRAR, cuantos_elegidos() == 1 and not en_busqueda)
+    boton(tr(MSG_A_B_NUEVO, "New drawer"), "Amiga+N", ID_M_NUEVO, not en_busqueda)
+    boton(tr(MSG_A_B_PAPELERA, "Delete"), supr, ID_M_PAPELERA, hay)
+    boton(tr(MSG_A_B_INFO, "Info"), "Amiga+I", ID_M_INFO_DE, cuantos_elegidos() == 1)
+    if dos_paneles
+        boton(tr(MSG_A_B_UNO, "One pane"), "F3", ID_M_DOS, true)
+    else
+        boton(tr(MSG_A_B_DOS, "Two panes"), "F3", ID_M_DOS, true)
+    end
+end
+
+func boton(t: String, k: String, id: Int, activo: Bool)
+    bt_texto.push(t)
+    bt_tecla.push(k)
+    bt_id.push(id)
+    bt_activo.push(activo)
+end
+
+# el botón en x del lienzo (en la fila de los botones), o -1
+func boton_en(mx: Int) -> Int
+    n = bt_texto.length
+    if n == 0
+        return -1
+    end
+    w = (ancho - 8 + 4) / n
+    k = (mx - 4) / w
+    if mx < 4 or k >= n
+        return -1
+    end
+    return k
+end
+
+func pintar_botones(y: Int)
+    poner_botones()
+    pluma(C_PANEL)
+    gfx_rect(ox, y, ox + ancho - 1, y + bot_h - 1)
+    pluma(C_BORDE)
+    gfx_line(ox, y, ox + ancho - 1, y)
+    n = bt_texto.length
+    w = (ancho - 8 + 4) / n
+    usar_letra()
+    for k in (0..n - 1)
+        bx = ox + 4 + k * w
+        bw = w - 4
+        fondo = C_BOTON
+        color = C_TEXTO
+        suave = C_SUAVE
+        if not bt_activo[k]
+            fondo = C_TARJETA
+            color = C_TENUE
+            suave = C_TENUE
+        elif k == bt_encima
+            fondo = C_ACENTO
+            color = C_SOBRE_ACENTO
+            suave = C_SOBRE_ACENTO
+        end
+        redondo(bx, y + 4, bx + bw - 1, y + bot_h - 3, 4, fondo)
+        t = cabe(bt_texto[k], bw - 8)
+        tk = cabe(bt_tecla[k], bw - 8)
+        ty = y + 4 + (bot_h - 7 - 2 * font_height()) / 2
+        texto_en(bx + (bw - font_text_width(t)) / 2, ty, t, color)
+        texto_en(bx + (bw - font_text_width(tk)) / 2, ty + font_height(), tk, suave)
     end
 end
 
@@ -1531,7 +1637,7 @@ func destino_bajo(mx: Int, my: Int) -> String
     if t != "" and t != ruta
         return t
     end
-    if dos_paneles and mx >= LATERAL and panel_en(mx) != panel and my >= barra_h and my < alto - pie_h
+    if dos_paneles and mx >= LATERAL and panel_en(mx) != panel and my >= barra_h and my < alto - abajo_h()
         return b_ruta                            # el otro panel
     end
     return ""
@@ -1601,8 +1707,17 @@ func clic(mx: Int, my: Int, q: Int)
         return
     end
     # el progreso: cancelar
-    if op_activa and my >= alto - 2 * pie_h and my < alto - pie_h
+    if op_activa and my >= alto - pie_h - bot_h - pie_h and my < alto - pie_h - bot_h
         op_cancelar = true
+        return
+    end
+    # los botones: lo mismo que su tecla o su menú
+    if con_botones and my >= alto - pie_h - bot_h and my < alto - pie_h
+        poner_botones()
+        k = boton_en(mx)
+        if k >= 0 and bt_activo[k]
+            boton_pulsado = bt_id[k]
+        end
         return
     end
     if my >= alto - pie_h
@@ -2742,6 +2857,7 @@ func menus()
         mui_menu_separator()
         x = mui_menu_check(tr(MSG_A_M_INFO, "Show the .info files"), "", ID_M_INFO, false)
         x = mui_menu_check(tr(MSG_A_M_MINIS, "Thumbnails of pictures"), "", ID_M_MINIS, true)
+        x = mui_menu_check(tr(MSG_A_M_BOTONES, "Buttons"), "", ID_M_BOTONES, con_botones)
         x = mui_menu_item(tr(MSG_A_M_ACTUALIZAR, "Refresh"), "U", ID_M_ACTUALIZAR)
     mui_menu_end()
     m = mui_menu_begin(tr(MSG_A_M_IR, "Go"))
@@ -2799,6 +2915,10 @@ func menu(ev: Int) -> Bool
         poner_vista(true)
     elif ev == ID_M_DOS
         dos_paneles_si(not dos_paneles)
+    elif (ev == ID_B_COPIAR_OTRO or ev == ID_B_MOVER_OTRO) and dos_paneles
+        copiar_a(elegidas(), b_ruta, ev == ID_B_MOVER_OTRO)
+    elif ev == ID_M_BOTONES
+        con_botones = not con_botones
     elif ev == ID_M_POR_NOMBRE or ev == ID_M_POR_TAMANO or ev == ID_M_POR_FECHA
         por = ev - ID_M_POR_NOMBRE
         al_reves = por != 0                      # tamaño y fecha: lo más grande y lo más nuevo primero
@@ -2834,6 +2954,7 @@ Main
         return
     end
     letra = abrir_fuente(13)
+    con_botones = str_upper(ajuste("ARCHIVOS_BOTONES", "BOTONES", "SI")) != "NO"
     inicio = ajuste("ARCHIVOS_INICIO", "INICIO", "SYS:")
     if arg_count() > 0
         inicio = arg(0)                          # TrasfondoArchivos Work:Proyectos
@@ -2915,6 +3036,11 @@ Main
                 tecla(k, q, mui_canvas_char(lienzo))
             elif b == 1
                 clic(mui_canvas_mouse_x(lienzo), mui_canvas_mouse_y(lienzo), q)
+                if boton_pulsado != 0                # un botón de abajo: como su menú
+                    ev_b = boton_pulsado
+                    boton_pulsado = 0
+                    seguir = menu(ev_b)
+                end
             end
             repintar()
         elif ev == ID_MINI
@@ -2938,15 +3064,20 @@ Main
         elif ev == ID_MOVER
             antes_e = encima
             antes_l = lat_encima
+            antes_b = bt_encima
             encima = -1
             lat_encima = -1
+            bt_encima = -1
             if mui_canvas_pointer_inside(lienzo)
                 mx = mui_canvas_pointer_x(lienzo)
                 my = mui_canvas_pointer_y(lienzo)
                 encima = bajo(mx, my)
                 lat_encima = lateral_bajo(mx, my)
+                if con_botones and my >= alto - pie_h - bot_h and my < alto - pie_h
+                    bt_encima = boton_en(mx)
+                end
             end
-            if encima != antes_e or lat_encima != antes_l
+            if encima != antes_e or lat_encima != antes_l or bt_encima != antes_b
                 repintar()
             end
         else

@@ -177,3 +177,8 @@ coordinar con freememlang-40)
   dos paneles, al estilo de DOpus 4/5, DM2, RO o CLI-Mate: cada uno usa el ratón o la tecla. El usuario pide además
   ideas para que sea del todo "amiguero" (por ejemplo, los iconos de los cajones en la lista). Para la 2.9.1, con
   Ferrán en el commit, las notas y Gracias.
+- 2026-11-12: Trasfondo 2.9 publicado (con Dash 2.12.1). Después, los botones de Ferrán García en TrasfondoArchivos:
+  una fila abajo, cada botón con su nombre y su tecla debajo; con un panel Copiar/Cortar/Pegar (Amiga+C/X/V), con
+  dos Copiar F5 y Mover F6 al otro; además Renombrar F2, Cajón nuevo, Borrar (Supr), Información y uno o dos paneles
+  (F3). Apagados cuando no se pueden usar; resaltado bajo el puntero; Ver > Botones (o BOTONES=NO) la quita.
+  `prueba_arrastre.dash` (clics en Copiar y Pegar) y `prueba_archivos.py` bien; capturas bien.

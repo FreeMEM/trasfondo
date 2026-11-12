@@ -14,6 +14,14 @@ func arrastrar(x1: Int, y1: Int, x2: Int, y2: Int, q: Int)
     time_delay(60)
 end
 
+func clic_en(x: Int, y: Int)
+    input_move_screen(x, y, 0)
+    time_delay(5)
+    input_button(1, true)
+    input_button(1, false)
+    time_delay(5)
+end
+
 # la caja de la ventana del explorador: x, y (o -1)
 func caja_x() -> Int
     n = wm_read()
@@ -57,6 +65,18 @@ Main
     Print "a dentro de d #{file_exists(\"RAM:pa/d/a.txt\")} #{not file_exists(\"RAM:pa/a.txt\")}"
     arrastrar(x, y0 + 19, caja_x() + 50, caja_y() + 167, 0)   # b.txt al disco RAM
     Print "b a RAM: #{file_exists(\"RAM:b.txt\")} #{not file_exists(\"RAM:pa/b.txt\")}"
+    # los botones de abajo (Ferrán García): c.txt, "Copiar", doble clic en d, "Pegar". Medido en una captura: la fila
+    # de botones a 478 bajo la ventana; 8 botones de 86 píxeles desde 169 a la derecha de su borde
+    bx = caja_x() + 15
+    by = caja_y() + 478
+    clic_en(x, y0 + 19)                               # c.txt (la lista: d, c.txt)
+    clic_en(bx + 43, by)                              # Copiar
+    clic_en(x, y0)
+    clic_en(x, y0)                                    # doble clic: dentro de d
+    time_delay(30)
+    clic_en(bx + 2 * 86 + 43, by)                     # Pegar
+    time_delay(60)
+    Print "botones #{file_exists(\"RAM:pa/d/c.txt\")}"
     input_key(0x10, 8)
     time_delay(50)
     Print "fin"
