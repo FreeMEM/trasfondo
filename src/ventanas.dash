@@ -20,6 +20,8 @@
 # píxeles entre ventanas (4); ENCAJAR=NO, DOBLE_CLIC=NO y MENU=NO quitan lo del ratón; TECLA_MENU, la del menú; ALT_TAB=NO quita
 # Alt+Tab. Deja libres la barra y el dock de
 # Trasfondo si están. No parchea nada: mira los clics sin quitárselos a nadie (cx_watch_add, Dash 2.12).
+# Va con prioridad 100 entre las commodities (CX_PRIORITY la cambia): con menos, MCP o PowerWindows (CoffinOS) se
+# quedan antes la pulsación en la barra de título y no hay ni encaje al soltar ni doble clic.
 # Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
 
 @workbench_output "NIL:"
@@ -494,7 +496,8 @@ func al_pulsar()
     wx = wm_box_now(id, 0)
     wy = wm_box_now(id, 1)
     arriba = wm_box_now(id, 9)
-    if wx < 0 or y < wy or y >= wy + arriba or x < wx + wm_box_now(id, 12) or x >= wx + wm_box_now(id, 13)
+    # (-1 en el ancho: ya no está; x puede ser negativa, si la ventana se sale de la pantalla por la izquierda)
+    if wm_box_now(id, 2) < 0 or y < wy or y >= wy + arriba or x < wx + wm_box_now(id, 12) or x >= wx + wm_box_now(id, 13)
         return
     end
     p_id = id
@@ -570,7 +573,7 @@ func al_soltar()
     wy = wm_box_now(id, 1)
     ancho = wm_box_now(id, 2)
     p = str_split(p_caja, ",")
-    if wx < 0 or p.length != 4
+    if ancho < 0 or p.length != 4
         return
     end
     lado = borde_de(x, y, wx, wy, ancho)
@@ -920,7 +923,8 @@ end
 Main
     if not single_instance("TrasfondoVentanas")
         Print "TrasfondoVentanas was already running: stopping it"
-    elif not cx_broker("TrasfondoVentanas", program_version(), "Tiles, moves and sizes windows", 0)
+    elif not cx_broker("TrasfondoVentanas", program_version(), "Tiles, moves and sizes windows",
+                       Int(ajuste("VENTANAS_CX_PRIORITY", "CX_PRIORITY", "100")))
         Print "TrasfondoVentanas: no commodities.library"
     else
         hueco = Int(ajuste("VENTANAS_HUECO", "HUECO", "4"))

@@ -73,7 +73,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   Espacio) abre el menú de la ventana: maximizar, mitades, cuartos, delante, detrás, encoger y cerrar. Alt+Tab
   cambia de ventana con una lista. Además, teclas para maximizar, las mitades y el mosaico, a mano o automático, y
   mover o cambiar de tamaño con Alt y el ratón; al mover así, un marco enseña dónde encajará. Todo se quita o se
-  cambia en TrasfondoPrefs, sección Ventanas.
+  cambia en TrasfondoPrefs, sección Ventanas. Va con prioridad 100 entre las commodities (tooltype CX_PRIORITY), para
+  ver los clics antes que MCP o PowerWindows.
 - **TrasfondoArchivos**: un explorador de ficheros moderno, como el Nautilus de Linux, dibujado con los colores de
   Trasfondo (necesita MUI). A la izquierda los sitios, los discos y la papelera; arriba atrás, adelante, subir y la
   ruta en trozos que se pulsan; en medio una lista con columnas que ordenan o iconos con miniaturas de las

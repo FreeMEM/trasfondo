@@ -74,7 +74,8 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   another puts it back. A middle click on the title bar (or Ctrl Alt Space) opens the window menu: maximize,
   halves, quarters, front, back, zoom and close. Alt+Tab switches windows with a list. Also keys to maximize, the
   halves and tiling, by hand or automatic, and moving or sizing with Alt and the mouse; moving that way, a frame
-  shows where it will snap. Everything can be turned off or changed in TrasfondoPrefs, Windows section.
+  shows where it will snap. Everything can be turned off or changed in TrasfondoPrefs, Windows section. It runs at priority 100 among the
+  commodities (CX_PRIORITY tooltype), to see the clicks before MCP or PowerWindows do.
 - **TrasfondoArchivos**: a modern file manager, like Linux's Nautilus, drawn in Trasfondo's colours (it needs
   MUI). On the left the places, the disks and the trash; at the top back, forward, up and the path in pieces you
   can click; in the middle a list with sortable columns or icons with thumbnails of pictures. With F3, two panes
