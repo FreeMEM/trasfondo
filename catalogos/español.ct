@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (12.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (13.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -774,17 +774,20 @@ MSG_495
 Ventanas en tira, como Niri
 ; Windows in a strip, like Niri
 MSG_496
+Teclas de espacios
+; Desktop keys
+MSG_497
 Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre
 ; January|February|March|April|May|June|July|August|September|October|November|December
-MSG_497
+MSG_498
 Lu|Ma|Mi|Ju|Vi|Sá|Do
 ; Mo|Tu|We|Th|Fr|Sa|Su
-MSG_498
+MSG_499
 Avisos
 ; Notifications
-MSG_499
+MSG_500
 Descartar todos
 ; Clear all
-MSG_500
+MSG_501
 Sin avisos
 ; No notifications

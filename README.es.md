@@ -80,7 +80,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   sube o baja de espacio. Un aviso y la barra enseñan en cuál estás. Y el **modo tira**, como Niri: cada ventana es
   una columna de una tira más ancha que la pantalla; las nuevas entran a la derecha y la vista sigue a la activa
   (Ctrl Alt izquierda o derecha cambia de columna, Ctrl Alt R su ancho). En TrasfondoPrefs: "Espacios" (4; 0 sin
-  ellos) y "Ventanas en tira".
+  ellos), "Ventanas en tira" y "Teclas de espacios" (lo que va delante del número, `ctrl alt`; en un emulador, si
+  Linux o Windows se quedan Ctrl Alt y el número, por ejemplo `ralt` o `rcommand`, la Amiga derecha).
 - **TrasfondoArchivos**: un explorador de ficheros moderno, como el Nautilus de Linux, dibujado con los colores de
   Trasfondo (necesita MUI). A la izquierda los sitios, los discos y la papelera; arriba atrás, adelante, subir y la
   ruta en trozos que se pulsan; en medio una lista con columnas que ordenan o iconos con miniaturas de las

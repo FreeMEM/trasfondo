@@ -80,8 +80,9 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   others hide), Ctrl Alt Shift and the number takes the active window there, and Ctrl Alt Shift up or down goes one
   desktop up or down. A notice and the bar show which one you are on. And the **strip mode**, like Niri: each window
   is a column of a strip wider than the screen; new ones come in on the right and the view follows the active one
-  (Ctrl Alt left or right switches column, Ctrl Alt R its width). In TrasfondoPrefs: "Desktops" (4; 0 for none) and
-  "Windows in a strip".
+  (Ctrl Alt left or right switches column, Ctrl Alt R its width). In TrasfondoPrefs: "Desktops" (4; 0 for none),
+  "Windows in a strip" and "Desktop keys" (what goes before the number, `ctrl alt`; in an emulator, if Linux or
+  Windows take Ctrl Alt and the number, for example `ralt` or `rcommand`, the right Amiga key).
 - **TrasfondoArchivos**: a modern file manager, like Linux's Nautilus, drawn in Trasfondo's colours (it needs
   MUI). On the left the places, the disks and the trash; at the top back, forward, up and the path in pieces you
   can click; in the middle a list with sortable columns or icons with thumbnails of pictures. With F3, two panes

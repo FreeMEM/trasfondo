@@ -771,18 +771,21 @@ Desktops
 ; MSG_V_TIRA
 MSG_495 (495//)
 Windows in a strip, like Niri
-; MSG_P_MESES
+; MSG_V_T_ESPACIOS
 MSG_496 (496//)
+Desktop keys
+; MSG_P_MESES
+MSG_497 (497//)
 January|February|March|April|May|June|July|August|September|October|November|December
 ; MSG_P_DIAS
-MSG_497 (497//)
+MSG_498 (498//)
 Mo|Tu|We|Th|Fr|Sa|Su
 ; MSG_P_AVISOS
-MSG_498 (498//)
+MSG_499 (499//)
 Notifications
 ; MSG_P_LIMPIAR
-MSG_499 (499//)
+MSG_500 (500//)
 Clear all
 ; MSG_P_SIN_AVISOS
-MSG_500 (500//)
+MSG_501 (501//)
 No notifications
