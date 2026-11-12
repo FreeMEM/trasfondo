@@ -503,6 +503,7 @@ func act_instalar()
         act_poner_catalogo(a_cuerpo[2])
     end
     act_poner_piezas()
+    act_reiniciar_piezas()
     file_delete("ENV:Trasfondo.nueva")
     file_write_text("ENV:Trasfondo.instalada", a_nueva + "\n")   # TrasfondoPrefs, si lo pidió, se abre otra vez (la nueva)
     a_listo = true
@@ -619,6 +620,41 @@ func act_poner_piezas()
         end
         file_write_text("ENV:Trasfondo.cajon", sin_barra + "\n")
         file_write_text("ENVARC:Trasfondo.cajon", sin_barra + "\n")
+    end
+end
+
+# una pieza en marcha: su puerto público (single_instance) lleva su nombre
+func act_corriendo(nombre: String) -> Bool
+    n = ports_read()
+    for i in (0..n - 1)
+        if port_name(i) == nombre
+            return true
+        end
+    end
+    return false
+end
+
+# las piezas que ya estaban en marcha, otra vez con su programa nuevo: si no, siguen con el viejo en memoria hasta
+# reiniciar el Amiga (Ferrán García vio la barra de la 2.8.7 tras actualizar a la 2.9, y lo había pedido el 5/11).
+# Lanzarla otra vez la para (su single_instance le manda un Ctrl-C); luego se arranca. TrasfondoArchivos no: se
+# cerrarían las ventanas que tenga abiertas quien lo usa
+func act_reiniciar_piezas()
+    cajon = act_cajon()
+    if cajon == ""
+        return
+    end
+    var piezas: [String] = ["TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
+    for p in piezas
+        if act_corriendo(p) and file_exists(cajon + p)
+            orden = "Run >NIL: \"" + cajon + p + "\""
+            run_command(orden)
+            vueltas = 0
+            while act_corriendo(p) and vueltas < 100   # hasta 5 s
+                time_delay(5)
+                vueltas = vueltas + 1
+            end
+            run_command(orden)
+        end
     end
 end
 
