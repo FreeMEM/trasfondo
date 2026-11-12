@@ -64,8 +64,22 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   ratón allí. Sus programas se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
   (con el selector de ficheros), Quitar, Subir y Bajar. En la misma sección, el hueco entre los iconos y el fondo:
   el del tema, transparente (se ve el escritorio y quedan solo las placas de los iconos) o de un color R,G,B.
-- **TrasfondoVentanas**: teclas para las ventanas (maximizar, mitades, restaurar, mosaico a mano o
-  automático) y moverlas o cambiarlas de tamaño con Alt y el ratón.
+- **TrasfondoVentanas**: las ventanas de cualquier programa como en un escritorio de ahora, sin parchear el
+  sistema. Soltar una ventana arrastrada contra un borde la encaja: a la izquierda o a la derecha, la mitad; en una
+  esquina, ese cuarto; arriba, la pantalla entera. Al alejarla del borde recupera su tamaño. Un doble clic en la
+  barra de título la maximiza y otro la deja como estaba. El clic central en la barra de título (o Ctrl Alt
+  Espacio) abre el menú de la ventana: maximizar, mitades, cuartos, delante, detrás, encoger y cerrar. Alt+Tab
+  cambia de ventana con una lista. Además, teclas para maximizar, las mitades y el mosaico, a mano o automático, y
+  mover o cambiar de tamaño con Alt y el ratón; al mover así, un marco enseña dónde encajará. Todo se quita o se
+  cambia en TrasfondoPrefs, sección Ventanas.
+- **TrasfondoArchivos**: un explorador de ficheros moderno, como el Nautilus de Linux, dibujado con los colores de
+  Trasfondo (necesita MUI). A la izquierda los sitios, los discos y la papelera; arriba atrás, adelante, subir y la
+  ruta en trozos que se pulsan; en medio una lista con columnas que ordenan o iconos con miniaturas de las
+  imágenes. Con F3, dos paneles como en Directory Opus: el activo es el origen y el otro el destino; F5 copia y F6
+  mueve al otro. Copiar, mover y borrar van con barra de progreso y se pueden cancelar; si algo ya existe, pregunta.
+  Borrar manda a la papelera de cada disco, y Amiga+Z deshace. También renombrar en el sitio (F2), cajón nuevo,
+  filtrar (Amiga+F), buscar en los subcajones (Amiga+B), información con comentario y permisos (Amiga+I) y
+  arrastrar y soltar, también iconos desde el Workbench. Los .info van siempre con su fichero.
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
   con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
 - **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque). En Arranque, marcar

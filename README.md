@@ -66,8 +66,21 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   a list with Add (with the file requester), Remove, Up and Down. In the same section, the gap between the icons
   and the background: the theme's, see-through (the desktop shows and only the icons' plates are left) or an
   R,G,B colour.
-- **TrasfondoVentanas**: keys for the windows (maximize, halves, restore, tiling by hand or automatic) and
-  moving or resizing them with Alt and the mouse.
+- **TrasfondoVentanas**: any program's windows as on a modern desktop, without patching the system. Dropping a
+  dragged window against an edge snaps it: left or right, that half; a corner, that quarter; the top, the whole
+  screen. Dragging it away from the edge brings its size back. A double click on the title bar maximizes it and
+  another puts it back. A middle click on the title bar (or Ctrl Alt Space) opens the window menu: maximize,
+  halves, quarters, front, back, zoom and close. Alt+Tab switches windows with a list. Also keys to maximize, the
+  halves and tiling, by hand or automatic, and moving or sizing with Alt and the mouse; moving that way, a frame
+  shows where it will snap. Everything can be turned off or changed in TrasfondoPrefs, Windows section.
+- **TrasfondoArchivos**: a modern file manager, like Linux's Nautilus, drawn in Trasfondo's colours (it needs
+  MUI). On the left the places, the disks and the trash; at the top back, forward, up and the path in pieces you
+  can click; in the middle a list with sortable columns or icons with thumbnails of pictures. With F3, two panes
+  as in Directory Opus: the active one is the source and the other the destination; F5 copies and F6 moves to the
+  other. Copying, moving and deleting show a progress bar and can be cancelled; if something already exists, it
+  asks. Deleting sends to each disk's trash, and Amiga+Z undoes. Also renaming in place (F2), new drawer,
+  filtering (Amiga+F), searching subdrawers (Amiga+B), information with comment and permissions (Amiga+I) and
+  drag and drop, icons from the Workbench too. .info files always go with their file.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
   with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
 - **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup). In Startup, ticking
