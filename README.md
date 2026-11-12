@@ -82,7 +82,9 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   other. Copying, moving and deleting show a progress bar and can be cancelled; if something already exists, it
   asks. Deleting sends to each disk's trash, and Amiga+Z undoes. Also renaming in place (F2), new drawer,
   filtering (Amiga+F), searching subdrawers (Amiga+B), information with comment and permissions (Amiga+I) and
-  drag and drop, icons from the Workbench too. .info files always go with their file.
+  drag and drop, icons from the Workbench too. .info files always go with their file. At the bottom, a row of
+  buttons with their key underneath ("Copy F5", "Rename F2"...), to use the mouse or the key (asked for by Ferrán
+  García); View > Buttons hides it.
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
   with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
 - **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup). In Startup, ticking

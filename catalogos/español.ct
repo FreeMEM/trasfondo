@@ -731,3 +731,39 @@ ORIGEN
 MSG_481
 DESTINO
 ; DEST
+MSG_482
+Supr
+; Del
+MSG_483
+Copiar
+; Copy
+MSG_484
+Mover
+; Move
+MSG_485
+Cortar
+; Cut
+MSG_486
+Pegar
+; Paste
+MSG_487
+Renombrar
+; Rename
+MSG_488
+Cajón nuevo
+; New drawer
+MSG_489
+Borrar
+; Delete
+MSG_490
+Información
+; Info
+MSG_491
+Un panel
+; One pane
+MSG_492
+Dos paneles
+; Two panes
+MSG_493
+Botones
+; Buttons
