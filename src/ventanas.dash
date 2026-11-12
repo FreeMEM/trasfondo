@@ -422,6 +422,7 @@ func esp_ir(n: Int)
     end
     esp_actual = n
     esp_mostrar(n)
+    esp_aviso()
     if modo_tira
         t_foco = esp_activa[n - 1]
         t_colocar()
@@ -456,6 +457,49 @@ func esp_llevar(n: Int)
     end
 end
 
+# el aviso al cambiar de espacio: un punto por espacio, el de ahora lleno, en el centro un momento, sin quitar el
+# foco a nadie (window_create con 32). Y ENV:TrasfondoEspacio ("2/4") para la barra
+var av_win: Int = 0
+var av_hasta: Int = 0
+
+func av_cerrar()
+    if av_win != 0
+        window_close(av_win)
+        av_win = 0
+        ok = window_use(0)
+    end
+end
+
+func esp_aviso()
+    ok = file_write_text("ENV:TrasfondoEspacio", "#{esp_actual}/#{espacios}")
+    av_cerrar()
+    paso = 24
+    w = espacios * paso + 14
+    h = 32
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    av_win = window_create("", (sw - w) / 2, (sh - h) / 2, w, h, 2 + 4 + 32)
+    if av_win == 0
+        return
+    end
+    gfx_mode(0)
+    m_pluma(C_M_BORDE, 1)
+    gfx_rect(0, 0, w - 1, h - 1)
+    m_pluma(C_M_FONDO, 2)
+    gfx_rect(1, 1, w - 2, h - 2)
+    for n in (1..espacios)
+        x = 7 + (n - 1) * paso + paso / 2
+        if n == esp_actual
+            m_pluma(C_M_TEXTO, 1)
+            gfx_circle_fill(x, h / 2, 7)
+        else
+            m_pluma(C_M_BORDE, 1)
+            gfx_circle(x, h / 2, 6)
+        end
+    end
+    av_hasta = time_ms() + 700
+end
+
 # todas a la vista (al salir o al desactivar)
 func esp_todas()
     for k in (0..esp_id.length - 1)
@@ -467,6 +511,10 @@ func esp_todas()
     esp_de = []
     esp_z = []
     esp_actual = 1
+    av_cerrar()
+    if espacios > 0
+        ok = file_delete("ENV:TrasfondoEspacio")
+    end
 end
 
 # al arrancar: las ventanas que se quedaron escondidas (un TrasfondoVentanas que se colgó), a la vista
@@ -1395,6 +1443,7 @@ Main
             tecla("TECLA_ESPACIO_ABAJO", "ctrl alt shift down", K_ESP_ABAJO)
             tecla("TECLA_LLEVAR_ARRIBA", "ctrl alt shift lcommand up", K_ESP_LLEVAR_ARRIBA)
             tecla("TECLA_LLEVAR_ABAJO", "ctrl alt shift lcommand down", K_ESP_LLEVAR_ABAJO)
+            ok = file_write_text("ENV:TrasfondoEspacio", "1/#{espacios}")
         else
             espacios = 0
         end
@@ -1406,7 +1455,13 @@ Main
             if (automatico or modo_tira) and activo
                 espera = CADA
             end
+            if av_win != 0
+                espera = 100
+            end
             c = cx_wait(espera)
+            if av_win != 0 and time_ms() >= av_hasta
+                av_cerrar()
+            end
             if c == 100 + W_CENTRAL and activo and con_menu
                 al_central()
                 c = m_bucle()
@@ -1425,6 +1480,9 @@ Main
                 esp_todas()
             elif c == 4
                 activo = true
+                if espacios > 0
+                    ok = file_write_text("ENV:TrasfondoEspacio", "1/#{espacios}")
+                end
             elif c == 100 + K_MAXIMIZAR and modo_tira and activo
                 t_otro_ancho(true)
             elif c == 100 + K_IZQUIERDA and modo_tira and activo

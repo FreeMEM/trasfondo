@@ -62,6 +62,47 @@ var c_barra: Int = 0xaaaaaa  # los colores de la barra de título: su fondo y su
 var c_barra_t: Int = 0x000000
 var captura_en: Int = 0       # time_ms en que toca la captura pedida; 0, ninguna (JaviTecH)
 
+# --- el espacio en el que se está (TrasfondoVentanas escribe ENV:TrasfondoEspacio, "2/4"): un punto por espacio ---
+
+var esp_n: Int = 0
+var esp_total: Int = 0
+
+func mirar_espacio() -> Bool
+    n = 0
+    total = 0
+    if file_exists("ENV:TrasfondoEspacio")
+        p = str_split(str_trim(file_read_text("ENV:TrasfondoEspacio")), "/")
+        if p.length == 2
+            n = Int(p[0])
+            total = Int(p[1])
+        end
+    end
+    if total < 2 or total > 9 or n < 1 or n > total
+        n = 0
+        total = 0
+    end
+    if n == esp_n and total == esp_total
+        return false
+    end
+    esp_n = n
+    esp_total = total
+    return true
+end
+
+# los puntos, centrados en alto, desde x con paso px entre ellos; el de ahora lleno
+func puntos(x: Int, paso: Int, r: Int, rgb: Int, rgb_otros: Int)
+    for k in (1..esp_total)
+        cx = x + (k - 1) * paso + paso / 2
+        if k == esp_n
+            pluma(rgb)
+            gfx_circle_fill(cx, alto / 2, r)
+        else
+            pluma(rgb_otros)
+            gfx_circle(cx, alto / 2, r - 1)
+        end
+    end
+end
+
 # el ancho de una píldora con ese texto (y un icono delante, si icono)
 func ancho_pildora(texto: String, icono: Bool) -> Int
     w = font_text_width(texto) + 2 * RELLENO
@@ -251,6 +292,9 @@ func pintar_titulo()
     end
     # lo que mide todo
     w = BORDE_T + font_text_width(hora)
+    if esp_total > 0
+        w = w + esp_total * 9 + SEP
+    end
     if fecha != ""
         w = w + SEP + font_text_width(fecha)
     end
@@ -278,6 +322,10 @@ func pintar_titulo()
     gfx_rect(0, 0, w - 1, alto - 1)
     base = (alto - font_height()) / 2 + font_baseline()
     x = BORDE_T + sobra
+    if esp_total > 0
+        puntos(x, 9, 3, c_barra_t, c_barra_t)
+        x = x + esp_total * 9 + SEP
+    end
     reloj_x1 = 0
     pluma(c_barra_t)
     gfx_text_at(x, base, hora)
@@ -325,8 +373,15 @@ func pintar()
     pluma(C_FONDO)
     gfx_rect(0, 0, ancho - 1, alto - 1)
 
-    # izquierda
-    pildora_texto(MARGEN, "Trasfondo", C_ACENTO)
+    # izquierda: el nombre y el espacio
+    x = pildora_texto(MARGEN, "Trasfondo", C_ACENTO)
+    if esp_total > 0
+        x = x + HUECO
+        w = esp_total * 12 + 2 * RELLENO - 6
+        y = (alto - alto_p) / 2
+        redondo(x, y, x + w - 1, y + alto_p - 1, alto_p / 2, C_PILDORA)
+        puntos(x + RELLENO - 3, 12, 4, C_ACENTO, C_TEXTO)
+    end
 
     # centro: la hora, la fecha y el tiempo
     hora = date_text(formato_hora)
@@ -574,7 +629,7 @@ Main
                     cpu_sample()
                     cpu = cpu_total()
                     pintar()
-                elif t_cambio or mirar_avisos()
+                elif t_cambio or mirar_avisos() or mirar_espacio()
                     t_cambio = false
                     pintar()
                 end
