@@ -17,7 +17,7 @@
 # cada disco; recuerda de dónde vino cada cosa para devolverla.
 
 @workbench_output "NIL:"
-@version "TrasfondoArchivos 2.9"
+@version "TrasfondoArchivos 2.9.1"
 @catalog "Trasfondo.catalog" 1
 
 import "ajustes.dash"

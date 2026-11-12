@@ -23,7 +23,7 @@
 # Se para lanzándolo otra vez, desde Exchange o con Ctrl-C.
 
 @workbench_output "NIL:"
-@version "TrasfondoVentanas 2.9"
+@version "TrasfondoVentanas 2.9.1"
 @catalog "Trasfondo.catalog" 1       # los textos del menú de ventana, en inglés; el castellano, en el catálogo
 
 import "ajustes.dash"
