@@ -17,23 +17,24 @@ const ESPERA_RED = 30000           # lo más que se espera a cada paso de la red
 const TOPE_API = 131072            # la respuesta de la API cabe de sobra
 const MUESTRA = 8192               # lo que se recibe de una vez
 const CAT_ASSET = "Trasfondo-espanol.catalog"   # el castellano, suelto en cada release
-const N_FICH = 11                  # lo que se baja: ver act_nombre
+const N_FICH = 12                  # lo que se baja: ver act_nombre
 const ARRANQUE = 10                # el icono de proyecto de SYS:WBStartup, con la herramienta por poner
+const ARCHIVOS = 11                # el explorador (desde la 2.9): se pone en el cajón, sin arrancar con el Workbench
 const HUECO = "@@HERRAMIENTA@@"    # lo que lleva ese icono en lugar de la ruta de la pieza
 
 var a_version: String = ""         # la de este ejecutable ("0.8")
 var a_buscar: Bool = true          # BUSCAR=NO en las preferencias: no pregunta a GitHub
 var a_proxima: Int = 0             # time_ms de la próxima consulta
 var a_nueva: String = ""           # la versión nueva que hay ("" si ninguna)
-var a_url: [String] = ["", "", "", "", "", "", "", "", "", "", ""]   # de dónde se baja cada uno ("" si no está)
-var a_tam: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                   # y cuánto miden
+var a_url: [String] = ["", "", "", "", "", "", "", "", "", "", "", ""]   # de dónde se baja cada uno ("" si no está)
+var a_tam: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                   # y cuánto miden
 var a_fase: Int = 0                # 0 nada, 1 consultando, 2 bajando
 var a_cual: Int = 0                # el fichero que se baja (act_nombre)
 var a_quiere: Bool = false         # se pidió actualizar
 var a_completar: Bool = false      # se bajan solo las piezas que faltan, de esta misma versión
 var a_faltan: Bool = false         # la consulta vio que faltan piezas y que la release las tiene
 var a_listo: Bool = false          # instalada: hay que relanzarse
-var a_cuerpo: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                # lo bajado y comprobado (búferes)
+var a_cuerpo: [Int] = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0]                # lo bajado y comprobado (búferes)
 var a_falta_cat: Bool = false      # el sistema está en castellano y no hay catálogo: se baja en la consulta
 var a_idioma: Bool = false         # llegó el catálogo: hay que repintar
 var a_red: Bool = false            # se abrió la red: al acabar se suelta (net_release)
@@ -534,6 +535,9 @@ func act_faltan_piezas() -> Bool
             return true
         end
     end
+    if a_url[ARCHIVOS] != "" and not file_exists(cajon + act_nombre(ARCHIVOS))
+        return true                         # (el explorador, desde la 2.9)
+    end
     return false
 end
 
@@ -589,6 +593,9 @@ func act_poner_piezas()
         if a_cuerpo[k] != 0
             act_poner(cajon + act_nombre(k), a_cuerpo[k], a_tam[k])
         end
+    end
+    if a_cuerpo[ARCHIVOS] != 0
+        act_poner(cajon + act_nombre(ARCHIVOS), a_cuerpo[ARCHIVOS], a_tam[ARCHIVOS])
     end
     if a_cuerpo[9] != 0
         act_poner("C:Avisa", a_cuerpo[9], a_tam[9])
@@ -650,7 +657,7 @@ end
 
 # el nombre de lo que se baja (el del fichero) y el de su $VER: (el del programa)
 func act_nombre(cual: Int) -> String
-    var nombres: [String] = ["trasfondo", "TrasfondoPrefs", "Trasfondo.catalog", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoAviso", "TrasfondoRapido", "TrasfondoDock", "TrasfondoVentanas", "Avisa", "Arranque.info"]
+    var nombres: [String] = ["trasfondo", "TrasfondoPrefs", "Trasfondo.catalog", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoAviso", "TrasfondoRapido", "TrasfondoDock", "TrasfondoVentanas", "Avisa", "Arranque.info", "TrasfondoArchivos"]
     return nombres[cual]
 end
 
