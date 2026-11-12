@@ -160,3 +160,7 @@ coordinar con freememlang-40)
 - 2026-11-12: miniaturas de imágenes (PNG, JPEG, GIF, BMP, WebP, SVG) en la vista de iconos: una a una en un
   proceso aparte (image_decode_start), reducidas a 56 x 56 sin deformar, con su marco; Ver > Miniaturas las quita.
   Captura bien; `prueba_archivos.py` bien; compila también por `--gcc`.
+- 2026-11-12: `wm-eventos` con main del PR #161 (pila de rescate de las excepciones tras el StackSwap; 954584a):
+  627/627 sin emulador, tests del emulador bien, pruebas de Trasfondo bien. Para las notas de 2.12 (de
+  freememlang-40): "Un programa hecho con ./dash que falla con una excepción ya da el aviso, en vez de quedarse
+  colgado sin sacar nada (lo destapó Tachyon en Amiberry)".
