@@ -54,6 +54,7 @@ const ID_M_ADELANTE = 41
 const ID_M_ARRIBA = 42
 const ID_M_IR = 43
 const ID_M_DEVOLVER = 44
+const ID_M_DOS = 37
 
 const K_ARRIBA = 0x4C        # teclas en bruto
 const K_ABAJO = 0x4D
@@ -65,6 +66,10 @@ const K_ESC = 0x45
 const K_RETROCESO = 0x41
 const K_SUPR = 0x46
 const K_F2 = 0x51
+const K_F3 = 0x52
+const K_F5 = 0x54
+const K_F6 = 0x55
+const K_TAB = 0x42
 const K_INICIO = 0x70        # (teclados de PC)
 const K_FIN = 0x71
 const K_REPAG = 0x48
@@ -124,6 +129,35 @@ var libre_kb: Int = -1
 var atras: [String] = []
 var adelante: [String] = []
 
+# dos paneles (F3, como Directory Opus y Dolphin): lo de arriba es el panel activo; el otro espera en b_*, y
+# cambiar_panel() los cambia de sitio
+var dos_paneles: Bool = false
+var panel: Int = 0           # el activo: 0 izquierda, 1 derecha
+var lx: Int = 150            # dónde empieza (desde el borde del lienzo) y qué ancho tiene la zona del panel que se pinta
+var lw: Int = 400
+var tit_h: Int = 0           # el título de cada panel (su ruta), con dos
+var panel_pintado: Int = 0   # el que se está pintando, y el activo (mientras se pinta el otro)
+var panel_activo: Int = 0
+var b_ruta: String = ""
+var b_nombres: [String] = []
+var b_es_cajon: [Bool] = []
+var b_tamanos: [Int] = []
+var b_fechas: [Int] = []
+var b_comentarios: [String] = []
+var b_elegido: [Bool] = []
+var b_orden: [Int] = []
+var b_por: Int = 0
+var b_al_reves: Bool = false
+var b_vista_iconos: Bool = false
+var b_primera: Int = 0
+var b_cursor: Int = -1
+var b_ancla: Int = -1
+var b_iconos: [Int] = []
+var b_vigilado: Int = 0
+var b_libre_kb: Int = -1
+var b_atras: [String] = []
+var b_adelante: [String] = []
+
 # el lateral: texto y ruta de cada sitio (ruta "" = un título de sección)
 var lat_texto: [String] = []
 var lat_ruta: [String] = []
@@ -151,6 +185,8 @@ var arr_activo: Bool = false
 var arr_x: Int = 0
 var arr_y: Int = 0
 var arr_sobre: String = ""   # el cajón bajo el puntero, "" ninguno
+var encima: Int = -1         # la fila (o el icono) bajo el puntero, sin clic: se resalta un poco
+var lat_encima: Int = -1     # el sitio del lateral bajo el puntero
 
 # la operación en marcha (a trozos): una lista de pasos
 var op_activa: Bool = false
@@ -535,8 +571,111 @@ func medir()
     pie_h = font_height() + 8
 end
 
+func cambiar_panel()
+    t = ruta
+    ruta = b_ruta
+    b_ruta = t
+    tn = nombres
+    nombres = b_nombres
+    b_nombres = tn
+    tc = es_cajon
+    es_cajon = b_es_cajon
+    b_es_cajon = tc
+    tt = tamanos
+    tamanos = b_tamanos
+    b_tamanos = tt
+    tf = fechas
+    fechas = b_fechas
+    b_fechas = tf
+    tm = comentarios
+    comentarios = b_comentarios
+    b_comentarios = tm
+    te = elegido
+    elegido = b_elegido
+    b_elegido = te
+    to = orden
+    orden = b_orden
+    b_orden = to
+    ti = iconos
+    iconos = b_iconos
+    b_iconos = ti
+    ta = atras
+    atras = b_atras
+    b_atras = ta
+    td = adelante
+    adelante = b_adelante
+    b_adelante = td
+    n = por
+    por = b_por
+    b_por = n
+    v = al_reves
+    al_reves = b_al_reves
+    b_al_reves = v
+    v = vista_iconos
+    vista_iconos = b_vista_iconos
+    b_vista_iconos = v
+    n = primera
+    primera = b_primera
+    b_primera = n
+    n = cursor
+    cursor = b_cursor
+    b_cursor = n
+    n = ancla
+    ancla = b_ancla
+    b_ancla = n
+    n = vigilado
+    vigilado = b_vigilado
+    b_vigilado = n
+    n = libre_kb
+    libre_kb = b_libre_kb
+    b_libre_kb = n
+    panel = 1 - panel
+    geometria()
+end
+
+# la zona del panel activo
+func geometria()
+    lx = LATERAL
+    lw = ancho - LATERAL
+    tit_h = 0
+    if dos_paneles
+        lw = (ancho - LATERAL) / 2
+        if panel == 1
+            lx = LATERAL + lw
+            lw = ancho - lx
+        end
+        tit_h = font_height() + 8
+    end
+end
+
+# el panel en x del lienzo (con dos)
+func panel_en(mx: Int) -> Int
+    if dos_paneles and mx >= LATERAL + (ancho - LATERAL) / 2
+        return 1
+    end
+    return 0
+end
+
+func dos_paneles_si(si: Bool)
+    if si == dos_paneles
+        return
+    end
+    if si and b_ruta == ""
+        # el otro empieza en el mismo cajón
+        r = ruta
+        cambiar_panel()
+        leer(r, false)
+        cambiar_panel()
+    end
+    if not si and panel == 1
+        cambiar_panel()
+    end
+    dos_paneles = si
+    geometria()
+end
+
 func zona_lista_y() -> Int
-    y = oy + barra_h
+    y = oy + barra_h + tit_h
     if not vista_iconos
         y = y + cab_h
     end
@@ -544,7 +683,7 @@ func zona_lista_y() -> Int
 end
 
 func zona_lista_h() -> Int
-    h = alto - barra_h - pie_h
+    h = alto - barra_h - pie_h - tit_h
     if not vista_iconos
         h = h - cab_h
     end
@@ -568,24 +707,44 @@ func celda_h() -> Int
 end
 
 func por_fila() -> Int
-    n = (ancho - LATERAL - 8) / celda_w()
+    n = (lw - 8) / celda_w()
     if n < 1
         n = 1
     end
     return n
 end
 
-# las columnas de la lista: dónde empiezan (desde el lateral)
+# las columnas de la lista: dónde empiezan (desde el borde del panel); en un panel estrecho, solo el tamaño (y si
+# no cabe, solo el nombre: -1 la que no se ve)
 func col_tam() -> Int
-    return ancho - LATERAL - 330
+    if lw >= 560
+        return lw - 330
+    elif lw >= 260
+        return lw - 90
+    end
+    return -1
 end
 
 func col_fecha() -> Int
-    return ancho - LATERAL - 250
+    if lw >= 560
+        return lw - 250
+    end
+    return -1
 end
 
 func col_coment() -> Int
-    return ancho - LATERAL - 120
+    if lw >= 560
+        return lw - 120
+    end
+    return -1
+end
+
+# el ancho para el nombre
+func ancho_nombre() -> Int
+    if col_tam() > 0
+        return col_tam()
+    end
+    return lw - 8
 end
 
 func pintar_barra()
@@ -731,10 +890,12 @@ func pintar_lateral()
         else
             actual = lat_ruta[k] == ruta or (lat_ruta[k] == "*papelera" and str_ends(ruta, PAPELERA))
             sobre = arr_activo and arr_sobre == lat_ruta[k]
-            if actual or sobre
+            if actual or sobre or k == lat_encima
                 c = C_BOTON
                 if sobre
                     c = C_ACENTO
+                elif not actual
+                    c = C_TARJETA
                 end
                 redondo(x + 6, yy, x + LATERAL - 8, yy + fila - 1, 4, c)
             end
@@ -749,13 +910,40 @@ func pintar_lateral()
     end
 end
 
-func pintar_cabecera()
-    x = ox + LATERAL
+# con dos paneles: la ruta de cada uno encima, la del activo marcada
+func pintar_titulo_panel()
+    if not dos_paneles
+        return
+    end
+    x = ox + lx
     y = oy + barra_h
+    pluma(C_PANEL)
+    gfx_rect(x, y, x + lw - 1, y + tit_h - 1)
+    usar_letra()
+    activo = panel_pintado == panel_activo
+    color = C_SUAVE
+    if activo
+        color = C_TEXTO
+        pluma(C_ACENTO)
+        gfx_rect(x, y + tit_h - 2, x + lw - 1, y + tit_h - 1)
+    else
+        pluma(C_BORDE)
+        gfx_line(x, y + tit_h - 1, x + lw - 1, y + tit_h - 1)
+    end
+    texto_en(x + 10, y + 4, cabe(ruta, lw - 20), color)
+    if panel_pintado == 0
+        pluma(C_BORDE)
+        gfx_line(x + lw - 1, y, x + lw - 1, oy + alto - pie_h - 1)
+    end
+end
+
+func pintar_cabecera()
+    x = ox + lx
+    y = oy + barra_h + tit_h
     pluma(C_FONDO)
-    gfx_rect(x, y, ox + ancho - 1, y + cab_h - 1)
+    gfx_rect(x, y, x + lw - 1, y + cab_h - 1)
     pluma(C_BORDE)
-    gfx_line(x, y + cab_h - 1, ox + ancho - 1, y + cab_h - 1)
+    gfx_line(x, y + cab_h - 1, x + lw - 1, y + cab_h - 1)
     usar_letra()
     var titulos: [String] = [tr(MSG_A_NOMBRE, "Name"), tr(MSG_A_TAMANO, "Size"), tr(MSG_A_FECHA, "Date"), tr(MSG_A_COMENTARIO, "Comment")]
     var xs: [Int] = [12, col_tam(), col_fecha(), col_coment()]
@@ -768,7 +956,7 @@ func pintar_cabecera()
                 t = t + " ^"
             end
         end
-        if xs[k] > 30 or k == 0
+        if xs[k] > 0 or k == 0
             texto_en(x + xs[k], y + 3, t, C_SUAVE)
         end
     end
@@ -790,10 +978,10 @@ func icono_peque(x: Int, y: Int, h: Int, cajon: Bool, color: Int)
 end
 
 func pintar_lista()
-    x = ox + LATERAL
+    x = ox + lx
     y = zona_lista_y()
     h = zona_lista_h()
-    w = ancho - LATERAL
+    w = lw
     pluma(C_FONDO)
     gfx_rect(x, y, x + w - 1, y + h - 1)
     n = filas_vistas()
@@ -810,12 +998,17 @@ func pintar_lista()
         end
         color = C_TEXTO
         suave = C_SUAVE
-        if elegido[i]
+        apagado = dos_paneles and panel_pintado != panel_activo
+        if elegido[i] and apagado               # lo elegido del panel que no manda, apagado
+            redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_BOTON)
+        elif elegido[i]
             redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_ACENTO)
             color = C_SOBRE_ACENTO
             suave = C_SOBRE_ACENTO
         elif arr_activo and es_cajon[i] and arr_sobre == unir(ruta, nombres[i])
             redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_BOTON)
+        elif k == encima
+            redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_TARJETA)
         end
         if k == cursor and not elegido[i]
             pluma(C_BORDE)
@@ -826,26 +1019,30 @@ func pintar_lista()
         if not es_cajon[i]
             c_icono = C_SUAVE
         end
-        if elegido[i]
+        if elegido[i] and not apagado
             c_icono = C_SOBRE_ACENTO
         end
         icono_peque(x + 12, fy + (fila - ih) / 2, ih, es_cajon[i], c_icono)
-        if editando == 1 and ed_de == i
-            campo(x + 12 + ih + 8, fy + 1, col_tam() - ih - 28, fila - 2)
+        if editando == 1 and ed_de == i and panel_pintado == panel_activo
+            campo(x + 12 + ih + 8, fy + 1, ancho_nombre() - ih - 28, fila - 2)
         else
             t = nombres[i]
-            texto_en(x + 12 + ih + 8, fy + 3, cabe(t, col_tam() - ih - 28), color)
+            texto_en(x + 12 + ih + 8, fy + 3, cabe(t, ancho_nombre() - ih - 28), color)
         end
-        if col_tam() > 30
-            if not es_cajon[i]
-                tt = tamano_texto(tamanos[i])
-                texto_en(x + col_fecha() - 16 - font_text_width(tt), fy + 3, tt, suave)
+        if col_tam() > 0 and not es_cajon[i]
+            tt = tamano_texto(tamanos[i])
+            fin_t = lw - 16
+            if col_fecha() > 0
+                fin_t = col_fecha() - 16
             end
+            texto_en(x + fin_t - font_text_width(tt), fy + 3, tt, suave)
+        end
+        if col_fecha() > 0
             texto_en(x + col_fecha(), fy + 3, fecha_texto(fechas[i]), suave)
-            texto_en(x + col_coment(), fy + 3, cabe(comentarios[i], ancho - LATERAL - col_coment() - 16), suave)
+            texto_en(x + col_coment(), fy + 3, cabe(comentarios[i], lw - col_coment() - 16), suave)
         end
     end
-    if editando == 2
+    if editando == 2 and panel_pintado == panel_activo
         fy = y + (cursor - primera) * fila
         if fy < y or fy + fila > y + h
             fy = y
@@ -854,7 +1051,7 @@ func pintar_lista()
         gfx_rect(x + 4, fy, x + w - 6, fy + fila - 1)
         ih = font_height() - 2
         icono_peque(x + 12, fy + (fila - ih) / 2, ih, true, C_ACENTO)
-        campo(x + 12 + ih + 8, fy + 1, col_tam() - ih - 28, fila - 2)
+        campo(x + 12 + ih + 8, fy + 1, ancho_nombre() - ih - 28, fila - 2)
     end
     barra_desplazar(x + w - 5, y, h, n, orden.length, primera)
 end
@@ -872,10 +1069,10 @@ func barra_desplazar(x: Int, y: Int, h: Int, vistas: Int, total: Int, desde: Int
 end
 
 func pintar_iconos()
-    x = ox + LATERAL
+    x = ox + lx
     y = zona_lista_y()
     h = zona_lista_h()
-    w = ancho - LATERAL
+    w = lw
     pluma(C_FONDO)
     gfx_rect(x, y, x + w - 1, y + h - 1)
     pf = por_fila()
@@ -895,11 +1092,13 @@ func pintar_iconos()
             if cy + ch > y + h
                 break
             end
-            if elegido[i]
+            if elegido[i] and dos_paneles and panel_pintado != panel_activo
+                redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_BOTON)
+            elif elegido[i]
                 redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_ACENTO)
             elif arr_activo and es_cajon[i] and arr_sobre == unir(ruta, nombres[i])
                 redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_BOTON)
-            elif k == cursor
+            elif k == cursor or k == encima
                 redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_TARJETA)
             end
             if iconos[i] == 0
@@ -918,10 +1117,10 @@ func pintar_iconos()
                 icono_peque(cx + cw / 2 - 16, cy + 12, 32, es_cajon[i], C_SUAVE)
             end
             color = C_TEXTO
-            if elegido[i]
+            if elegido[i] and not (dos_paneles and panel_pintado != panel_activo)
                 color = C_SOBRE_ACENTO
             end
-            if editando == 1 and ed_de == i
+            if editando == 1 and ed_de == i and panel_pintado == panel_activo
                 campo(cx + 2, cy + 62, cw - 4, font_height() + 2)
             else
                 t = cabe(nombres[i], cw - 8)
@@ -1052,16 +1251,44 @@ func pintar(x: Int, y: Int, w: Int, h: Int)
     alto = h
     gfx_mode(0)                                  # el texto, sin fondo
     medir()
+    geometria()
+    panel_activo = panel
     pintar_barra()
     pintar_lateral()
+    if dos_paneles
+        cambiar_panel()                          # el otro primero, sin lo de debajo del puntero
+        e = encima
+        if panel_en(mui_canvas_pointer_x(lienzo)) != panel
+            encima = -1
+        end
+        panel_pintado = panel
+        pintar_panel()
+        encima = e
+        cambiar_panel()
+    end
+    geometria()
+    if dos_paneles and panel_en(mui_canvas_pointer_x(lienzo)) != panel
+        e = encima
+        encima = -1
+        panel_pintado = panel
+        pintar_panel()
+        encima = e
+    else
+        panel_pintado = panel
+        pintar_panel()
+    end
+    pintar_pie()
+    pintar_arrastre()
+end
+
+func pintar_panel()
+    pintar_titulo_panel()
     if vista_iconos
         pintar_iconos()
     else
         pintar_cabecera()
         pintar_lista()
     end
-    pintar_pie()
-    pintar_arrastre()
 end
 
 func repintar()
@@ -1132,9 +1359,9 @@ end
 
 # qué hay en (mx, my) del lienzo: el número en orden, o -1
 func bajo(mx: Int, my: Int) -> Int
-    x = mx - LATERAL
+    x = mx - lx
     y = my - (zona_lista_y() - oy)
-    if x < 0 or y < 0 or y >= zona_lista_h()
+    if x < 0 or x >= lw or y < 0 or y >= zona_lista_h()
         return -1
     end
     k = -1
@@ -1214,6 +1441,9 @@ func destino_bajo(mx: Int, my: Int) -> String
     t = trozo_bajo(mx, my)
     if t != "" and t != ruta
         return t
+    end
+    if dos_paneles and mx >= LATERAL and panel_en(mx) != panel and my >= barra_h and my < alto - pie_h
+        return b_ruta                            # el otro panel
     end
     return ""
 end
@@ -1297,15 +1527,22 @@ func clic(mx: Int, my: Int, q: Int)
     if mx < LATERAL
         return
     end
+    if panel_en(mx) != panel
+        cambiar_panel()
+        mui_set_text(win, "Archivos: " + ruta)
+    end
+    if my < barra_h + tit_h
+        return
+    end
     # la cabecera: ordenar
-    if not vista_iconos and my < barra_h + cab_h
-        x = mx - LATERAL
+    if not vista_iconos and my < barra_h + tit_h + cab_h
+        x = mx - lx
         nuevo = 0
-        if x >= col_coment()
+        if col_coment() > 0 and x >= col_coment()
             return
-        elif x >= col_fecha()
+        elif col_fecha() > 0 and x >= col_fecha()
             nuevo = 2
-        elif x >= col_tam()
+        elif col_tam() > 0 and x >= col_tam()
             nuevo = 1
         end
         if nuevo == por
@@ -1472,6 +1709,13 @@ func tecla(c: Int, q: Int, ch: String)
         end
     elif c == K_F2
         empezar_edicion(1)
+    elif c == K_F3
+        dos_paneles_si(not dos_paneles)
+    elif c == K_TAB and dos_paneles
+        cambiar_panel()
+        mui_set_text(win, "Archivos: " + ruta)
+    elif (c == K_F5 or c == K_F6) and dos_paneles
+        copiar_a(elegidas(), b_ruta, c == K_F6)
     elif c == K_ESC
         if op_activa
             op_cancelar = true
@@ -1955,6 +2199,12 @@ func op_acabar()
         mui_request(win, "Archivos", "#{op_fallos} " + tr(MSG_A_FALLOS, "could not be done (write-protected, in use or the disk is full)"), "_OK")
     end
     leer(ruta, true)
+    if dos_paneles
+        cambiar_panel()
+        leer(ruta, true)
+        cambiar_panel()
+        mui_set_text(win, "Archivos: " + ruta)
+    end
 end
 
 func pegar()
@@ -2030,6 +2280,7 @@ func menus()
     m = mui_menu_begin(tr(MSG_A_M_VER, "View"))
         x = mui_menu_item(tr(MSG_A_M_LISTA, "As a list"), "1", ID_M_LISTA)
         x = mui_menu_item(tr(MSG_A_M_ICONOS, "As icons"), "2", ID_M_ICONOS)
+        x = mui_menu_item(tr(MSG_A_M_DOS, "Two panes (F3)"), "", ID_M_DOS)
         mui_menu_separator()
         x = mui_menu_item(tr(MSG_A_M_POR_NOMBRE, "Sort by name"), "", ID_M_POR_NOMBRE)
         x = mui_menu_item(tr(MSG_A_M_POR_TAMANO, "Sort by size"), "", ID_M_POR_TAMANO)
@@ -2080,6 +2331,8 @@ func menu(ev: Int) -> Bool
         poner_vista(false)
     elif ev == ID_M_ICONOS
         poner_vista(true)
+    elif ev == ID_M_DOS
+        dos_paneles_si(not dos_paneles)
     elif ev == ID_M_POR_NOMBRE or ev == ID_M_POR_TAMANO or ev == ID_M_POR_FECHA
         por = ev - ID_M_POR_NOMBRE
         al_reves = por != 0                      # tamaño y fecha: lo más grande y lo más nuevo primero
@@ -2157,13 +2410,26 @@ Main
                 leer(ruta, true)
                 repintar()
             end
+            if dos_paneles and b_vigilado != 0 and file_changed(b_vigilado) and not op_activa
+                cambiar_panel()
+                leer(ruta, true)
+                cambiar_panel()
+                mui_set_text(win, "Archivos: " + ruta)
+                repintar()
+            end
         elif ev == ID_LIENZO
             b = mui_canvas_button(lienzo)
             w = mui_canvas_wheel(lienzo)
             k = mui_canvas_key(lienzo)
             q = mui_canvas_qualifiers(lienzo)
             if w != 0
-                rueda(w)
+                if panel_en(mui_canvas_mouse_x(lienzo)) != panel   # la rueda mueve el panel de debajo
+                    cambiar_panel()
+                    rueda(w)
+                    cambiar_panel()
+                else
+                    rueda(w)
+                end
             elif k >= 0
                 tecla(k, q, mui_canvas_char(lienzo))
             elif b == 1
@@ -2185,7 +2451,21 @@ Main
                 copiar_a(traidos, ruta, volumen(traidos[0]) == volumen(ruta))
             end
             repintar()
-        elif ev != ID_MOVER
+        elif ev == ID_MOVER
+            antes_e = encima
+            antes_l = lat_encima
+            encima = -1
+            lat_encima = -1
+            if mui_canvas_pointer_inside(lienzo)
+                mx = mui_canvas_pointer_x(lienzo)
+                my = mui_canvas_pointer_y(lienzo)
+                encima = bajo(mx, my)
+                lat_encima = lateral_bajo(mx, my)
+            end
+            if encima != antes_e or lat_encima != antes_l
+                repintar()
+            end
+        else
             seguir = menu(ev)
             repintar()
         end

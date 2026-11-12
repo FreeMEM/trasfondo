@@ -298,3 +298,4 @@ const MSG_A_M_ATRAS = 455
 const MSG_A_M_ADELANTE = 456
 const MSG_A_M_ARRIBA = 457
 const MSG_A_M_IR_A = 458
+const MSG_A_M_DOS = 459

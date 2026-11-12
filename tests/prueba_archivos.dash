@@ -59,6 +59,16 @@ Main
     tecla(0x22, 0)                 # "D": Delete
     time_delay(75)
     Print "borrado #{not file_exists(\"RAM:pa/New drawer\")}"
+    # dos paneles: F3; en el de la derecha (Tab), entrar en d; Tab otra vez, bx.txt y F5: copiado a d
+    tecla(0x52, 0)                 # F3
+    tecla(0x42, 0)                 # Tab: el de la derecha
+    tecla(0x70, 0)                 # Inicio: d
+    tecla(0x44, 0)                 # Return: entra
+    tecla(0x42, 0)                 # Tab: el de la izquierda
+    tecla(0x35, 0)                 # "b": bx.txt
+    tecla(0x54, 0)                 # F5
+    time_delay(50)
+    Print "dos paneles #{file_exists(\"RAM:pa/d/bx.txt\")} #{file_exists(\"RAM:pa/bx.txt\")}"
     tecla(0x10, 8)                 # Amiga+Q
     time_delay(50)
     Print "cerrada #{input_active_title() != \"Archivos: RAM:pa\"}"
