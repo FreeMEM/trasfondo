@@ -1084,11 +1084,28 @@ func caja_dock() -> [Int]
         return caja
     end
     for i in (0..wm_read() - 1)
-        if wm_task(i) == "TrasfondoDock" and caja.length == 0
+        if tarea_sin_ruta(i) == "TrasfondoDock" and caja.length == 0
             caja = [wm_box(i, 0), wm_box(i, 1), wm_box(i, 2), wm_box(i, 3)]
         end
     end
     return caja
+end
+
+# el programa de una ventana, sin la ruta (las piezas arrancadas desde SYS:WBStartup la llevan en el nombre de
+# su tarea, y wm_task solo la quita a las de Shell)
+func tarea_sin_ruta(i: Int) -> String
+    t = wm_task(i)
+    k = str_find(t, ":")
+    while k >= 0
+        t = t[k + 1:t.length]
+        k = str_find(t, ":")
+    end
+    k = str_find(t, "/")
+    while k >= 0
+        t = t[k + 1:t.length]
+        k = str_find(t, "/")
+    end
+    return t
 end
 
 # dónde empieza el panel, desde la barra de título de la pantalla: arriba, debajo de TrasfondoBarra si está en
@@ -1104,7 +1121,7 @@ func y_libre() -> Int
     end
     y = 4
     for i in (0..wm_read() - 1)
-        if wm_task(i) == "TrasfondoBarra"
+        if tarea_sin_ruta(i) == "TrasfondoBarra"
             debajo = wm_box(i, 1) + wm_box(i, 3) - wm_bar_height() + 4
             if debajo > y
                 y = debajo

@@ -146,7 +146,7 @@ func calcular_zona()
     izquierda = 0
     derecha = sw
     for i in (0..n - 1)
-        t = wm_task(i)
+        t = tarea(i)
         x = wm_box(i, 0)
         y = wm_box(i, 1)
         w = wm_box(i, 2)
@@ -332,11 +332,12 @@ var esp_de: [Int] = []
 var esp_z: [Int] = []
 var esp_activa: [Int] = []   # la última activa de cada espacio (posición n - 1)
 
-# de una pieza fija de Trasfondo (la barra, el dock, sus paneles): no va en los espacios ni en la tira. Las de
-# TrasfondoArchivos sí: son ventanas normales
-func es_pieza(i: Int) -> Bool
+# el programa de una ventana, sin la ruta: las piezas arrancadas desde SYS:WBStartup tienen de nombre de tarea la
+# ruta entera ("SYS:Utilities/Trasfondo/TrasfondoDock") y wm_task solo la quita a las de Shell. Sin esto, una
+# ventana encajada o maximizada tapaba el dock arrancado con el Workbench
+func tarea(i: Int) -> String
     t = wm_task(i)
-    k = str_find(t, ":")                       # sin la ruta, si la lleva
+    k = str_find(t, ":")
     while k >= 0
         t = t[k + 1:t.length]
         k = str_find(t, ":")
@@ -346,6 +347,13 @@ func es_pieza(i: Int) -> Bool
         t = t[k + 1:t.length]
         k = str_find(t, "/")
     end
+    return t
+end
+
+# de una pieza fija de Trasfondo (la barra, el dock, sus paneles): no va en los espacios ni en la tira. Las de
+# TrasfondoArchivos sí: son ventanas normales
+func es_pieza(i: Int) -> Bool
+    t = tarea(i)
     return t == "TrasfondoBarra" or t == "TrasfondoDock" or t == "TrasfondoPanel" or t == "TrasfondoAviso" or t == "TrasfondoRapido" or t == "Trasfondo"
 end
 

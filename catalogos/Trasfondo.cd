@@ -1,4 +1,4 @@
-; Texts of /home/freemem/Projects/trasfondo/src/trasfondo.dash, /home/freemem/Projects/trasfondo/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/src/dock.dash, /home/freemem/Projects/trasfondo/src/ventanas.dash, /home/freemem/Projects/trasfondo/src/archivos.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/trasfondo/src/trasfondo.dash, /home/freemem/Projects/trasfondo/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/src/dock.dash, /home/freemem/Projects/trasfondo/src/ventanas.dash, /home/freemem/Projects/trasfondo/src/archivos.dash, /home/freemem/Projects/trasfondo/src/panel.dash (tools/catalogo.py)
 ;
 ; MSG_COMA
 MSG_1 (1//)
@@ -771,3 +771,18 @@ Desktops
 ; MSG_V_TIRA
 MSG_495 (495//)
 Windows in a strip, like Niri
+; MSG_P_MESES
+MSG_496 (496//)
+January|February|March|April|May|June|July|August|September|October|November|December
+; MSG_P_DIAS
+MSG_497 (497//)
+Mo|Tu|We|Th|Fr|Sa|Su
+; MSG_P_AVISOS
+MSG_498 (498//)
+Notifications
+; MSG_P_LIMPIAR
+MSG_499 (499//)
+Clear all
+; MSG_P_SIN_AVISOS
+MSG_500 (500//)
+No notifications

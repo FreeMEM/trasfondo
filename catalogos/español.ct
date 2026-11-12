@@ -773,3 +773,18 @@ Espacios
 MSG_495
 Ventanas en tira, como Niri
 ; Windows in a strip, like Niri
+MSG_496
+Enero|Febrero|Marzo|Abril|Mayo|Junio|Julio|Agosto|Septiembre|Octubre|Noviembre|Diciembre
+; January|February|March|April|May|June|July|August|September|October|November|December
+MSG_497
+Lu|Ma|Mi|Ju|Vi|Sá|Do
+; Mo|Tu|We|Th|Fr|Sa|Su
+MSG_498
+Avisos
+; Notifications
+MSG_499
+Descartar todos
+; Clear all
+MSG_500
+Sin avisos
+; No notifications

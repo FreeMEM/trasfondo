@@ -6,10 +6,12 @@
 
 @workbench_output "NIL:"
 @version "TrasfondoPanel 2.9.4"
+@catalog "Trasfondo.catalog" 1       # el de Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "dibujo.dash"
 import "avisos.dash"
 import "tema.dash"
+import "textos.dash"
 
 const ANCHO = 560
 const ALTO = 340
@@ -137,8 +139,14 @@ end
 func pintar_calendario()
     redondo(CAL_X, CAL_Y, CAL_X + CAL_W - 1, CAL_Y + CAL_H - 1, R, C_TARJETA)
     font_use(f_normal)
-    meses = str_split(MESES, "|")
-    dias = str_split(DIAS, "|")
+    meses = str_split(tr(MSG_P_MESES, "January|February|March|April|May|June|July|August|September|October|November|December"), "|")
+    dias = str_split(tr(MSG_P_DIAS, "Mo|Tu|We|Th|Fr|Sa|Su"), "|")
+    if meses.length != 12
+        meses = str_split(MESES, "|")
+    end
+    if dias.length != 7
+        dias = str_split(DIAS, "|")
+    end
     linea = font_height()
     # la cabecera: < mes año >
     flecha_y = CAL_Y + 10
@@ -235,10 +243,10 @@ func pintar_avisos()
     redondo(AV_X1, M, AV_X2, ALTO - M - 1, R, C_TARJETA)
     font_use(f_normal)
     pluma(C_TEXTO)
-    gfx_text_at(AV_X1 + 14, M + 14 + font_baseline(), "Notifications")
+    gfx_text_at(AV_X1 + 14, M + 14 + font_baseline(), tr(MSG_P_AVISOS, "Notifications"))
     n = avisos_cuantos()
     if n == 0
-        centrado((AV_X1 + AV_X2) / 2, ALTO / 2, "No notifications", C_TENUE)
+        centrado((AV_X1 + AV_X2) / 2, ALTO / 2, tr(MSG_P_SIN_AVISOS, "No notifications"), C_TENUE)
     else
         k = 0
         while k < AV_VISIBLES and k < n
@@ -252,7 +260,7 @@ func pintar_avisos()
     end
     redondo(AV_X1 + 12, LIMPIAR_Y, AV_X2 - 12, LIMPIAR_Y + 30, 15, C_BOTON)
     font_use(f_normal)
-    centrado((AV_X1 + AV_X2) / 2, LIMPIAR_Y + 15 - font_height() / 2 + font_baseline(), "Clear all", C_TEXTO)
+    centrado((AV_X1 + AV_X2) / 2, LIMPIAR_Y + 15 - font_height() / 2 + font_baseline(), tr(MSG_P_LIMPIAR, "Clear all"), C_TEXTO)
 end
 
 # un clic en la tarjeta de los avisos: la x de uno lo descarta; el botón, todos

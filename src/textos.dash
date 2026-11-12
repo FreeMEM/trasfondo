@@ -339,3 +339,13 @@ const MSG_A_B_DOS = 492
 const MSG_A_M_BOTONES = 493
 const MSG_V_ESPACIOS = 494
 const MSG_V_TIRA = 495
+# TrasfondoPanel: los meses del calendario, de enero a diciembre, separados por |
+const MSG_P_MESES = 497
+# TrasfondoPanel: los días de la semana del calendario, de lunes a domingo, en dos letras, separados por |
+const MSG_P_DIAS = 498
+# TrasfondoPanel: el título de la lista de avisos
+const MSG_P_AVISOS = 499
+# TrasfondoPanel: el botón que descarta todos los avisos
+const MSG_P_LIMPIAR = 500
+# TrasfondoPanel: la lista de avisos vacía
+const MSG_P_SIN_AVISOS = 501
