@@ -164,3 +164,7 @@ coordinar con freememlang-40)
   627/627 sin emulador, tests del emulador bien, pruebas de Trasfondo bien. Para las notas de 2.12 (de
   freememlang-40): "Un programa hecho con ./dash que falla con una excepción ya da el aviso, en vez de quedarse
   colgado sin sacar nada (lo destapó Tachyon en Amiberry)".
+- 2026-11-12: el usuario dio el sí ("adelante"): PR #162 de Dash 2.12.0 abierto (rama wm-eventos subida); batería
+  completa en marcha antes de fusionar. El actualizador (`src/actualizar.dash`) trae también TrasfondoArchivos
+  (índice 11, ARCHIVOS) y lo pone en el cajón; compila, SIN probar (su prueba necesita una release en GitHub).
+  Forja: el árbol de variables (idea de David Martínez) lo hace un agente en `~/Projects/forja/.worktrees/arbol`.
