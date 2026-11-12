@@ -98,6 +98,19 @@ Main
     Print "filtro #{not file_exists(\"RAM:pa/bx.txt\")} #{file_exists(\"RAM:pa/d\")}"
     tecla(0x31, 8)                 # Amiga+Z
     time_delay(25)
+    # buscar "a" en los subcajones (Amiga+B, a, Return): sale d/a.txt; Inicio, Supr: a la papelera; Amiga+Z
+    tecla(0x35, 8)                 # Amiga+B
+    tecla(0x20, 0)                 # "a"
+    tecla(0x44, 0)                 # Return
+    time_delay(50)
+    tecla(0x70, 0)                 # Inicio
+    tecla(0x46, 0)                 # Supr
+    time_delay(25)
+    Print "buscar #{not file_exists(\"RAM:pa/d/a.txt\")} #{file_exists(\"RAM:pa/bx.txt\")}"
+    tecla(0x31, 8)                 # Amiga+Z
+    time_delay(25)
+    Print "buscar deshacer #{file_exists(\"RAM:pa/d/a.txt\")}"
+    tecla(0x45, 0)                 # Esc: fuera de la búsqueda
     tecla(0x10, 8)                 # Amiga+Q
     time_delay(50)
     Print "cerrada #{input_active_title() != \"Archivos: RAM:pa\"}"

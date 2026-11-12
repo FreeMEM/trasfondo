@@ -708,3 +708,9 @@ Filter
 ; MSG_A_M_FILTRO
 MSG_476 (476//)
 Filter...
+; MSG_A_BUSCAR
+MSG_477 (477//)
+Search
+; MSG_A_M_BUSCAR
+MSG_478 (478//)
+Search in subdrawers...

@@ -57,7 +57,8 @@ const ID_M_DEVOLVER = 44
 const ID_M_DOS = 37
 const ID_M_INFO_DE = 17
 const ID_M_DESHACER = 25
-const ID_M_FILTRO = 45      # la ventana de información
+const ID_M_FILTRO = 45
+const ID_M_BUSCAR = 46      # la ventana de información
 const ID_I_GUARDAR = 50
 const ID_I_CANCELAR = 51
 
@@ -178,6 +179,13 @@ var buscar_ms: Int = 0
 # editar un texto dentro del lienzo (renombrar, cajón nuevo, ir a una ruta)
 var editando: Int = 0        # 0 nada, 1 renombrar, 2 cajón nuevo, 3 ruta, 4 filtro
 var filtro: String = ""      # solo se ven los nombres que lo llevan (Amiga+F), sin mirar mayúsculas
+# buscar en los subcajones (Amiga+B): los resultados se ven como un cajón cuyos nombres llevan su subcajón
+# ("sub/fichero"); se busca a trozos, un cajón por vuelta, sin parar la ventana
+var buscando: Bool = false   # aún quedan cajones por mirar
+var en_busqueda: Bool = false   # lo que se ve son resultados
+var busca_txt: String = ""
+var busca_pila: [String] = []   # los subcajones por mirar, desde ruta
+var pintado_ms: Int = 0
 var ed_texto: String = ""
 var ed_pos: Int = 0
 var ed_de: Int = -1          # el que se renombra (índice de nombres)
@@ -458,6 +466,11 @@ func leer(r: String, guardar: Bool)
     if n < 0
         return
     end
+    if en_busqueda and guardar and r == ruta
+        return                                   # (los resultados no se cambian por el cajón de verdad)
+    end
+    en_busqueda = false
+    buscando = false
     ruta = r
     nombres = []
     es_cajon = []
@@ -509,7 +522,7 @@ func leer(r: String, guardar: Bool)
 end
 
 func ir(r: String)
-    if r == "" or r == ruta
+    if r == "" or (r == ruta and not en_busqueda)
         return
     end
     if dir_read(r) < 0
@@ -797,7 +810,7 @@ func pintar_barra()
     # la ruta en trozos (o el campo para escribirla)
     x = ox + 8 + 3 * (bh + 4) + 8
     fin_x = ox + ancho - 8 - 2 * (bh + 4) - 8
-    if editando == 3 or editando == 4
+    if editando == 3 or editando == 4 or editando == 5
         campo(x, by, fin_x - x, bh)
     else
         trozos = trozos_ruta()
@@ -823,6 +836,18 @@ func pintar_barra()
             redondo(x, by, x + w - 1, by + bh - 1, 4, fondo)
             texto_en(x + 8, by + (bh - font_height()) / 2, t, color)
             x = x + w + 4
+        end
+        if en_busqueda                           # buscando o con resultados
+            t = tr(MSG_A_BUSCAR, "Search") + ": " + busca_txt
+            if buscando
+                t = t + " ..."
+            end
+            w = font_text_width(t) + 16
+            if x + w <= fin_x
+                redondo(x, by, x + w - 1, by + bh - 1, 4, C_ACENTO)
+                texto_en(x + 8, by + (bh - font_height()) / 2, t, C_SOBRE_ACENTO)
+                x = x + w + 4
+            end
         end
         if filtro != ""                          # el filtro puesto, al final de la ruta
             t = tr(MSG_A_FILTRO, "Filter") + ": " + filtro
@@ -1752,6 +1777,8 @@ func tecla(c: Int, q: Int, ch: String)
     elif c == K_ESC
         if op_activa
             op_cancelar = true
+        elif en_busqueda
+            leer(ruta, false)                    # fuera los resultados: el cajón de verdad
         else
             nada()
         end
@@ -1760,11 +1787,81 @@ func tecla(c: Int, q: Int, ch: String)
     end
 end
 
+# --- buscar en los subcajones ---
+
+func empezar_busqueda(t: String)
+    t = str_trim(t)
+    if t == ""
+        return
+    end
+    busca_txt = str_lower(t)
+    busca_pila = [""]
+    nombres = []
+    es_cajon = []
+    tamanos = []
+    fechas = []
+    comentarios = []
+    elegido = []
+    for ic in iconos
+        if ic != 0
+            icon_free(ic)
+        end
+    end
+    iconos = []
+    orden = []
+    filtro = ""
+    primera = 0
+    cursor = -1
+    ancla = -1
+    en_busqueda = true
+    buscando = true
+end
+
+# mira un cajón de la pila: lo que casa, a la lista; sus subcajones, a la pila
+func paso_busqueda()
+    if busca_pila.length == 0
+        buscando = false
+        return
+    end
+    rel = busca_pila.pop()
+    n = dir_read(unir(ruta, rel))
+    var subs: [String] = []
+    for i in (0..n - 1)
+        nm = dir_entry_name(i)
+        r = nm
+        if rel != ""
+            r = rel + "/" + nm
+        end
+        if dir_entry_is_dir(i) and nm != PAPELERA
+            subs.push(r)
+        end
+        if str_contains(str_lower(nm), busca_txt) and (con_info or not es_info(nm))
+            nombres.push(r)
+            es_cajon.push(dir_entry_is_dir(i))
+            tamanos.push(dir_entry_size(i))
+            fechas.push(dir_entry_date(i))
+            comentarios.push(dir_entry_comment(i))
+            elegido.push(false)
+            iconos.push(0)
+            orden.push(nombres.length - 1)       # (en el orden en que salen; al acabar, ordenados)
+        end
+    end
+    k = subs.length - 1
+    while k >= 0                                 # (al revés: se miran en orden)
+        busca_pila.push(subs[k])
+        k = k - 1
+    end
+    if busca_pila.length == 0
+        buscando = false
+        ordenar()
+    end
+end
+
 # --- editar un texto en el lienzo ---
 
 func empezar_edicion(que: Int)
     if que == 1
-        if cursor < 0 or cursor >= orden.length
+        if cursor < 0 or cursor >= orden.length or en_busqueda
             return
         end
         ed_de = orden[cursor]
@@ -1789,6 +1886,9 @@ func empezar_edicion(que: Int)
         end
     elif que == 4
         ed_texto = filtro
+        ed_pos = ed_texto.length
+    elif que == 5
+        ed_texto = busca_txt
         ed_pos = ed_texto.length
     else
         ed_texto = ruta
@@ -1893,6 +1993,8 @@ func acabar_edicion(guardar: Bool)
                 elegir_nombre(t)
             end
         end
+    elif que == 5
+        empezar_busqueda(t)
     elif que == 3
         if dir_read(t) >= 0
             ir(t)
@@ -2307,7 +2409,11 @@ func op_acabar()
     if op_fallos > 0
         mui_request(win, "Archivos", "#{op_fallos} " + tr(MSG_A_FALLOS, "could not be done (write-protected, in use or the disk is full)"), "_OK")
     end
-    leer(ruta, true)
+    if en_busqueda
+        empezar_busqueda(busca_txt)              # los resultados, otra vez
+    else
+        leer(ruta, true)
+    end
     if dos_paneles
         cambiar_panel()
         leer(ruta, true)
@@ -2517,6 +2623,7 @@ func menus()
         x = mui_menu_item(tr(MSG_A_M_ARRIBA, "Up"), "U", ID_M_ARRIBA)
         x = mui_menu_item(tr(MSG_A_M_IR_A, "Go to..."), "L", ID_M_IR)
         x = mui_menu_item(tr(MSG_A_M_FILTRO, "Filter..."), "F", ID_M_FILTRO)
+        x = mui_menu_item(tr(MSG_A_M_BUSCAR, "Search in subdrawers..."), "B", ID_M_BUSCAR)
     mui_menu_end()
 end
 
@@ -2585,6 +2692,8 @@ func menu(ev: Int) -> Bool
         empezar_edicion(3)
     elif ev == ID_M_FILTRO
         empezar_edicion(4)
+    elif ev == ID_M_BUSCAR
+        empezar_edicion(5)
     end
     return true
 end
@@ -2626,12 +2735,17 @@ Main
     seguir = true
     while seguir
         ev = 0
-        if op_activa
+        if op_activa or buscando
             ev = mui_poll_event()
             if ev == 0
-                op_paso()
-                if not op_activa or time_ms() % 8 == 0
+                if op_activa
+                    op_paso()
+                else
+                    paso_busqueda()
+                end
+                if (not op_activa and not buscando) or time_ms() - pintado_ms > 100
                     repintar()
+                    pintado_ms = time_ms()
                 end
                 continue
             end
