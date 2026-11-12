@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (12.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (13.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -773,3 +773,6 @@ Espacios
 MSG_495
 Ventanas en tira, como Niri
 ; Windows in a strip, like Niri
+MSG_496
+Teclas de espacios
+; Desktop keys

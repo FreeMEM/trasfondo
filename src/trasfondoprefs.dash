@@ -555,9 +555,11 @@ func pagina(n: Int, linea_version: String)
             numero(y, tr(MSG_V_ESPACIOS, "Desktops"), "VENTANAS_ESPACIOS", ancho_n)
             casilla(x_campo + ancho_n + 16, y + 1, tr(MSG_V_TIRA, "Windows in a strip, like Niri"), "VENTANAS_TIRA")
             y = y + fila + 2
+            campo(y, tr(MSG_V_T_ESPACIOS, "Desktop keys"), "VENTANAS_TECLA_ESPACIOS")
+            y = y + fila + 2
         end
         var teclas: [String] = ["TECLA_MAXIMIZAR", "TECLA_IZQUIERDA", "TECLA_DERECHA", "TECLA_RESTAURAR", "TECLA_MOSAICO", "TECLA_AUTOMATICO", "TECLA_MENU", "RATON_MOVER", "RATON_TAMANO"]
-        var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_V_T_MENU, "Window menu"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+        var nombres_t: [String] = [tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_V_T_MENU, "Window menu"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize"), tr(MSG_V_ESPACIOS, "Desktops"), tr(MSG_V_T_ESPACIOS, "Desktop keys")]
         i = 0
         while i < teclas.length
             campo(y, nombres_t[i], "VENTANAS_" + teclas[i])
@@ -638,7 +640,7 @@ func alto_ventana() -> Int
     fondo = m + fila + hueco + filas_s * fila + 4 + 8 * (fila + 2) + alto_boton
     filas_v = 11
     if v_espacios
-        filas_v = 12
+        filas_v = 13
     end
     ventanas = m + fila + hueco + filas_v * (fila + 2) + 2 * fila + 4
     if v_columna() == 0
@@ -709,7 +711,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU", "VENTANAS_ESPACIOS", "VENTANAS_TIRA"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU", "VENTANAS_ESPACIOS", "VENTANAS_TIRA", "VENTANAS_TECLA_ESPACIOS"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -1004,6 +1006,7 @@ Main
     valores["VENTANAS_TECLA_MENU"] = conf("VENTANAS_TECLA_MENU", "ctrl alt space")
     valores["VENTANAS_ESPACIOS"] = conf("VENTANAS_ESPACIOS", "4")
     valores["VENTANAS_TIRA"] = si(str_upper(conf("VENTANAS_TIRA", "NO")) == "SI")
+    valores["VENTANAS_TECLA_ESPACIOS"] = conf("VENTANAS_TECLA_ESPACIOS", "ctrl alt")
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)
@@ -1021,7 +1024,7 @@ Main
     end
     alto_boton = f + 6
     # el ancho de las etiquetas de la izquierda: el de la más larga de todas las páginas
-    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_UNIDADES, "Disks shown"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_PROFUNDIDAD, "Depth"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize")]
+    var izquierdas: [String] = [tr(MSG_SECCION, "Section"), tr(MSG_CUANTAS, "Tasks shown"), tr(MSG_TECLA, "Hotkey"), tr(MSG_UNIDADES, "Disks shown"), tr(MSG_CADA, "Measure every"), tr(MSG_FONDO, "Background"), tr(MSG_COLOR, "Colour"), tr(MSG_ESTILO, "Style"), tr(MSG_PROFUNDIDAD, "Depth"), tr(MSG_CIUDAD, "City"), tr(MSG_LAT, "Latitude"), tr(MSG_LON, "Longitude"), tr(MSG_POSICION, "Position"), tr(MSG_TAMANO_ICONO, "Icon size"), tr(MSG_HUECO, "Gap"), tr(MSG_D_COLOR, "Colour (R,G,B)"), tr(MSG_T_MAXIMIZAR, "Maximize"), tr(MSG_T_IZQUIERDA, "Left half"), tr(MSG_T_DERECHA, "Right half"), tr(MSG_T_RESTAURAR, "Restore"), tr(MSG_T_MOSAICO, "Tile"), tr(MSG_T_AUTOMATICO, "Auto tile"), tr(MSG_T_MOVER, "Move"), tr(MSG_T_TAMANO, "Resize"), tr(MSG_V_ESPACIOS, "Desktops"), tr(MSG_V_T_ESPACIOS, "Desktop keys")]
     for t in izquierdas
         if x_campo < m + screen_font_text_width(t) + 10
             x_campo = m + screen_font_text_width(t) + 10

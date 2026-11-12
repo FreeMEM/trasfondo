@@ -16,7 +16,7 @@
 #                        esquina a ese cuarto; al arrastrarla otra vez lejos del borde, recupera su tamaño
 #
 # Espacios virtuales (AmigaOS 3.2, que puede esconder ventanas; ESPACIOS=4, 0 sin ellos), uno encima de otro:
-#   Ctrl Alt 1-9         a ese espacio (las ventanas de los demás se esconden); un aviso enseña en cuál se está,
+#   Ctrl Alt 1-9         (TECLA_ESPACIOS, lo de delante del número) a ese espacio (las ventanas de los demás se esconden); un aviso enseña en cuál se está,
 #                        y la barra de Trasfondo también
 #   Ctrl Alt Mayús 1-9   la ventana activa a ese espacio
 #   Ctrl Alt Mayús arriba/abajo: al espacio de arriba o de abajo (con LAmiga: lleva allí la ventana activa)
@@ -1501,11 +1501,16 @@ Main
         end
         if espacios > 1 and wm_can_hide()
             esp_rescatar()
+            # las teclas de los números: TECLA_ESPACIOS delante del número (y Mayús para llevar la ventana). En un
+            # emulador, Linux o Windows se pueden quedar Ctrl Alt y un número: "lcommand" (Amiga izquierda), "ralt"...
+            pre = str_trim(ajuste("VENTANAS_TECLA_ESPACIOS", "TECLA_ESPACIOS", "ctrl alt"))
             for n in (1..espacios)
                 esp_activa.push(0)
-                if n <= 9
-                    ok = cx_key_add("ctrl alt #{n}", K_ESP_IR + n)
-                    ok = cx_key_add("ctrl alt shift #{n}", K_ESP_LLEVAR + n)
+                if n <= 9 and pre != ""
+                    if not cx_key_add(pre + " #{n}", K_ESP_IR + n)
+                        Print "TrasfondoVentanas: the hotkey TECLA_ESPACIOS is not valid: " + pre
+                    end
+                    ok = cx_key_add(pre + " shift #{n}", K_ESP_LLEVAR + n)
                 end
             end
             tecla("TECLA_ESPACIO_ARRIBA", "ctrl alt shift up", K_ESP_ARRIBA)
