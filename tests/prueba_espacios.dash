@@ -1,0 +1,68 @@
+# Prueba de los espacios virtuales de TrasfondoVentanas (la lanza GUION=prueba_espacios.dash tests/prueba_ventanas.py,
+# con DH0:ventanas; AmigaOS 3.2, que puede esconder ventanas). Ctrl Alt 2 va al espacio 2 (las del 1 se esconden),
+# Ctrl Alt 1 vuelve; Ctrl Alt Mayús 2 lleva la ventana activa al 2; Ctrl Alt Mayús arriba sube un espacio. Al parar
+# TrasfondoVentanas, todas vuelven a la vista. Las teclas van por input.device, como las de una persona.
+
+func idx(t: String) -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_title(i) == t and wm_flags(i) & 32 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+# "v" a la vista, "e" escondida, "-" no está
+func estado(t: String) -> String
+    i = idx(t)
+    if i < 0
+        return "-"
+    elif wm_flags(i) & 256 != 0
+        return "e"
+    end
+    return "v"
+end
+
+func ver(que: String)
+    Print que + " uno " + estado("Uno") + " dos " + estado("Dos") + " tres " + estado("Tres") + " activa " + input_active_title()
+end
+
+func tecla(codigo: Int, cual: Int)
+    input_key(codigo, cual)
+    time_delay(25)
+end
+
+Main
+    Print "puede esconder #{wm_can_hide()}"
+    run_program("DH0:ventanas")
+    time_delay(150)
+    a = window_create("Uno", 40, 40, 200, 100, 1)
+    b = window_create("Dos", 260, 60, 200, 100, 1)
+    time_delay(30)
+    ver("al abrir")
+    tecla(0x02, 6)                  # ctrl alt 2
+    ver("espacio 2")
+    c = window_create("Tres", 100, 80, 200, 100, 1)
+    time_delay(30)
+    ver("abre tres")
+    tecla(0x01, 6)                  # ctrl alt 1
+    ver("espacio 1")
+    tecla(0x02, 7)                  # ctrl alt mayús 2: Dos al espacio 2
+    ver("lleva dos")
+    tecla(0x02, 6)
+    ver("espacio 2 otra vez")
+    tecla(0x4C, 7)                  # ctrl alt mayús arriba: al espacio 1
+    ver("sube")
+    tecla(0x4C, 7)                  # ya en el 1: nada
+    ver("sube otra")
+    tecla(0x4D, 7)                  # abajo: al 2
+    ver("baja")
+    run_program("DH0:ventanas")     # otra vez: se para y las enseña todas
+    time_delay(60)
+    ver("al parar")
+    window_close(c)
+    window_close(b)
+    window_close(a)
+    Print "fin"
+end

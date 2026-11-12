@@ -54,6 +54,12 @@ const K_M_ELEGIR = 17
 const K_M_FUERA = 18
 const K_ALT_TAB = 19         # cambiar de ventana: Alt+Tab y Alt+Mayús+Tab
 const K_ALT_TAB_ATRAS = 20
+const K_ESP_ARRIBA = 21       # espacios: el de arriba y el de abajo
+const K_ESP_ABAJO = 22
+const K_ESP_LLEVAR_ARRIBA = 23  # la ventana activa al espacio de arriba o al de abajo
+const K_ESP_LLEVAR_ABAJO = 24
+const K_ESP_IR = 30          # 30 + n: al espacio n (1 a 9)
+const K_ESP_LLEVAR = 40      # 40 + n: la ventana activa al espacio n
 
 # lo que hace cada opción del menú (las de 1 a 6 son las de caja_de)
 const OP_MAXIMIZAR = 0
@@ -169,7 +175,7 @@ end
 # una ventana que se puede mover y redimensionar: con barra y botón de tamaño, ni de fondo ni sin bordes
 func manejable(i: Int) -> Bool
     f = wm_flags(i)
-    return f & 1 != 0 and f & 16 != 0 and f & 2 == 0 and f & 4 == 0
+    return f & 1 != 0 and f & 16 != 0 and f & 2 == 0 and f & 4 == 0 and f & 256 == 0
 end
 
 func guardar(id: Int, i: Int)
@@ -279,6 +285,158 @@ func restaurar()
         poner_caja(id, caja)
     else
         wm_back(id)                            # ya estaba como antes: detrás de todas
+    end
+end
+
+# --- espacios virtuales, uno encima de otro (AmigaOS 3.2: wm_hide) ---
+# Cada ventana es de un espacio; las de los demás, escondidas. Una ventana que no estaba apuntada es del espacio en
+# el que se la ve. Al salir, todas vuelven a la vista.
+
+var espacios: Int = 0        # cuántos (0: sin espacios)
+var esp_actual: Int = 1
+var esp_id: [Int] = []       # las ventanas apuntadas, su espacio y su orden de delante atrás al esconderlas
+var esp_de: [Int] = []
+var esp_z: [Int] = []
+var esp_activa: [Int] = []   # la última activa de cada espacio (posición n - 1)
+
+# una ventana que va en los espacios: con barra de arrastre, ni de fondo ni nuestra ni de una pieza de Trasfondo
+func esp_elegible(i: Int) -> Bool
+    f = wm_flags(i)
+    return f & 16 != 0 and f & (2 + 32) == 0 and not str_starts(wm_task(i), "Trasfondo")
+end
+
+func esp_buscar(id: Int) -> Int
+    for k in (0..esp_id.length - 1)
+        if esp_id[k] == id
+            return k
+        end
+    end
+    return -1
+end
+
+# apunta las ventanas a la vista que no estaban (al espacio de ahora) y olvida las que se cerraron
+func esp_apuntar()
+    n = wm_read()
+    k = esp_id.length - 1
+    while k >= 0
+        if buscar(esp_id[k]) < 0
+            esp_id.remove(k)
+            esp_de.remove(k)
+            esp_z.remove(k)
+        end
+        k = k - 1
+    end
+    n = wm_read()
+    for i in (0..n - 1)
+        if esp_elegible(i) and wm_flags(i) & 256 == 0
+            k = esp_buscar(wm_id(i))
+            if k < 0
+                esp_id.push(wm_id(i))
+                esp_de.push(esp_actual)
+                esp_z.push(i)
+            else
+                esp_z[k] = i
+            end
+        end
+    end
+end
+
+# enseña las ventanas del espacio n de atrás adelante (quedan como estaban) y activa la última que lo estuvo
+func esp_mostrar(n: Int)
+    hecho = true
+    tope = 1000
+    while hecho
+        hecho = false
+        mejor = -1
+        for k in (0..esp_id.length - 1)
+            if esp_de[k] == n and esp_z[k] < tope and (mejor < 0 or esp_z[k] > esp_z[mejor])
+                mejor = k
+            end
+        end
+        if mejor >= 0
+            ok = wm_show(esp_id[mejor])
+            tope = esp_z[mejor]
+            esp_z[mejor] = -1                  # (ya está)
+            hecho = true
+        end
+    end
+    a = esp_activa[n - 1]
+    if a != 0 and esp_buscar(a) >= 0 and esp_de[esp_buscar(a)] == n
+        wm_activate(a)
+    else
+        for k in (0..esp_id.length - 1)
+            if esp_de[k] == n
+                a = esp_id[k]
+            end
+        end
+        if a != 0
+            wm_activate(a)
+        end
+    end
+end
+
+func esp_ir(n: Int)
+    if espacios == 0 or n < 1 or n > espacios or n == esp_actual
+        return
+    end
+    esp_apuntar()
+    esp_activa[esp_actual - 1] = wm_active()
+    for k in (0..esp_id.length - 1)
+        if esp_de[k] == esp_actual
+            ok = wm_hide(esp_id[k])
+        end
+    end
+    esp_actual = n
+    esp_mostrar(n)
+end
+
+# la ventana activa al espacio n: se esconde, y se activa otra del espacio de ahora
+func esp_llevar(n: Int)
+    if espacios == 0 or n < 1 or n > espacios
+        return
+    end
+    id = wm_active()
+    i = buscar(id)
+    if i < 0 or not esp_elegible(i)
+        return
+    end
+    esp_apuntar()
+    k = esp_buscar(id)
+    if k < 0 or n == esp_actual
+        return
+    end
+    esp_de[k] = n
+    esp_z[k] = -1
+    esp_activa[n - 1] = id
+    ok = wm_hide(id)
+    for j in (0..esp_id.length - 1)
+        if esp_de[j] == esp_actual and esp_id[j] != id
+            wm_activate(esp_id[j])
+            return
+        end
+    end
+end
+
+# todas a la vista (al salir o al desactivar)
+func esp_todas()
+    for k in (0..esp_id.length - 1)
+        if esp_de[k] != esp_actual and buscar(esp_id[k]) >= 0
+            ok = wm_show(esp_id[k])
+        end
+    end
+    esp_id = []
+    esp_de = []
+    esp_z = []
+    esp_actual = 1
+end
+
+# al arrancar: las ventanas que se quedaron escondidas (un TrasfondoVentanas que se colgó), a la vista
+func esp_rescatar()
+    n = wm_read()
+    for i in (0..n - 1)
+        if esp_elegible(i) and wm_flags(i) & 256 != 0
+            ok = wm_show(wm_id(i))
+        end
     end
 end
 
@@ -668,7 +826,7 @@ func a_abrir(atras: Bool)
         for i in (0..n - 1)
             id = wm_id(i)
             f = wm_flags(i)
-            elegible = f & (2 + 4 + 32) == 0 and wm_title(i) != ""
+            elegible = f & (2 + 4 + 32 + 256) == 0 and wm_title(i) != ""
             if elegible and ((pasada == 0) == (id == activa))
                 m_ids.push(id)
                 m_ops.push(OP_IR + m_ids.length - 1)
@@ -959,6 +1117,26 @@ Main
         tecla("TECLA_MOSAICO", "ctrl alt t", K_MOSAICO)
         tecla("TECLA_AUTOMATICO", "ctrl alt a", K_AUTOMATICO)
         tecla("RATON_MOVER", "rawmouse lalt mouse_leftpress", K_MOVER)
+        espacios = Int(ajuste("VENTANAS_ESPACIOS", "ESPACIOS", "4"))
+        if espacios > 9
+            espacios = 9
+        end
+        if espacios > 1 and wm_can_hide()
+            esp_rescatar()
+            for n in (1..espacios)
+                esp_activa.push(0)
+                if n <= 9
+                    ok = cx_key_add("ctrl alt #{n}", K_ESP_IR + n)
+                    ok = cx_key_add("ctrl alt shift #{n}", K_ESP_LLEVAR + n)
+                end
+            end
+            tecla("TECLA_ESPACIO_ARRIBA", "ctrl alt shift up", K_ESP_ARRIBA)
+            tecla("TECLA_ESPACIO_ABAJO", "ctrl alt shift down", K_ESP_ABAJO)
+            tecla("TECLA_LLEVAR_ARRIBA", "ctrl alt shift lcommand up", K_ESP_LLEVAR_ARRIBA)
+            tecla("TECLA_LLEVAR_ABAJO", "ctrl alt shift lcommand down", K_ESP_LLEVAR_ABAJO)
+        else
+            espacios = 0
+        end
         tecla("RATON_TAMANO", "rawmouse lalt mouse_rightpress", K_TAMANO)
         activo = true
         seguir = true
@@ -982,6 +1160,7 @@ Main
                 seguir = false
             elif c == 3
                 activo = false
+                esp_todas()
             elif c == 4
                 activo = true
             elif c == 100 + K_MAXIMIZAR
@@ -992,6 +1171,18 @@ Main
                 encajar(2)
             elif c == 100 + K_RESTAURAR
                 restaurar()
+            elif c == 100 + K_ESP_ARRIBA and activo
+                esp_ir(esp_actual - 1)
+            elif c == 100 + K_ESP_ABAJO and activo
+                esp_ir(esp_actual + 1)
+            elif c == 100 + K_ESP_LLEVAR_ARRIBA and activo
+                esp_llevar(esp_actual - 1)
+            elif c == 100 + K_ESP_LLEVAR_ABAJO and activo
+                esp_llevar(esp_actual + 1)
+            elif c > 100 + K_ESP_IR and c <= 100 + K_ESP_IR + 9 and activo
+                esp_ir(c - 100 - K_ESP_IR)
+            elif c > 100 + K_ESP_LLEVAR and c <= 100 + K_ESP_LLEVAR + 9 and activo
+                esp_llevar(c - 100 - K_ESP_LLEVAR)
             elif c == 100 + K_MOSAICO
                 mosaico_una_vez()
             elif c == 100 + K_AUTOMATICO
@@ -1011,5 +1202,6 @@ Main
                 mirar_mosaico()
             end
         end
+        esp_todas()                            # al salir, todas las ventanas a la vista
     end
 end
