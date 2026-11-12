@@ -172,3 +172,8 @@ coordinar con freememlang-40)
   cerrojo: 911/911). Lleva también el arreglo del depurador (variables ocultas). Sin etiqueta ni release: falta el
   sí del usuario para publicar Dash 2.12.0 y Trasfondo con las ventanas y el explorador. Forja: árbol de variables
   fusionado en main local (4c71741), sin subir.
+- 2026-11-12: pedido por Ferrán García (grupo, #1234-#1239): en TrasfondoArchivos, una fila de botones para las
+  acciones con su tecla en el rótulo ("Copiar (F5)", "Mover (F6)", "Borrar", "Renombrar (F2)"...), sobre todo con
+  dos paneles, al estilo de DOpus 4/5, DM2, RO o CLI-Mate: cada uno usa el ratón o la tecla. El usuario pide además
+  ideas para que sea del todo "amiguero" (por ejemplo, los iconos de los cajones en la lista). Para la 2.9.1, con
+  Ferrán en el commit, las notas y Gracias.
