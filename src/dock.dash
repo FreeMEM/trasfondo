@@ -21,6 +21,7 @@ import "tema.dash"
 const LISTA = "ENV:Trasfondo.dock"
 const LISTA_ARC = "ENVARC:Trasfondo.dock"
 const DE_SERIE = "SYS:Utilities/MultiView\nSYS:System/Shell\nSYS:Utilities/Clock\nSYS:Tools/Calculator\nSYS:Prefs\n"
+const MARCA_ARCHIVOS = "ENVARC:Trasfondo.dock_archivos"   # ya se fijó el explorador una vez (ver fijar_archivos)
 const ALTO_BARRA = 24        # la barra de arriba: el dock de arriba o de los lados sale debajo
 const MARGEN = 6             # entre el dock y el borde de la pantalla
 const RELLENO = 6            # dentro del dock, alrededor de las casillas
@@ -151,6 +152,26 @@ func leer_fijos()
             end
         end
     end
+end
+
+# El explorador (TrasfondoArchivos, en este cajón) se fija una vez, al final de los fijados: en el dock de serie y en
+# el de quien ya tenía su lista. Si luego lo quita, no vuelve (MARCA_ARCHIVOS). Espera a que tenga su icono, que lo
+# pone el fondo al arrancar o al actualizar (lo pidió el usuario: no encontraba el explorador)
+func fijar_archivos()
+    if file_exists(MARCA_ARCHIVOS)
+        return
+    end
+    r = file_real_path("PROGDIR:TrasfondoArchivos")
+    if r == "" or not file_exists(r + ".info")
+        return
+    end
+    if buscar(r) < 0
+        it = Item(r, icon_load(r), true, 0)
+        it.imagen = imagen_wbdock(r)
+        items.push(it)
+        guardar()
+    end
+    ok = file_write_text(MARCA_ARCHIVOS, "1\n")
 end
 
 # Las imágenes de WBDock (el dock de CoffinOS: SYS:WBStartup/WBDock, una ruta y debajo "IMAGE fichero"): las usa
@@ -1410,6 +1431,7 @@ Main
         sw = rtg_get_width()
         sh = rtg_get_height()
         leer_fijos()
+        fijar_archivos()
         caja()
         leer_bajo()                    # (antes de abrir: nada tapa las esquinas)
         Dock.open
