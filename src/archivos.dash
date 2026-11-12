@@ -1,0 +1,2197 @@
+# TrasfondoArchivos: un explorador de ficheros moderno para el Workbench, dibujado por Trasfondo con su tema (una
+# ventana de MUI con una zona de dibujo). Lo que toma de Nautilus, Directory Opus 5, Finder y Dolphin está en
+# docs/VENTANAS_LOOP.md.
+#
+#   a la izquierda   los discos, los sitios de siempre y la papelera
+#   arriba           atrás, adelante, subir y la ruta en trozos que se pulsan; la vista (lista o iconos)
+#   en medio         lo que hay en el cajón: lista con columnas (nombre, tamaño, fecha, comentario; un clic en la
+#                    cabecera ordena) o iconos. Clic elige, Mayús+clic hasta ahí, Ctrl+clic añade o quita; doble
+#                    clic abre (un cajón aquí; lo demás, como el Workbench). Arrastrar lo elegido a un cajón (o a
+#                    uno de la izquierda) lo mueve si es el mismo disco y lo copia si es otro (Mayús: al revés)
+#   teclas           flechas, Return abre, Retroceso sube, Supr a la papelera, Mayús+Supr borra, F2 renombra,
+#                    escribir salta al nombre; Amiga+C/X/V copiar, cortar, pegar; Amiga+A todo; Amiga+N cajón
+#                    nuevo; Amiga+L escribir la ruta
+#
+# Copiar, mover y borrar van a trozos con su barra abajo y se pueden cancelar (lo copiado a medias se borra). Los
+# iconos .info van con su fichero y no se enseñan (Ver > Mostrar los .info). La papelera es el cajón ".Papelera" de
+# cada disco; recuerda de dónde vino cada cosa para devolverla.
+
+@workbench_output "NIL:"
+@version "TrasfondoArchivos 2.9"
+@catalog "Trasfondo.catalog" 1
+
+import "ajustes.dash"
+import "dibujo.dash"
+import "textos.dash"
+import "tema.dash"
+
+const ID_LIENZO = 1          # eventos de MUI
+const ID_MOVER = 2
+const ID_ARRASTRE = 3
+const ID_SOLTAR = 4
+const ID_CAMBIO = 5          # file_notify del cajón (mui_wait_event_signals da 0)
+const ID_M_NUEVO = 10        # menús
+const ID_M_ABRIR = 11
+const ID_M_RENOMBRAR = 12
+const ID_M_PAPELERA = 13
+const ID_M_BORRAR = 14
+const ID_M_VACIAR = 15
+const ID_M_SALIR = 16
+const ID_M_CORTAR = 20
+const ID_M_COPIAR = 21
+const ID_M_PEGAR = 22
+const ID_M_TODO = 23
+const ID_M_NADA = 24
+const ID_M_LISTA = 30
+const ID_M_ICONOS = 31
+const ID_M_INFO = 32
+const ID_M_POR_NOMBRE = 33
+const ID_M_POR_TAMANO = 34
+const ID_M_POR_FECHA = 35
+const ID_M_ACTUALIZAR = 36
+const ID_M_ATRAS = 40
+const ID_M_ADELANTE = 41
+const ID_M_ARRIBA = 42
+const ID_M_IR = 43
+const ID_M_DEVOLVER = 44
+
+const K_ARRIBA = 0x4C        # teclas en bruto
+const K_ABAJO = 0x4D
+const K_DERECHA = 0x4E
+const K_IZQUIERDA = 0x4F
+const K_RETURN = 0x44
+const K_INTRO = 0x43
+const K_ESC = 0x45
+const K_RETROCESO = 0x41
+const K_SUPR = 0x46
+const K_F2 = 0x51
+const K_INICIO = 0x70        # (teclados de PC)
+const K_FIN = 0x71
+const K_REPAG = 0x48
+const K_AVPAG = 0x49
+
+const LATERAL = 150          # anchos y altos fijos (a escala de la fuente: ver medir)
+const PAPELERA = ".Papelera"
+const INDICE = ".Papelera/.indice"   # una línea por cosa: su nombre en la papelera, un tabulador y de dónde vino
+
+# los colores del tema
+var C_FONDO: Int = 0x16191d
+var C_PANEL: Int = 0x1e2228
+var C_TARJETA: Int = 0x23272e
+var C_BOTON: Int = 0x30353d
+var C_BORDE: Int = 0x30353d
+var C_TEXTO: Int = 0xe8eaed
+var C_SUAVE: Int = 0x9aa0a6
+var C_TENUE: Int = 0x5f6368
+var C_ACENTO: Int = 0x8ab4f8
+var C_SOBRE_ACENTO: Int = 0x16191d
+var C_PELIGRO: Int = 0xf28b82
+
+var app: Int = 0
+var win: Int = 0
+var lienzo: Int = 0
+var letra: Int = 0
+var negrita: Int = 0
+var fila: Int = 18           # alto de una fila de la lista
+var barra_h: Int = 34        # alto de la barra de arriba
+var pie_h: Int = 22          # alto de la de abajo
+var cab_h: Int = 20          # alto de la cabecera de columnas
+var ox: Int = 0              # dónde empieza el lienzo en la ventana, y su tamaño
+var oy: Int = 0
+var ancho: Int = 400
+var alto: Int = 300
+
+# el cajón que se ve
+var ruta: String = ""
+var nombres: [String] = []
+var es_cajon: [Bool] = []
+var tamanos: [Int] = []
+var fechas: [Int] = []
+var comentarios: [String] = []
+var elegido: [Bool] = []
+var orden: [Int] = []        # el orden en que se ven: índices de los de arriba
+var por: Int = 0             # 0 nombre, 1 tamaño, 2 fecha
+var al_reves: Bool = false
+var con_info: Bool = false
+var vista_iconos: Bool = false
+var primera: Int = 0         # la primera fila que se ve (lista) o la primera fila de iconos
+var cursor: Int = -1         # en el orden de "orden"
+var ancla: Int = -1          # desde dónde va Mayús+clic
+var iconos: [Int] = []       # icon_load de cada uno en la vista de iconos (0: aún no)
+var vigilado: Int = 0        # file_notify del cajón
+var libre_kb: Int = -1
+
+var atras: [String] = []
+var adelante: [String] = []
+
+# el lateral: texto y ruta de cada sitio (ruta "" = un título de sección)
+var lat_texto: [String] = []
+var lat_ruta: [String] = []
+
+# el clic de antes, para el doble clic
+var clic_ms: Int = 0
+var clic_en: Int = -2
+
+# escribir para saltar a un nombre
+var buscar_txt: String = ""
+var buscar_ms: Int = 0
+
+# editar un texto dentro del lienzo (renombrar, cajón nuevo, ir a una ruta)
+var editando: Int = 0        # 0 nada, 1 renombrar, 2 cajón nuevo, 3 ruta
+var ed_texto: String = ""
+var ed_pos: Int = 0
+var ed_de: Int = -1          # el que se renombra (índice de nombres)
+
+# portapapeles
+var porta: [String] = []
+var porta_cortar: Bool = false
+
+# arrastrar
+var arr_activo: Bool = false
+var arr_x: Int = 0
+var arr_y: Int = 0
+var arr_sobre: String = ""   # el cajón bajo el puntero, "" ninguno
+
+# la operación en marcha (a trozos): una lista de pasos
+var op_activa: Bool = false
+var op_titulo: String = ""
+var op_tipo: [Int] = []      # 1 copiar fichero, 2 crear cajón, 3 borrar, 4 mover (renombrar), 5 a la papelera
+var op_de: [String] = []
+var op_a: [String] = []
+var op_i: Int = 0
+var op_copia: Int = 0        # file_copy_begin en curso
+var op_hecho: Int = 0        # bytes del fichero en curso
+var op_total: Int = 0
+var op_borrar_luego: [String] = []   # al mover entre discos: los originales, al acabar bien
+var op_cancelar: Bool = false
+var op_todos: Int = 0        # ante un conflicto: 0 preguntar, 1 reemplazar todos, 2 saltar todos
+var op_fallos: Int = 0
+
+# --- utilidades ---
+
+func colores()
+    C_FONDO = tema_color("FONDO", C_FONDO)
+    C_PANEL = tema_color("PANEL", C_PANEL)
+    C_TARJETA = tema_color("TARJETA", C_TARJETA)
+    C_BOTON = tema_color("BOTON", C_BOTON)
+    C_BORDE = tema_color("BORDE", C_BORDE)
+    C_TEXTO = tema_color("TEXTO", C_TEXTO)
+    C_SUAVE = tema_color("SUAVE", C_SUAVE)
+    C_TENUE = tema_color("TENUE", C_TENUE)
+    C_ACENTO = tema_color("ACENTO", C_ACENTO)
+    C_SOBRE_ACENTO = tema_color("SOBRE_ACENTO", C_SOBRE_ACENTO)
+    C_PELIGRO = tema_color("PELIGRO", C_PELIGRO)
+end
+
+func abrir_fuente(tam: Int) -> Int
+    f = font_open("CGTriumvirate.font", tam)
+    if f == 0
+        f = font_open("helvetica.font", tam)
+    end
+    return f
+end
+
+func usar_letra()
+    if letra != 0
+        font_use(letra)
+    end
+    font_style(0)
+end
+
+# una ruta y un nombre: "Work:" + "a" = "Work:a"; "Work:x" + "a" = "Work:x/a"
+func unir(a: String, b: String) -> String
+    if a == "" or str_ends(a, ":") or str_ends(a, "/")
+        return a + b
+    end
+    return a + "/" + b
+end
+
+# el cajón de encima, o "" si es la raíz
+func padre(r: String) -> String
+    if str_ends(r, ":")
+        return ""
+    end
+    k = -1
+    for i in (0..r.length - 1)
+        c = r[i:i + 1]
+        if c == "/" or c == ":"
+            k = i
+        end
+    end
+    if k < 0
+        return ""
+    end
+    if r[k:k + 1] == ":"
+        return r[:k + 1]
+    end
+    return r[:k]
+end
+
+# el último trozo de una ruta
+func nombre_de(r: String) -> String
+    k = -1
+    for i in (0..r.length - 1)
+        c = r[i:i + 1]
+        if c == "/" or c == ":"
+            k = i
+        end
+    end
+    if k == r.length - 1
+        return r
+    end
+    return r[k + 1:]
+end
+
+# el volumen de una ruta, por su nombre real ("SYS:x" da "System:"): para saber si dos rutas están en el mismo disco
+func volumen(r: String) -> String
+    real = file_real_path(r)
+    if real == ""
+        real = r
+    end
+    k = str_find(real, ":")
+    if k < 0
+        return ""
+    end
+    return str_lower(real[:k + 1])
+end
+
+func tamano_texto(b: Int) -> String
+    if b < 1024
+        return "#{b} B"
+    elif b < 1048576
+        return "#{b / 1024} KB"
+    elif b < 104857600
+        d = b * 10 / 1048576
+        return "#{d / 10},#{d % 10} MB"
+    end
+    return "#{b / 1048576} MB"
+end
+
+func dos(n: Int) -> String
+    if n < 10
+        return "0#{n}"
+    end
+    return "#{n}"
+end
+
+# una fecha (segundos desde 1970) como "12-11-2026 18:05"; de hoy, solo la hora
+func fecha_texto(t: Int) -> String
+    if t <= 0
+        return ""
+    end
+    dias = t / 86400
+    s = t % 86400
+    hoy = time_unix() / 86400
+    hora = dos(s / 3600) + ":" + dos(s % 3600 / 60)
+    if dias == hoy
+        return tr(MSG_A_HOY, "Today") + " " + hora
+    end
+    # de días a año, mes y día (el calendario civil, desde 1970)
+    z = dias + 719468
+    era = z / 146097
+    doe = z - era * 146097
+    yoe = (doe - doe / 1460 + doe / 36524 - doe / 146096) / 365
+    y = yoe + era * 400
+    doy = doe - (365 * yoe + yoe / 4 - yoe / 100)
+    mp = (5 * doy + 2) / 153
+    d = doy - (153 * mp + 2) / 5 + 1
+    m = mp + 3
+    if m > 12
+        m = m - 12
+    end
+    if m <= 2
+        y = y + 1
+    end
+    return dos(d) + "-" + dos(m) + "-#{y} " + hora
+end
+
+# un texto que cabe en w píxeles (con "..." si no)
+func cabe(t: String, w: Int) -> String
+    if font_text_width(t) <= w
+        return t
+    end
+    n = t.length
+    while n > 0 and font_text_width(t[:n] + "...") > w
+        n = n - 1
+    end
+    return t[:n] + "..."
+end
+
+func texto_en(x: Int, y: Int, t: String, rgb: Int)
+    pluma(rgb)
+    gfx_text_at(x, y + font_baseline(), t)
+end
+
+# --- leer el cajón ---
+
+func es_info(n: String) -> Bool
+    return str_ends(str_lower(n), ".info")
+end
+
+func comparar(a: Int, b: Int) -> Int
+    if es_cajon[a] != es_cajon[b]                # los cajones primero
+        if es_cajon[a]
+            return -1
+        end
+        return 1
+    end
+    r = 0
+    if por == 1
+        r = tamanos[a] - tamanos[b]
+    elif por == 2
+        r = fechas[a] - fechas[b]
+    end
+    if r == 0
+        r = str_compare_locale(nombres[a], nombres[b], true)
+    end
+    if al_reves
+        return -r
+    end
+    return r
+end
+
+func ordenar()
+    orden = []
+    for i in (0..nombres.length - 1)
+        if con_info or not es_info(nombres[i])
+            orden.push(i)
+        end
+    end
+    n = orden.length
+    salto = n / 2
+    while salto > 0                              # Shell sort
+        for i in (salto..n - 1)
+            v = orden[i]
+            j = i
+            while j >= salto and comparar(orden[j - salto], v) > 0
+                orden[j] = orden[j - salto]
+                j = j - salto
+            end
+            orden[j] = v
+        end
+        salto = salto / 2
+    end
+end
+
+func libre_de(r: String)
+    libre_kb = -1
+    v = volumen(r)
+    n = disks_read(300)
+    for i in (0..n - 1)
+        if str_lower(disk_name(i)) + ":" == v
+            libre_kb = disk_free_kb(i)
+        end
+    end
+end
+
+# lee el cajón r; guardar: mantener lo elegido y la posición (al actualizar)
+func leer(r: String, guardar: Bool)
+    antes = []
+    if guardar
+        for k in (0..nombres.length - 1)
+            if elegido[k]
+                antes.push(nombres[k])
+            end
+        end
+    end
+    n = dir_read(r)
+    if n < 0
+        return
+    end
+    ruta = r
+    nombres = []
+    es_cajon = []
+    tamanos = []
+    fechas = []
+    comentarios = []
+    elegido = []
+    for i in (0..n - 1)
+        nm = dir_entry_name(i)
+        if nm != PAPELERA or not str_ends(r, ":")
+            nombres.push(nm)
+            es_cajon.push(dir_entry_is_dir(i))
+            tamanos.push(dir_entry_size(i))
+            fechas.push(dir_entry_date(i))
+            comentarios.push(dir_entry_comment(i))
+            elegido.push(false)
+        end
+    end
+    for k in (0..nombres.length - 1)
+        for a in antes
+            if a == nombres[k]
+                elegido[k] = true
+            end
+        end
+    end
+    for ic in iconos
+        if ic != 0
+            icon_free(ic)
+        end
+    end
+    iconos = []
+    for k in (0..nombres.length - 1)
+        iconos.push(0)
+    end
+    ordenar()
+    if not guardar
+        primera = 0
+        cursor = -1
+        ancla = -1
+    elif cursor >= orden.length
+        cursor = orden.length - 1
+    end
+    if vigilado != 0
+        file_notify_end(vigilado)
+    end
+    vigilado = file_notify(r)
+    libre_de(r)
+    mui_set_text(win, "Archivos: " + r)
+end
+
+func ir(r: String)
+    if r == "" or r == ruta
+        return
+    end
+    if dir_read(r) < 0
+        return
+    end
+    if ruta != ""
+        atras.push(ruta)
+    end
+    adelante = []
+    editando = 0
+    leer(r, false)
+end
+
+func ir_atras()
+    if atras.length > 0
+        adelante.push(ruta)
+        r = atras.pop()
+        leer(r, false)
+    end
+end
+
+func ir_adelante()
+    if adelante.length > 0
+        atras.push(ruta)
+        r = adelante.pop()
+        leer(r, false)
+    end
+end
+
+func subir()
+    p = padre(ruta)
+    if p != ""
+        antes = nombre_de(ruta)
+        ir(p)
+        for k in (0..orden.length - 1)            # el cajón de donde se viene, elegido
+            if nombres[orden[k]] == antes
+                elegir_solo(k)
+            end
+        end
+    end
+end
+
+# --- el lateral ---
+
+func lateral()
+    lat_texto = []
+    lat_ruta = []
+    lat_texto.push(tr(MSG_A_SITIOS, "Places"))
+    lat_ruta.push("")
+    var sitios: [String] = ["SYS:", "RAM:", "SYS:Prefs", "SYS:Utilities"]
+    extra = ajuste("ARCHIVOS_SITIOS", "SITIOS", "")
+    if extra != ""
+        for s in str_split(extra, ";")
+            if str_trim(s) != ""
+                sitios.push(str_trim(s))
+            end
+        end
+    end
+    for s in sitios
+        if dir_read(s) >= 0
+            lat_texto.push(nombre_de(s))
+            lat_ruta.push(s)
+        end
+    end
+    lat_texto.push(tr(MSG_A_DISCOS, "Disks"))
+    lat_ruta.push("")
+    n = disks_read(500)
+    for i in (0..n - 1)
+        lat_texto.push(disk_name(i))
+        lat_ruta.push(disk_name(i) + ":")
+    end
+    lat_texto.push(tr(MSG_A_PAPELERA, "Trash"))
+    lat_ruta.push("*papelera")
+end
+
+# --- dibujar ---
+
+func medir()
+    usar_letra()
+    fila = font_height() + 6
+    cab_h = font_height() + 6
+    barra_h = font_height() + 18
+    pie_h = font_height() + 8
+end
+
+func zona_lista_y() -> Int
+    y = oy + barra_h
+    if not vista_iconos
+        y = y + cab_h
+    end
+    return y
+end
+
+func zona_lista_h() -> Int
+    h = alto - barra_h - pie_h
+    if not vista_iconos
+        h = h - cab_h
+    end
+    if op_activa
+        h = h - pie_h
+    end
+    return h
+end
+
+func filas_vistas() -> Int
+    return zona_lista_h() / fila
+end
+
+# los iconos: tamaño de cada celda y cuántos caben por fila
+func celda_w() -> Int
+    return 96
+end
+
+func celda_h() -> Int
+    return 64 + font_height()
+end
+
+func por_fila() -> Int
+    n = (ancho - LATERAL - 8) / celda_w()
+    if n < 1
+        n = 1
+    end
+    return n
+end
+
+# las columnas de la lista: dónde empiezan (desde el lateral)
+func col_tam() -> Int
+    return ancho - LATERAL - 330
+end
+
+func col_fecha() -> Int
+    return ancho - LATERAL - 250
+end
+
+func col_coment() -> Int
+    return ancho - LATERAL - 120
+end
+
+func pintar_barra()
+    pluma(C_PANEL)
+    gfx_rect(ox, oy, ox + ancho - 1, oy + barra_h - 1)
+    pluma(C_BORDE)
+    gfx_line(ox, oy + barra_h - 1, ox + ancho - 1, oy + barra_h - 1)
+    # atrás, adelante, subir
+    by = oy + 6
+    bh = barra_h - 12
+    for k in (0..2)
+        bx = ox + 8 + k * (bh + 4)
+        activo = (k == 0 and atras.length > 0) or (k == 1 and adelante.length > 0) or (k == 2 and padre(ruta) != "")
+        fondo = C_BOTON
+        if not activo
+            fondo = C_TARJETA
+        end
+        redondo(bx, by, bx + bh - 1, by + bh - 1, 4, fondo)
+        color = C_TEXTO
+        if not activo
+            color = C_TENUE
+        end
+        flecha(bx + bh / 2, by + bh / 2, k, bh / 5, color)
+    end
+    # la ruta en trozos (o el campo para escribirla)
+    x = ox + 8 + 3 * (bh + 4) + 8
+    fin_x = ox + ancho - 8 - 2 * (bh + 4) - 8
+    if editando == 3
+        campo(x, by, fin_x - x, bh)
+    else
+        trozos = trozos_ruta()
+        for k in (0..trozos.length - 1)
+            t = nombre_de(trozos[k])
+            if k == 0
+                t = str_replace(trozos[k], ":", "")
+            end
+            w = font_text_width(t) + 16
+            if x + w > fin_x
+                break
+            end
+            fondo = C_TARJETA
+            color = C_SUAVE
+            if k == trozos.length - 1
+                fondo = C_BOTON
+                color = C_TEXTO
+            end
+            if arr_activo and arr_sobre == trozos[k]
+                fondo = C_ACENTO
+                color = C_SOBRE_ACENTO
+            end
+            redondo(x, by, x + w - 1, by + bh - 1, 4, fondo)
+            texto_en(x + 8, by + (bh - font_height()) / 2, t, color)
+            x = x + w + 4
+        end
+    end
+    # lista e iconos, a la derecha
+    for k in (0..1)
+        bx = ox + ancho - 8 - (2 - k) * (bh + 4) + 4
+        marcado = (k == 0 and not vista_iconos) or (k == 1 and vista_iconos)
+        fondo = C_TARJETA
+        if marcado
+            fondo = C_ACENTO
+        end
+        redondo(bx, by, bx + bh - 1, by + bh - 1, 4, fondo)
+        color = C_SUAVE
+        if marcado
+            color = C_SOBRE_ACENTO
+        end
+        pluma(color)
+        if k == 0                                # tres rayas
+            for j in (0..2)
+                gfx_rect(bx + 5, by + 5 + j * (bh - 10) / 2, bx + bh - 6, by + 5 + j * (bh - 10) / 2 + 1)
+            end
+        else                                     # cuatro cuadros
+            m = (bh - 10) / 2
+            gfx_rect(bx + 5, by + 5, bx + 4 + m, by + 4 + m)
+            gfx_rect(bx + bh - 5 - m, by + 5, bx + bh - 6, by + 4 + m)
+            gfx_rect(bx + 5, by + bh - 5 - m, bx + 4 + m, by + bh - 6)
+            gfx_rect(bx + bh - 5 - m, by + bh - 5 - m, bx + bh - 6, by + bh - 6)
+        end
+    end
+end
+
+# una flecha en ángulo (como un chevron) centrada en (cx, cy), de 2 píxeles de grueso: 0 izquierda, 1 derecha,
+# 2 arriba
+func flecha(cx: Int, cy: Int, que: Int, r: Int, color: Int)
+    pluma(color)
+    for g in (0..1)
+        if que == 0
+            gfx_line(cx + r / 2 + g, cy - r, cx - r / 2 + g, cy)
+            gfx_line(cx - r / 2 + g, cy, cx + r / 2 + g, cy + r)
+        elif que == 1
+            gfx_line(cx - r / 2 + g, cy - r, cx + r / 2 + g, cy)
+            gfx_line(cx + r / 2 + g, cy, cx - r / 2 + g, cy + r)
+        else
+            gfx_line(cx - r, cy + r / 2 + g, cx, cy - r / 2 + g)
+            gfx_line(cx, cy - r / 2 + g, cx + r, cy + r / 2 + g)
+        end
+    end
+end
+
+# las rutas de cada trozo: "Work:", "Work:a", "Work:a/b"
+func trozos_ruta() -> [String]
+    var r: [String] = []
+    k = str_find(ruta, ":")
+    if k < 0
+        return r
+    end
+    r.push(ruta[:k + 1])
+    i = k + 1
+    while i < ruta.length
+        j = str_find_from(ruta, "/", i)
+        if j < 0
+            j = ruta.length
+        end
+        r.push(ruta[:j])
+        i = j + 1
+    end
+    return r
+end
+
+func pintar_lateral()
+    x = ox
+    y = oy + barra_h
+    h = alto - barra_h - pie_h
+    pluma(C_PANEL)
+    gfx_rect(x, y, x + LATERAL - 1, y + h - 1)
+    pluma(C_BORDE)
+    gfx_line(x + LATERAL - 1, y, x + LATERAL - 1, y + h - 1)
+    yy = y + 6
+    for k in (0..lat_texto.length - 1)
+        if yy + fila > y + h
+            break
+        end
+        if lat_ruta[k] == ""
+            if k > 0
+                yy = yy + 6
+            end
+            usar_letra()
+            font_style(2)
+            texto_en(x + 10, yy + 3, lat_texto[k], C_TENUE)
+            font_style(0)
+        else
+            actual = lat_ruta[k] == ruta or (lat_ruta[k] == "*papelera" and str_ends(ruta, PAPELERA))
+            sobre = arr_activo and arr_sobre == lat_ruta[k]
+            if actual or sobre
+                c = C_BOTON
+                if sobre
+                    c = C_ACENTO
+                end
+                redondo(x + 6, yy, x + LATERAL - 8, yy + fila - 1, 4, c)
+            end
+            color = C_TEXTO
+            if sobre
+                color = C_SOBRE_ACENTO
+            end
+            usar_letra()
+            texto_en(x + 14, yy + 3, cabe(lat_texto[k], LATERAL - 26), color)
+        end
+        yy = yy + fila
+    end
+end
+
+func pintar_cabecera()
+    x = ox + LATERAL
+    y = oy + barra_h
+    pluma(C_FONDO)
+    gfx_rect(x, y, ox + ancho - 1, y + cab_h - 1)
+    pluma(C_BORDE)
+    gfx_line(x, y + cab_h - 1, ox + ancho - 1, y + cab_h - 1)
+    usar_letra()
+    var titulos: [String] = [tr(MSG_A_NOMBRE, "Name"), tr(MSG_A_TAMANO, "Size"), tr(MSG_A_FECHA, "Date"), tr(MSG_A_COMENTARIO, "Comment")]
+    var xs: [Int] = [12, col_tam(), col_fecha(), col_coment()]
+    for k in (0..3)
+        t = titulos[k]
+        if (k == 0 and por == 0) or (k == 1 and por == 1) or (k == 2 and por == 2)
+            if al_reves
+                t = t + " v"
+            else
+                t = t + " ^"
+            end
+        end
+        if xs[k] > 30 or k == 0
+            texto_en(x + xs[k], y + 3, t, C_SUAVE)
+        end
+    end
+end
+
+# un icono pequeño de cajón o de fichero, dibujado, en (x, y) de h de alto
+func icono_peque(x: Int, y: Int, h: Int, cajon: Bool, color: Int)
+    if cajon
+        pluma(color)
+        gfx_rect(x, y + 2, x + h / 2, y + 3)
+        gfx_rect(x, y + 4, x + h + 2, y + h - 1)
+    else
+        pluma(color)
+        gfx_rect(x + 2, y, x + h - 3, y + h - 1)
+        pluma(C_FONDO)
+        gfx_rect(x + 4, y + 3, x + h - 5, y + 3)
+        gfx_rect(x + 4, y + 6, x + h - 5, y + 6)
+    end
+end
+
+func pintar_lista()
+    x = ox + LATERAL
+    y = zona_lista_y()
+    h = zona_lista_h()
+    w = ancho - LATERAL
+    pluma(C_FONDO)
+    gfx_rect(x, y, x + w - 1, y + h - 1)
+    n = filas_vistas()
+    usar_letra()
+    for f in (0..n)
+        k = primera + f
+        if k >= orden.length
+            break
+        end
+        i = orden[k]
+        fy = y + f * fila
+        if fy + fila > y + h
+            break
+        end
+        color = C_TEXTO
+        suave = C_SUAVE
+        if elegido[i]
+            redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_ACENTO)
+            color = C_SOBRE_ACENTO
+            suave = C_SOBRE_ACENTO
+        elif arr_activo and es_cajon[i] and arr_sobre == unir(ruta, nombres[i])
+            redondo(x + 4, fy, x + w - 6, fy + fila - 1, 4, C_BOTON)
+        end
+        if k == cursor and not elegido[i]
+            pluma(C_BORDE)
+            gfx_box(x + 4, fy, x + w - 6, fy + fila - 1)
+        end
+        ih = font_height() - 2
+        c_icono = C_ACENTO
+        if not es_cajon[i]
+            c_icono = C_SUAVE
+        end
+        if elegido[i]
+            c_icono = C_SOBRE_ACENTO
+        end
+        icono_peque(x + 12, fy + (fila - ih) / 2, ih, es_cajon[i], c_icono)
+        if editando == 1 and ed_de == i
+            campo(x + 12 + ih + 8, fy + 1, col_tam() - ih - 28, fila - 2)
+        else
+            t = nombres[i]
+            texto_en(x + 12 + ih + 8, fy + 3, cabe(t, col_tam() - ih - 28), color)
+        end
+        if col_tam() > 30
+            if not es_cajon[i]
+                tt = tamano_texto(tamanos[i])
+                texto_en(x + col_fecha() - 16 - font_text_width(tt), fy + 3, tt, suave)
+            end
+            texto_en(x + col_fecha(), fy + 3, fecha_texto(fechas[i]), suave)
+            texto_en(x + col_coment(), fy + 3, cabe(comentarios[i], ancho - LATERAL - col_coment() - 16), suave)
+        end
+    end
+    if editando == 2
+        fy = y + (cursor - primera) * fila
+        if fy < y or fy + fila > y + h
+            fy = y
+        end
+        pluma(C_FONDO)
+        gfx_rect(x + 4, fy, x + w - 6, fy + fila - 1)
+        ih = font_height() - 2
+        icono_peque(x + 12, fy + (fila - ih) / 2, ih, true, C_ACENTO)
+        campo(x + 12 + ih + 8, fy + 1, col_tam() - ih - 28, fila - 2)
+    end
+    barra_desplazar(x + w - 5, y, h, n, orden.length, primera)
+end
+
+func barra_desplazar(x: Int, y: Int, h: Int, vistas: Int, total: Int, desde: Int)
+    if total <= vistas or total == 0
+        return
+    end
+    alto_b = h * vistas / total
+    if alto_b < 12
+        alto_b = 12
+    end
+    yb = y + (h - alto_b) * desde / (total - vistas)
+    redondo(x - 1, yb, x + 2, yb + alto_b - 1, 2, C_TENUE)
+end
+
+func pintar_iconos()
+    x = ox + LATERAL
+    y = zona_lista_y()
+    h = zona_lista_h()
+    w = ancho - LATERAL
+    pluma(C_FONDO)
+    gfx_rect(x, y, x + w - 1, y + h - 1)
+    pf = por_fila()
+    cw = celda_w()
+    ch = celda_h()
+    filas_v = h / ch
+    usar_letra()
+    for f in (0..filas_v)
+        for c in (0..pf - 1)
+            k = (primera + f) * pf + c
+            if k >= orden.length
+                break
+            end
+            i = orden[k]
+            cx = x + 4 + c * cw
+            cy = y + 4 + f * ch
+            if cy + ch > y + h
+                break
+            end
+            if elegido[i]
+                redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_ACENTO)
+            elif arr_activo and es_cajon[i] and arr_sobre == unir(ruta, nombres[i])
+                redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_BOTON)
+            elif k == cursor
+                redondo(cx + 2, cy, cx + cw - 3, cy + ch - 3, 6, C_TARJETA)
+            end
+            if iconos[i] == 0
+                iconos[i] = icon_load(unir(ruta, nombres[i]))
+            end
+            ic = iconos[i]
+            if ic != 0
+                iw = icon_width(ic)
+                ihh = icon_height(ic)
+                if iw > cw - 8 or ihh > 56
+                    icon_draw_size(ic, cx + (cw - 48) / 2, cy + 4, 48, 48)
+                else
+                    icon_draw(ic, cx + (cw - iw) / 2, cy + 4 + (56 - ihh) / 2)
+                end
+            else
+                icono_peque(cx + cw / 2 - 16, cy + 12, 32, es_cajon[i], C_SUAVE)
+            end
+            color = C_TEXTO
+            if elegido[i]
+                color = C_SOBRE_ACENTO
+            end
+            if editando == 1 and ed_de == i
+                campo(cx + 2, cy + 62, cw - 4, font_height() + 2)
+            else
+                t = cabe(nombres[i], cw - 8)
+                texto_en(cx + (cw - font_text_width(t)) / 2, cy + 62, t, color)
+            end
+        end
+    end
+    total_f = (orden.length + pf - 1) / pf
+    barra_desplazar(x + w - 5, y, h, filas_v, total_f, primera)
+end
+
+# el campo de texto que se edita (ed_texto, con el cursor en ed_pos)
+func campo(x: Int, y: Int, w: Int, h: Int)
+    redondo(x, y, x + w - 1, y + h - 1, 4, C_TARJETA)
+    pluma(C_ACENTO)
+    gfx_box(x, y, x + w - 1, y + h - 1)
+    usar_letra()
+    # lo que cabe, con el cursor a la vista
+    desde = 0
+    while desde < ed_pos and font_text_width(ed_texto[desde:ed_pos]) > w - 12
+        desde = desde + 1
+    end
+    t = cabe(ed_texto[desde:], w - 12)
+    ty = y + (h - font_height()) / 2
+    texto_en(x + 6, ty, t, C_TEXTO)
+    cx = x + 6 + font_text_width(ed_texto[desde:ed_pos])
+    pluma(C_ACENTO)
+    gfx_rect(cx, ty, cx + 1, ty + font_height() - 1)
+end
+
+func pintar_pie()
+    y = oy + alto - pie_h
+    if op_activa
+        y = y - pie_h
+        pintar_progreso(y)
+        y = y + pie_h
+    end
+    pluma(C_PANEL)
+    gfx_rect(ox, y, ox + ancho - 1, oy + alto - 1)
+    pluma(C_BORDE)
+    gfx_line(ox, y, ox + ancho - 1, y)
+    n_el = 0
+    b_el = 0
+    for k in (0..orden.length - 1)
+        i = orden[k]
+        if elegido[i]
+            n_el = n_el + 1
+            b_el = b_el + tamanos[i]
+        end
+    end
+    t = "#{orden.length} " + tr(MSG_A_ELEMENTOS, "items")
+    if n_el > 0
+        t = t + ", #{n_el} " + tr(MSG_A_ELEGIDOS, "selected") + " (" + tamano_texto(b_el) + ")"
+    end
+    usar_letra()
+    texto_en(ox + 10, y + (pie_h - font_height()) / 2, t, C_SUAVE)
+    if libre_kb >= 0
+        l = tamano_texto(libre_kb * 1024) + " " + tr(MSG_A_LIBRES, "free")
+        texto_en(ox + ancho - 10 - font_text_width(l), y + (pie_h - font_height()) / 2, l, C_SUAVE)
+    end
+end
+
+func pintar_progreso(y: Int)
+    pluma(C_TARJETA)
+    gfx_rect(ox, y, ox + ancho - 1, y + pie_h - 1)
+    usar_letra()
+    paso = op_i + 1
+    if paso > op_tipo.length
+        paso = op_tipo.length
+    end
+    t = op_titulo + " #{paso}/#{op_tipo.length}"
+    if op_i < op_de.length
+        t = t + ": " + nombre_de(op_de[op_i])
+    end
+    bw = 160
+    tx = ox + 10
+    t = cabe(t, ancho - bw - 120)
+    texto_en(tx, y + (pie_h - font_height()) / 2, t, C_TEXTO)
+    # la barra: los pasos hechos y lo que va del fichero en curso
+    bx = ox + ancho - bw - 90
+    by = y + pie_h / 2 - 3
+    redondo(bx, by, bx + bw - 1, by + 5, 3, C_BOTON)
+    hecho = op_i * 1000
+    if op_total > 0
+        hecho = hecho + op_hecho * 1000 / op_total
+    end
+    total = op_tipo.length * 1000
+    if total > 0
+        lleno = bw * hecho / total
+        if lleno > 6
+            redondo(bx, by, bx + lleno - 1, by + 5, 3, C_ACENTO)
+        end
+    end
+    # cancelar
+    ct = tr(MSG_A_CANCELAR, "Cancel")
+    cw = font_text_width(ct) + 16
+    cx = ox + ancho - cw - 10
+    redondo(cx, y + 2, cx + cw - 1, y + pie_h - 3, 4, C_BOTON)
+    texto_en(cx + 8, y + (pie_h - font_height()) / 2, ct, C_TEXTO)
+end
+
+func pintar_arrastre()
+    if not arr_activo
+        return
+    end
+    n = cuantos_elegidos()
+    t = "#{n}"
+    if n == 1
+        for i in (0..nombres.length - 1)
+            if elegido[i]
+                t = nombres[i]
+            end
+        end
+    end
+    usar_letra()
+    t = cabe(t, 160)
+    w = font_text_width(t) + 16
+    x = ox + arr_x + 14
+    y = oy + arr_y + 8
+    gfx_blend_rect(x, y, x + w - 1, y + fila - 1, C_ACENTO, 200)
+    texto_en(x + 8, y + 3, t, C_SOBRE_ACENTO)
+end
+
+func pintar(x: Int, y: Int, w: Int, h: Int)
+    ox = x
+    oy = y
+    ancho = w
+    alto = h
+    gfx_mode(0)                                  # el texto, sin fondo
+    medir()
+    pintar_barra()
+    pintar_lateral()
+    if vista_iconos
+        pintar_iconos()
+    else
+        pintar_cabecera()
+        pintar_lista()
+    end
+    pintar_pie()
+    pintar_arrastre()
+end
+
+func repintar()
+    mui_canvas_redraw(lienzo)
+end
+
+# --- elegir ---
+
+func cuantos_elegidos() -> Int
+    n = 0
+    for e in elegido
+        if e
+            n = n + 1
+        end
+    end
+    return n
+end
+
+func nada()
+    for i in (0..elegido.length - 1)
+        elegido[i] = false
+    end
+end
+
+func elegir_solo(k: Int)
+    nada()
+    if k >= 0 and k < orden.length
+        elegido[orden[k]] = true
+        cursor = k
+        ancla = k
+        a_la_vista(k)
+    end
+end
+
+func a_la_vista(k: Int)
+    if vista_iconos
+        f = k / por_fila()
+        vistas = zona_lista_h() / celda_h()
+        if f < primera
+            primera = f
+        elif f >= primera + vistas
+            primera = f - vistas + 1
+        end
+    else
+        vistas = filas_vistas()
+        if k < primera
+            primera = k
+        elif k >= primera + vistas
+            primera = k - vistas + 1
+        end
+    end
+    if primera < 0
+        primera = 0
+    end
+end
+
+# las rutas de lo elegido
+func elegidas() -> [String]
+    var r: [String] = []
+    for k in (0..orden.length - 1)
+        i = orden[k]
+        if elegido[i]
+            r.push(unir(ruta, nombres[i]))
+        end
+    end
+    return r
+end
+
+# qué hay en (mx, my) del lienzo: el número en orden, o -1
+func bajo(mx: Int, my: Int) -> Int
+    x = mx - LATERAL
+    y = my - (zona_lista_y() - oy)
+    if x < 0 or y < 0 or y >= zona_lista_h()
+        return -1
+    end
+    k = -1
+    if vista_iconos
+        c = (x - 4) / celda_w()
+        f = (y - 4) / celda_h()
+        if c >= por_fila() or x < 4 or y < 4
+            return -1
+        end
+        k = (primera + f) * por_fila() + c
+    else
+        k = primera + y / fila
+    end
+    if k >= orden.length
+        return -1
+    end
+    return k
+end
+
+# el sitio del lateral en (mx, my), o -1
+func lateral_bajo(mx: Int, my: Int) -> Int
+    if mx >= LATERAL or my < barra_h
+        return -1
+    end
+    yy = barra_h + 6
+    for k in (0..lat_texto.length - 1)
+        if lat_ruta[k] == "" and k > 0
+            yy = yy + 6
+        end
+        if my >= yy and my < yy + fila
+            if lat_ruta[k] == ""
+                return -1
+            end
+            return k
+        end
+        yy = yy + fila
+    end
+    return -1
+end
+
+# el trozo de la ruta en (mx, my) de la barra de arriba, o ""
+func trozo_bajo(mx: Int, my: Int) -> String
+    bh = barra_h - 12
+    if my < 6 or my >= 6 + bh
+        return ""
+    end
+    x = 8 + 3 * (bh + 4) + 8
+    usar_letra()
+    for tr_ruta in trozos_ruta()
+        t = nombre_de(tr_ruta)
+        if str_ends(tr_ruta, ":")
+            t = str_replace(tr_ruta, ":", "")
+        end
+        w = font_text_width(t) + 16
+        if mx >= x and mx < x + w
+            return tr_ruta
+        end
+        x = x + w + 4
+    end
+    return ""
+end
+
+# la carpeta de destino en (mx, my) al arrastrar: un cajón de la lista, uno del lateral o un trozo de la ruta
+func destino_bajo(mx: Int, my: Int) -> String
+    k = bajo(mx, my)
+    if k >= 0
+        i = orden[k]
+        if es_cajon[i] and not elegido[i]
+            return unir(ruta, nombres[i])
+        end
+        return ""
+    end
+    l = lateral_bajo(mx, my)
+    if l >= 0
+        return lat_ruta[l]
+    end
+    t = trozo_bajo(mx, my)
+    if t != "" and t != ruta
+        return t
+    end
+    return ""
+end
+
+func abrir(k: Int)
+    if k < 0 or k >= orden.length
+        return
+    end
+    i = orden[k]
+    p = unir(ruta, nombres[i])
+    if es_cajon[i]
+        ir(p)
+    elif not wb_open(p)
+        mui_request(win, "Archivos", tr(MSG_A_NO_ABRE, "It cannot be opened:") + "\n" + p, "_OK")
+    end
+end
+
+func ir_lateral(l: Int)
+    r = lat_ruta[l]
+    if r == "*papelera"
+        r = papelera_de(ruta)
+        if dir_read(r) < 0
+            ok = dir_create(r)
+        end
+    end
+    ir(r)
+end
+
+# --- clics, arrastres y teclas ---
+
+func clic(mx: Int, my: Int, q: Int)
+    if editando != 0
+        acabar_edicion(true)
+    end
+    # la barra de arriba
+    if my < barra_h
+        bh = barra_h - 12
+        if my >= 6 and my < 6 + bh
+            for b in (0..2)
+                bx = 8 + b * (bh + 4)
+                if mx >= bx and mx < bx + bh
+                    if b == 0
+                        ir_atras()
+                    elif b == 1
+                        ir_adelante()
+                    else
+                        subir()
+                    end
+                    return
+                end
+            end
+            for b in (0..1)
+                bx = ancho - 8 - (2 - b) * (bh + 4) + 4
+                if mx >= bx and mx < bx + bh
+                    poner_vista(b == 1)
+                    return
+                end
+            end
+            t = trozo_bajo(mx, my)
+            if t != ""
+                ir(t)
+            else
+                empezar_edicion(3)
+            end
+        end
+        return
+    end
+    # el progreso: cancelar
+    if op_activa and my >= alto - 2 * pie_h and my < alto - pie_h
+        op_cancelar = true
+        return
+    end
+    if my >= alto - pie_h
+        return
+    end
+    l = lateral_bajo(mx, my)
+    if l >= 0
+        ir_lateral(l)
+        return
+    end
+    if mx < LATERAL
+        return
+    end
+    # la cabecera: ordenar
+    if not vista_iconos and my < barra_h + cab_h
+        x = mx - LATERAL
+        nuevo = 0
+        if x >= col_coment()
+            return
+        elif x >= col_fecha()
+            nuevo = 2
+        elif x >= col_tam()
+            nuevo = 1
+        end
+        if nuevo == por
+            al_reves = not al_reves
+        else
+            por = nuevo
+            al_reves = false
+        end
+        ordenar()
+        return
+    end
+    k = bajo(mx, my)
+    ahora = time_ms()
+    doble = k >= 0 and k == clic_en and ahora - clic_ms <= wm_double_click_ms()
+    clic_en = k
+    clic_ms = ahora
+    if k < 0
+        if q & (1 + 2) == 0
+            nada()
+        end
+        return
+    end
+    if doble
+        clic_en = -2
+        abrir(k)
+        return
+    end
+    i = orden[k]
+    if q & 1 != 0 and ancla >= 0                 # Mayús: de ancla hasta aquí
+        nada()
+        a = ancla
+        b = k
+        if a > b
+            a = k
+            b = ancla
+        end
+        for j in (a..b)
+            elegido[orden[j]] = true
+        end
+        cursor = k
+    elif q & 2 != 0 or q & 8 != 0                # Ctrl (o Amiga): añadir o quitar
+        elegido[i] = not elegido[i]
+        cursor = k
+        ancla = k
+    elif not elegido[i]
+        elegir_solo(k)
+    else
+        cursor = k                               # (ya elegido: puede empezar un arrastre de todos)
+    end
+end
+
+func poner_vista(iconos_si: Bool)
+    if vista_iconos != iconos_si
+        vista_iconos = iconos_si
+        primera = 0
+        if cursor >= 0
+            a_la_vista(cursor)
+        end
+    end
+end
+
+func rueda(w: Int)
+    primera = primera - w * 3
+    total = orden.length
+    vistas = filas_vistas()
+    if vista_iconos
+        total = (orden.length + por_fila() - 1) / por_fila()
+        vistas = zona_lista_h() / celda_h()
+    end
+    if primera > total - vistas
+        primera = total - vistas
+    end
+    if primera < 0
+        primera = 0
+    end
+end
+
+func mover_cursor(d: Int, q: Int)
+    if orden.length == 0
+        return
+    end
+    k = cursor + d
+    if cursor < 0
+        k = 0
+    end
+    if k < 0
+        k = 0
+    elif k >= orden.length
+        k = orden.length - 1
+    end
+    if q & 1 != 0 and ancla >= 0
+        nada()
+        a = ancla
+        b = k
+        if a > b
+            a = k
+            b = ancla
+        end
+        for j in (a..b)
+            elegido[orden[j]] = true
+        end
+        cursor = k
+        a_la_vista(k)
+    else
+        elegir_solo(k)
+    end
+end
+
+func saltar_a(letra_t: String)
+    ahora = time_ms()
+    if ahora - buscar_ms > 1000
+        buscar_txt = ""
+    end
+    buscar_ms = ahora
+    buscar_txt = buscar_txt + str_lower(letra_t)
+    for k in (0..orden.length - 1)
+        if str_starts(str_lower(nombres[orden[k]]), buscar_txt)
+            elegir_solo(k)
+            return
+        end
+    end
+end
+
+func tecla(c: Int, q: Int, ch: String)
+    if editando != 0
+        teclear(c, ch)
+        return
+    end
+    vistas = filas_vistas()
+    paso = 1
+    if vista_iconos
+        vistas = (zona_lista_h() / celda_h()) * por_fila()
+        if c == K_ARRIBA or c == K_ABAJO
+            paso = por_fila()
+        end
+    end
+    if c == K_ARRIBA
+        mover_cursor(-paso, q)
+    elif c == K_ABAJO
+        mover_cursor(paso, q)
+    elif c == K_IZQUIERDA and vista_iconos
+        mover_cursor(-1, q)
+    elif c == K_DERECHA and vista_iconos
+        mover_cursor(1, q)
+    elif c == K_REPAG
+        mover_cursor(-vistas, q)
+    elif c == K_AVPAG
+        mover_cursor(vistas, q)
+    elif c == K_INICIO
+        mover_cursor(-orden.length, q)
+    elif c == K_FIN
+        mover_cursor(orden.length, q)
+    elif c == K_RETURN or c == K_INTRO
+        if cursor >= 0
+            abrir(cursor)
+        end
+    elif c == K_RETROCESO
+        subir()
+    elif c == K_SUPR
+        if q & 1 != 0
+            borrar_del_todo()
+        else
+            a_la_papelera()
+        end
+    elif c == K_F2
+        empezar_edicion(1)
+    elif c == K_ESC
+        if op_activa
+            op_cancelar = true
+        else
+            nada()
+        end
+    elif ch != "" and q & 8 == 0 and str_code(ch, 0) > 32
+        saltar_a(ch)
+    end
+end
+
+# --- editar un texto en el lienzo ---
+
+func empezar_edicion(que: Int)
+    if que == 1
+        if cursor < 0 or cursor >= orden.length
+            return
+        end
+        ed_de = orden[cursor]
+        ed_texto = nombres[ed_de]
+        # como Nautilus: elegido el nombre sin la extensión
+        ed_pos = ed_texto.length
+        k = -1
+        for j in (0..ed_texto.length - 1)
+            if ed_texto[j:j + 1] == "."
+                k = j
+            end
+        end
+        if k > 0 and not es_cajon[ed_de]
+            ed_pos = k
+        end
+    elif que == 2
+        ed_texto = tr(MSG_A_CAJON_NUEVO, "New drawer")
+        ed_pos = ed_texto.length
+        cursor = orden.length
+        if cursor > 0
+            a_la_vista(cursor - 1)
+        end
+    else
+        ed_texto = ruta
+        ed_pos = ed_texto.length
+    end
+    editando = que
+    mui_canvas_take_keys(lienzo, true)
+end
+
+func teclear(c: Int, ch: String)
+    if c == K_RETURN or c == K_INTRO
+        acabar_edicion(true)
+    elif c == K_ESC
+        acabar_edicion(false)
+    elif c == K_RETROCESO
+        if ed_pos > 0
+            ed_texto = ed_texto[:ed_pos - 1] + ed_texto[ed_pos:]
+            ed_pos = ed_pos - 1
+        end
+    elif c == K_SUPR
+        if ed_pos < ed_texto.length
+            ed_texto = ed_texto[:ed_pos] + ed_texto[ed_pos + 1:]
+        end
+    elif c == K_IZQUIERDA
+        if ed_pos > 0
+            ed_pos = ed_pos - 1
+        end
+    elif c == K_DERECHA
+        if ed_pos < ed_texto.length
+            ed_pos = ed_pos + 1
+        end
+    elif c == K_INICIO
+        ed_pos = 0
+    elif c == K_FIN
+        ed_pos = ed_texto.length
+    elif ch != "" and str_code(ch, 0) >= 32
+        if ed_texto.length < 107
+            ed_texto = ed_texto[:ed_pos] + ch + ed_texto[ed_pos:]
+            ed_pos = ed_pos + 1
+        end
+    end
+end
+
+func nombre_valido(n: String) -> Bool
+    return n != "" and not str_contains(n, "/") and not str_contains(n, ":") and n.length <= 107
+end
+
+func acabar_edicion(guardar: Bool)
+    que = editando
+    editando = 0
+    t = str_trim(ed_texto)
+    if not guardar
+        return
+    end
+    if que == 1 and ed_de >= 0 and ed_de < nombres.length
+        viejo = nombres[ed_de]
+        if t != viejo and nombre_valido(t)
+            de = unir(ruta, viejo)
+            a = unir(ruta, t)
+            if file_exists(a) and str_lower(t) != str_lower(viejo)
+                mui_request(win, "Archivos", tr(MSG_A_YA_HAY, "There is already one with that name:") + "\n" + t, "_OK")
+            elif file_rename(de, a)
+                if file_exists(de + ".info")
+                    ok = file_rename(de + ".info", a + ".info")
+                end
+                leer(ruta, true)
+                elegir_nombre(t)
+            else
+                mui_request(win, "Archivos", tr(MSG_A_NO_RENOMBRA, "It could not be renamed"), "_OK")
+            end
+        end
+    elif que == 2
+        if nombre_valido(t)
+            a = unir(ruta, t)
+            if file_exists(a)
+                mui_request(win, "Archivos", tr(MSG_A_YA_HAY, "There is already one with that name:") + "\n" + t, "_OK")
+            elif dir_create(a)
+                leer(ruta, true)
+                elegir_nombre(t)
+            end
+        end
+    elif que == 3
+        if dir_read(t) >= 0
+            ir(t)
+        else
+            mui_request(win, "Archivos", tr(MSG_A_NO_CAJON, "That drawer does not exist:") + "\n" + t, "_OK")
+        end
+    end
+end
+
+func elegir_nombre(n: String)
+    for k in (0..orden.length - 1)
+        if nombres[orden[k]] == n
+            elegir_solo(k)
+        end
+    end
+end
+
+# --- copiar, mover, borrar (a trozos) ---
+
+# el cajón de la papelera del disco de r
+func papelera_de(r: String) -> String
+    v = file_real_path(r)
+    if v == ""
+        v = r
+    end
+    k = str_find(v, ":")
+    if k < 0
+        return PAPELERA
+    end
+    return v[:k + 1] + PAPELERA
+end
+
+func op_empezar(titulo: String)
+    op_titulo = titulo
+    op_tipo = []
+    op_de = []
+    op_a = []
+    op_borrar_luego = []
+    op_i = 0
+    op_copia = 0
+    op_hecho = 0
+    op_total = 0
+    op_cancelar = false
+    op_todos = 0
+    op_fallos = 0
+end
+
+func op_poner(tipo: Int, de: String, a: String)
+    op_tipo.push(tipo)
+    op_de.push(de)
+    op_a.push(a)
+end
+
+# copiar de a a: un cajón entero, con lo de dentro, se pone en la lista paso a paso (cajón nuevo y luego su
+# contenido); un fichero, con su .info
+func poner_copia(de: String, a: String)
+    if dir_read(de) >= 0
+        op_poner(2, de, a)
+        n = dir_read(de)
+        var dentro: [String] = []
+        for i in (0..n - 1)
+            dentro.push(dir_entry_name(i))
+        end
+        for nm in dentro
+            poner_copia(unir(de, nm), unir(a, nm))
+        end
+    else
+        op_poner(1, de, a)
+    end
+end
+
+# la lista de rutas con sus .info al lado (los que haya y no estén ya)
+func con_sus_info(rutas: [String]) -> [String]
+    var r: [String] = []
+    for p in rutas
+        r.push(p)
+        if not es_info(p) and file_exists(p + ".info")
+            esta = false
+            for q in rutas
+                if q == p + ".info"
+                    esta = true
+                end
+            end
+            if not esta
+                r.push(p + ".info")
+            end
+        end
+    end
+    return r
+end
+
+# copiar (mover: false) o mover lo de rutas al cajón destino
+func copiar_a(rutas: [String], destino: String, mover: Bool)
+    if rutas.length == 0 or destino == ""
+        return
+    end
+    todas = con_sus_info(rutas)
+    titulo = tr(MSG_A_COPIANDO, "Copying")
+    if mover
+        titulo = tr(MSG_A_MOVIENDO, "Moving")
+    end
+    op_empezar(titulo)
+    mismo = volumen(destino) == volumen(todas[0])
+    for p in todas
+        a = unir(destino, nombre_de(p))
+        if a == p
+            continue
+        end
+        if str_starts(str_lower(destino) + "/", str_lower(p) + "/")
+            continue                             # (un cajón dentro de sí mismo)
+        end
+        if mover and mismo
+            op_poner(4, p, a)
+        else
+            poner_copia(p, a)
+            if mover
+                op_borrar_luego.push(p)
+            end
+        end
+    end
+    op_activa = op_tipo.length > 0
+end
+
+func a_la_papelera()
+    rutas = elegidas()
+    if rutas.length == 0
+        return
+    end
+    if str_ends(ruta, PAPELERA)
+        borrar_del_todo()
+        return
+    end
+    todas = con_sus_info(rutas)
+    pap = papelera_de(ruta)
+    if dir_read(pap) < 0
+        if not dir_create(pap)
+            mui_request(win, "Archivos", tr(MSG_A_SIN_PAPELERA, "This disk has no trash (it cannot be written):") + "\n" + pap, "_OK")
+            return
+        end
+    end
+    op_empezar(tr(MSG_A_A_PAPELERA, "To the trash"))
+    for p in todas
+        op_poner(5, p, pap)
+    end
+    op_activa = true
+end
+
+func borrar_del_todo()
+    rutas = elegidas()
+    if rutas.length == 0
+        return
+    end
+    t = tr(MSG_A_BORRAR_SEGURO, "Delete for ever (it does not go to the trash)?") + "\n"
+    if rutas.length == 1
+        t = t + nombre_de(rutas[0])
+    else
+        t = t + "#{rutas.length} " + tr(MSG_A_ELEMENTOS, "items")
+    end
+    if mui_request(win, "Archivos", t, tr(MSG_A_BOTONES_BORRAR, "_Delete|_Cancel")) != 1
+        return
+    end
+    op_empezar(tr(MSG_A_BORRANDO, "Deleting"))
+    for p in con_sus_info(rutas)
+        poner_borrado(p)
+    end
+    op_activa = true
+end
+
+# borrar un cajón: primero lo de dentro, luego él
+func poner_borrado(p: String)
+    n = dir_read(p)
+    if n >= 0
+        var dentro: [String] = []
+        for i in (0..n - 1)
+            dentro.push(dir_entry_name(i))
+        end
+        for nm in dentro
+            poner_borrado(unir(p, nm))
+        end
+    end
+    op_poner(3, p, "")
+end
+
+func vaciar_papelera()
+    pap = papelera_de(ruta)
+    n = dir_read(pap)
+    if n <= 0
+        return
+    end
+    if mui_request(win, "Archivos", tr(MSG_A_VACIAR_SEGURO, "Empty the trash of this disk? It cannot be undone.") + "\n" + pap, tr(MSG_A_BOTONES_VACIAR, "_Empty|_Cancel")) != 1
+        return
+    end
+    var dentro: [String] = []
+    for i in (0..n - 1)
+        dentro.push(dir_entry_name(i))
+    end
+    op_empezar(tr(MSG_A_VACIANDO, "Emptying the trash"))
+    for nm in dentro
+        poner_borrado(unir(pap, nm))
+    end
+    op_activa = true
+end
+
+# lo elegido de la papelera, de vuelta a donde estaba
+func devolver()
+    if not str_ends(ruta, PAPELERA)
+        return
+    end
+    indice = file_read_text(ruta + "/.indice")
+    if indice == nil
+        indice = ""
+    end
+    lineas = str_split(indice, "\n")
+    op_empezar(tr(MSG_A_DEVOLVIENDO, "Restoring"))
+    for p in elegidas()
+        nm = nombre_de(p)
+        for l in lineas
+            t = str_split(l, "\t")
+            if t.length == 2 and t[0] == nm
+                op_poner(4, p, t[1])
+            end
+        end
+    end
+    op_activa = op_tipo.length > 0
+end
+
+# en la papelera: un nombre libre y apuntar de dónde vino
+func a_papelera_uno(p: String, pap: String) -> Bool
+    nm = nombre_de(p)
+    a = unir(pap, nm)
+    n = 2
+    while file_exists(a)
+        a = unir(pap, nm + " (#{n})")
+        n = n + 1
+    end
+    if not file_rename(p, a)
+        return false
+    end
+    indice = file_read_text(pap + "/.indice")
+    if indice == nil
+        indice = ""
+    end
+    ok = file_write_text(pap + "/.indice", indice + nombre_de(a) + "\t" + p + "\n")
+    return true
+end
+
+# ante un destino que ya existe: true para seguir (reemplazándolo), false para saltarlo
+func conflicto(a: String) -> Bool
+    if op_todos == 1
+        return true
+    elif op_todos == 2
+        return false
+    end
+    r = mui_request(win, "Archivos", tr(MSG_A_EXISTE, "It already exists:") + "\n" + a, tr(MSG_A_BOTONES_EXISTE, "_Replace|_Skip|Replace _all|Skip a_ll|_Cancel"))
+    if r == 1
+        return true
+    elif r == 3
+        op_todos = 1
+        return true
+    elif r == 4
+        op_todos = 2
+    elif r == 0
+        op_cancelar = true
+    end
+    return false
+end
+
+# un paso de la operación (como mucho unos 64 KB de copia)
+func op_paso()
+    if op_cancelar
+        if op_copia != 0
+            ok = file_copy_end(op_copia, false)
+            op_copia = 0
+        end
+        op_acabar()
+        return
+    end
+    if op_i >= op_tipo.length
+        # al mover entre discos, los originales, ya copiados
+        if op_borrar_luego.length > 0 and op_fallos == 0
+            var quedan: [String] = op_borrar_luego
+            op_borrar_luego = []
+            op_tipo = []
+            op_de = []
+            op_a = []
+            op_i = 0
+            for p in quedan
+                poner_borrado(p)
+            end
+            return
+        end
+        op_acabar()
+        return
+    end
+    t = op_tipo[op_i]
+    de = op_de[op_i]
+    a = op_a[op_i]
+    if t == 1
+        if op_copia == 0
+            if file_exists(a) and not conflicto(a)
+                op_i = op_i + 1
+                return
+            end
+            op_copia = file_copy_begin(de, a)
+            op_hecho = 0
+            op_total = file_size(de)
+            if op_copia == 0
+                op_fallos = op_fallos + 1
+                op_i = op_i + 1
+            end
+            return
+        end
+        n = file_copy_step(op_copia, 65536)
+        if n > 0
+            op_hecho = op_hecho + n
+        else
+            if not file_copy_end(op_copia, n == 0)
+                op_fallos = op_fallos + 1
+            end
+            op_copia = 0
+            op_hecho = 0
+            op_total = 0
+            op_i = op_i + 1
+        end
+        return
+    elif t == 2
+        if dir_read(a) < 0 and not dir_create(a)
+            op_fallos = op_fallos + 1
+        end
+    elif t == 3
+        if not file_delete(de)
+            p = file_protection(de)          # protegido contra borrado (bit d): se quita y otra vez
+            if p >= 0 and p & 1 != 0
+                ok = file_set_protection(de, p - 1)
+            end
+            if not file_delete(de)
+                op_fallos = op_fallos + 1
+            end
+        end
+    elif t == 4
+        if file_exists(a)
+            if conflicto(a)
+                ok = file_delete(a)
+            else
+                op_i = op_i + 1
+                return
+            end
+        end
+        if not file_rename(de, a)
+            op_fallos = op_fallos + 1
+        end
+    elif t == 5
+        if not a_papelera_uno(de, a)
+            op_fallos = op_fallos + 1
+        end
+    end
+    op_i = op_i + 1
+end
+
+func op_acabar()
+    op_activa = false
+    if op_fallos > 0
+        mui_request(win, "Archivos", "#{op_fallos} " + tr(MSG_A_FALLOS, "could not be done (write-protected, in use or the disk is full)"), "_OK")
+    end
+    leer(ruta, true)
+end
+
+func pegar()
+    if porta.length == 0
+        return
+    end
+    copiar_a(porta, ruta, porta_cortar)
+    if porta_cortar
+        porta = []
+        porta_cortar = false
+    end
+end
+
+# --- arrastrar ---
+
+func arrastre(estado: Int, mx: Int, my: Int, q: Int)
+    if estado == 1
+        if not arr_activo
+            # empieza solo si se movió algo desde un elegido
+            k = bajo(mx, my)
+            if cuantos_elegidos() == 0
+                return
+            end
+            arr_activo = true
+        end
+        arr_x = mx
+        arr_y = my
+        arr_sobre = destino_bajo(mx, my)
+    elif estado == 2
+        if arr_activo
+            arr_activo = false
+            d = destino_bajo(mx, my)
+            if d != ""
+                if d == "*papelera"
+                    a_la_papelera()
+                else
+                    rutas = elegidas()
+                    mover = volumen(d) == volumen(ruta)
+                    if q & 1 != 0
+                        mover = not mover
+                    end
+                    copiar_a(rutas, d, mover)
+                end
+            end
+            arr_sobre = ""
+        end
+    end
+end
+
+# --- los menús ---
+
+func menus()
+    m = mui_menu_begin(tr(MSG_A_M_ARCHIVO, "File"))
+        x = mui_menu_item(tr(MSG_A_M_NUEVO, "New drawer"), "N", ID_M_NUEVO)
+        x = mui_menu_item(tr(MSG_A_M_ABRIR, "Open"), "O", ID_M_ABRIR)
+        x = mui_menu_item(tr(MSG_A_M_RENOMBRAR, "Rename (F2)"), "R", ID_M_RENOMBRAR)
+        mui_menu_separator()
+        x = mui_menu_item(tr(MSG_A_M_PAPELERA, "Move to the trash (Del)"), "", ID_M_PAPELERA)
+        x = mui_menu_item(tr(MSG_A_M_DEVOLVER, "Restore from the trash"), "", ID_M_DEVOLVER)
+        x = mui_menu_item(tr(MSG_A_M_BORRAR, "Delete for ever (Shift+Del)"), "", ID_M_BORRAR)
+        x = mui_menu_item(tr(MSG_A_M_VACIAR, "Empty the trash"), "", ID_M_VACIAR)
+        mui_menu_separator()
+        x = mui_menu_item(tr(MSG_A_M_SALIR, "Close"), "Q", ID_M_SALIR)
+    mui_menu_end()
+    m = mui_menu_begin(tr(MSG_A_M_EDITAR, "Edit"))
+        x = mui_menu_item(tr(MSG_A_M_CORTAR, "Cut"), "X", ID_M_CORTAR)
+        x = mui_menu_item(tr(MSG_A_M_COPIAR, "Copy"), "C", ID_M_COPIAR)
+        x = mui_menu_item(tr(MSG_A_M_PEGAR, "Paste"), "V", ID_M_PEGAR)
+        mui_menu_separator()
+        x = mui_menu_item(tr(MSG_A_M_TODO, "Select all"), "A", ID_M_TODO)
+        x = mui_menu_item(tr(MSG_A_M_NADA, "Select none"), "", ID_M_NADA)
+    mui_menu_end()
+    m = mui_menu_begin(tr(MSG_A_M_VER, "View"))
+        x = mui_menu_item(tr(MSG_A_M_LISTA, "As a list"), "1", ID_M_LISTA)
+        x = mui_menu_item(tr(MSG_A_M_ICONOS, "As icons"), "2", ID_M_ICONOS)
+        mui_menu_separator()
+        x = mui_menu_item(tr(MSG_A_M_POR_NOMBRE, "Sort by name"), "", ID_M_POR_NOMBRE)
+        x = mui_menu_item(tr(MSG_A_M_POR_TAMANO, "Sort by size"), "", ID_M_POR_TAMANO)
+        x = mui_menu_item(tr(MSG_A_M_POR_FECHA, "Sort by date"), "", ID_M_POR_FECHA)
+        mui_menu_separator()
+        x = mui_menu_check(tr(MSG_A_M_INFO, "Show the .info files"), "", ID_M_INFO, false)
+        x = mui_menu_item(tr(MSG_A_M_ACTUALIZAR, "Refresh"), "U", ID_M_ACTUALIZAR)
+    mui_menu_end()
+    m = mui_menu_begin(tr(MSG_A_M_IR, "Go"))
+        x = mui_menu_item(tr(MSG_A_M_ATRAS, "Back"), "[", ID_M_ATRAS)
+        x = mui_menu_item(tr(MSG_A_M_ADELANTE, "Forward"), "]", ID_M_ADELANTE)
+        x = mui_menu_item(tr(MSG_A_M_ARRIBA, "Up"), "U", ID_M_ARRIBA)
+        x = mui_menu_item(tr(MSG_A_M_IR_A, "Go to..."), "L", ID_M_IR)
+    mui_menu_end()
+end
+
+func menu(ev: Int) -> Bool
+    if ev == ID_M_NUEVO
+        empezar_edicion(2)
+    elif ev == ID_M_ABRIR
+        if cursor >= 0
+            abrir(cursor)
+        end
+    elif ev == ID_M_RENOMBRAR
+        empezar_edicion(1)
+    elif ev == ID_M_PAPELERA
+        a_la_papelera()
+    elif ev == ID_M_DEVOLVER
+        devolver()
+    elif ev == ID_M_BORRAR
+        borrar_del_todo()
+    elif ev == ID_M_VACIAR
+        vaciar_papelera()
+    elif ev == ID_M_SALIR
+        return false
+    elif ev == ID_M_CORTAR or ev == ID_M_COPIAR
+        porta = elegidas()
+        porta_cortar = ev == ID_M_CORTAR
+    elif ev == ID_M_PEGAR
+        pegar()
+    elif ev == ID_M_TODO
+        for k in (0..orden.length - 1)
+            elegido[orden[k]] = true
+        end
+    elif ev == ID_M_NADA
+        nada()
+    elif ev == ID_M_LISTA
+        poner_vista(false)
+    elif ev == ID_M_ICONOS
+        poner_vista(true)
+    elif ev == ID_M_POR_NOMBRE or ev == ID_M_POR_TAMANO or ev == ID_M_POR_FECHA
+        por = ev - ID_M_POR_NOMBRE
+        al_reves = por != 0                      # tamaño y fecha: lo más grande y lo más nuevo primero
+        ordenar()
+    elif ev == ID_M_INFO
+        con_info = not con_info
+        ordenar()
+    elif ev == ID_M_ACTUALIZAR
+        lateral()
+        leer(ruta, true)
+    elif ev == ID_M_ATRAS
+        ir_atras()
+    elif ev == ID_M_ADELANTE
+        ir_adelante()
+    elif ev == ID_M_ARRIBA
+        subir()
+    elif ev == ID_M_IR
+        empezar_edicion(3)
+    end
+    return true
+end
+
+Main
+    colores()
+    if mui_app_begin("TrasfondoArchivos", "TRASFONDOARCHIVOS") == 0
+        Print "TrasfondoArchivos needs MUI"
+        return
+    end
+    letra = abrir_fuente(13)
+    inicio = ajuste("ARCHIVOS_INICIO", "INICIO", "SYS:")
+    if arg_count() > 0
+        inicio = arg(0)                          # TrasfondoArchivos Work:Proyectos
+    end
+    win = mui_window_begin("Archivos", 1)
+        menus()
+        lienzo = mui_canvas(420, 240)
+    mui_window_end()
+    mui_window_size(win, 70, 70)
+    mui_canvas_buffered(lienzo, true)
+    mui_canvas_on_draw(lienzo, pintar)
+    mui_canvas_on_input(lienzo, ID_LIENZO)
+    mui_canvas_on_move(lienzo, ID_MOVER)
+    mui_canvas_on_drag(lienzo, ID_ARRASTRE)
+    mui_canvas_take_keys(lienzo, true)
+    mui_on_drop(win, ID_SOLTAR)
+    lateral()
+    leer(inicio, false)
+    if ruta == ""
+        leer("SYS:", false)
+    end
+    if not mui_window_open(win)
+        Print "TrasfondoArchivos: the window could not be opened"
+        mui_app_end()
+        return
+    end
+    seguir = true
+    while seguir
+        ev = 0
+        if op_activa
+            ev = mui_poll_event()
+            if ev == 0
+                op_paso()
+                if not op_activa or time_ms() % 8 == 0
+                    repintar()
+                end
+                continue
+            end
+        else
+            ev = mui_wait_event_signals(file_notify_signal())
+        end
+        if ev == -1
+            seguir = false
+        elif ev == 0
+            if vigilado != 0 and file_changed(vigilado) and not op_activa
+                leer(ruta, true)
+                repintar()
+            end
+        elif ev == ID_LIENZO
+            b = mui_canvas_button(lienzo)
+            w = mui_canvas_wheel(lienzo)
+            k = mui_canvas_key(lienzo)
+            q = mui_canvas_qualifiers(lienzo)
+            if w != 0
+                rueda(w)
+            elif k >= 0
+                tecla(k, q, mui_canvas_char(lienzo))
+            elif b == 1
+                clic(mui_canvas_mouse_x(lienzo), mui_canvas_mouse_y(lienzo), q)
+            end
+            repintar()
+        elif ev == ID_ARRASTRE
+            arrastre(mui_canvas_drag(lienzo), mui_canvas_mouse_x(lienzo), mui_canvas_mouse_y(lienzo), mui_canvas_qualifiers(lienzo))
+            repintar()
+        elif ev == ID_SOLTAR
+            # iconos del Workbench soltados aquí: copiados (o movidos si es el mismo disco) a este cajón
+            var traidos: [String] = []
+            p = app_drop()
+            while p != ""
+                traidos.push(p)
+                p = app_drop()
+            end
+            if traidos.length > 0
+                copiar_a(traidos, ruta, volumen(traidos[0]) == volumen(ruta))
+            end
+            repintar()
+        elif ev != ID_MOVER
+            seguir = menu(ev)
+            repintar()
+        end
+    end
+    if op_copia != 0
+        ok = file_copy_end(op_copia, false)
+    end
+    mui_app_end()
+end

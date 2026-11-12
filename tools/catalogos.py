@@ -26,7 +26,7 @@ def correr(*args):
 def main():
     cd = raiz / "catalogos/Trasfondo.cd"
     correr("cd", raiz / "src/trasfondo.dash", raiz / "src/trasfondoprefs.dash", raiz / "src/dock.dash",
-           raiz / "src/ventanas.dash", "-o", cd)
+           raiz / "src/ventanas.dash", raiz / "src/archivos.dash", "-o", cd)
     for ct in sorted((raiz / "catalogos").glob("*.ct")):
         idioma = ct.stem
         correr("ct", cd, "--language", idioma, "--name", "Trasfondo.catalog", "--version", "1.0",

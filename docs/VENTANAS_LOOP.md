@@ -122,3 +122,17 @@ coordinar con freememlang-40)
   negro, la elegida en azul); rayas entre grupos (tamaño, delante/detrás, cerrar).
 - 2026-11-12: 1f: TrasfondoPrefs, página Ventanas: casillas "Encajar en los bordes", "Doble clic maximiza", "Menú de
   ventana", "Alt+Tab" (en dos columnas si caben) y la tecla del menú. Captura en RTG: bien.
+- 2026-11-12: Dash (rama `wm-eventos`): `file_protection`, `file_comment`, `file_date` y sus `file_set_*`,
+  `dir_entry_protection`, `dir_entry_comment`, `file_copy_attrs` y copiar a trozos (`file_copy_begin`,
+  `file_copy_step`, `file_copy_end`). `tests/test_file_attrs.dash` bien por los dos caminos, A1200 y A500.
+- 2026-11-12: 3a empezado: `src/archivos.dash` (TrasfondoArchivos). Decisión: ventana de MUI con una sola zona de
+  dibujo (`mui_canvas`) que pinta Trasfondo con su tema; MUI da lo que una ventana propia no tendría (tamaño,
+  menús con Amiga+tecla, peticiones, iconos soltados del Workbench, rueda, arrastre, teclas con calificadores).
+  Hecho: lateral (sitios, discos, papelera), barra con atrás/adelante/subir y la ruta en trozos (clic en el hueco:
+  escribirla), lista con columnas que ordenan, vista de iconos (los .info), elegir con Mayús y Ctrl, doble clic,
+  teclado, escribir para saltar, renombrar en el sitio (sin la extensión elegida), cajón nuevo, copiar/cortar/pegar,
+  arrastrar a un cajón, al lateral o a un trozo de la ruta (mismo disco mueve, otro copia, Mayús al revés), papelera
+  por disco con índice para devolver, vaciarla, borrar del todo con pregunta, conflictos (reemplazar, saltar, para
+  todos, cancelar), progreso abajo con cancelar (la copia a medias se borra), los .info con su fichero, avisos de
+  cambios del cajón (file_notify). Textos en el catálogo (400-458) con castellano.
+  `tests/prueba_archivos.py` (con el teclado, en RTG con MUI): todo bien. Capturas de lista e iconos: bien.

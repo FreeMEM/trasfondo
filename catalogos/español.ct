@@ -479,3 +479,180 @@ Alt+Tab
 MSG_316
 Menú de ventana
 ; Window menu
+MSG_400
+Hoy
+; Today
+MSG_401
+Sitios
+; Places
+MSG_402
+Discos
+; Disks
+MSG_403
+Papelera
+; Trash
+MSG_404
+Nombre
+; Name
+MSG_405
+Tamaño
+; Size
+MSG_406
+Fecha
+; Date
+MSG_407
+Comentario
+; Comment
+MSG_408
+elementos
+; items
+MSG_409
+elegidos
+; selected
+MSG_410
+libres
+; free
+MSG_411
+Cancelar
+; Cancel
+MSG_412
+No se puede abrir:
+; It cannot be opened:
+MSG_413
+Cajón nuevo
+; New drawer
+MSG_414
+Ya hay uno con ese nombre:
+; There is already one with that name:
+MSG_415
+No se pudo cambiar el nombre
+; It could not be renamed
+MSG_416
+Ese cajón no existe:
+; That drawer does not exist:
+MSG_417
+Copiando
+; Copying
+MSG_418
+Moviendo
+; Moving
+MSG_419
+Este disco no tiene papelera (no se puede escribir en él):
+; This disk has no trash (it cannot be written):
+MSG_420
+A la papelera
+; To the trash
+MSG_421
+¿Borrar del todo (no va a la papelera)?
+; Delete for ever (it does not go to the trash)?
+MSG_422
+_Borrar|_Cancelar
+; _Delete|_Cancel
+MSG_423
+Borrando
+; Deleting
+MSG_424
+¿Vaciar la papelera de este disco? No se puede deshacer.
+; Empty the trash of this disk? It cannot be undone.
+MSG_425
+_Vaciar|_Cancelar
+; _Empty|_Cancel
+MSG_426
+Vaciando la papelera
+; Emptying the trash
+MSG_427
+Devolviendo
+; Restoring
+MSG_428
+Ya existe:
+; It already exists:
+MSG_429
+_Reemplazar|_Saltar|Reemplazar _todos|Saltar t_odos|_Cancelar
+; _Replace|_Skip|Replace _all|Skip a_ll|_Cancel
+MSG_430
+no se pudieron hacer (protegidos, en uso o el disco lleno)
+; could not be done (write-protected, in use or the disk is full)
+MSG_431
+Archivo
+; File
+MSG_432
+Cajón nuevo
+; New drawer
+MSG_433
+Abrir
+; Open
+MSG_434
+Cambiar el nombre (F2)
+; Rename (F2)
+MSG_435
+A la papelera (Supr)
+; Move to the trash (Del)
+MSG_436
+Devolver de la papelera
+; Restore from the trash
+MSG_437
+Borrar del todo (Mayús+Supr)
+; Delete for ever (Shift+Del)
+MSG_438
+Vaciar la papelera
+; Empty the trash
+MSG_439
+Cerrar
+; Close
+MSG_440
+Editar
+; Edit
+MSG_441
+Cortar
+; Cut
+MSG_442
+Copiar
+; Copy
+MSG_443
+Pegar
+; Paste
+MSG_444
+Elegir todo
+; Select all
+MSG_445
+No elegir nada
+; Select none
+MSG_446
+Ver
+; View
+MSG_447
+En lista
+; As a list
+MSG_448
+Con iconos
+; As icons
+MSG_449
+Por nombre
+; Sort by name
+MSG_450
+Por tamaño
+; Sort by size
+MSG_451
+Por fecha
+; Sort by date
+MSG_452
+Enseñar los .info
+; Show the .info files
+MSG_453
+Actualizar
+; Refresh
+MSG_454
+Ir
+; Go
+MSG_455
+Atrás
+; Back
+MSG_456
+Adelante
+; Forward
+MSG_457
+Subir
+; Up
+MSG_458
+Ir a...
+; Go to...

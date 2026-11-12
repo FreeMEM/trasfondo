@@ -1,4 +1,4 @@
-; Texts of /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondo.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/dock.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/ventanas.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondo.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/dock.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/ventanas.dash, /home/freemem/Projects/trasfondo/.worktrees/ventanas/src/archivos.dash (tools/catalogo.py)
 ;
 ; MSG_COMA
 MSG_1 (1//)
@@ -477,3 +477,180 @@ Alt+Tab
 ; MSG_V_T_MENU
 MSG_316 (316//)
 Window menu
+; MSG_A_HOY
+MSG_400 (400//)
+Today
+; MSG_A_SITIOS
+MSG_401 (401//)
+Places
+; MSG_A_DISCOS
+MSG_402 (402//)
+Disks
+; MSG_A_PAPELERA
+MSG_403 (403//)
+Trash
+; MSG_A_NOMBRE
+MSG_404 (404//)
+Name
+; MSG_A_TAMANO
+MSG_405 (405//)
+Size
+; MSG_A_FECHA
+MSG_406 (406//)
+Date
+; MSG_A_COMENTARIO
+MSG_407 (407//)
+Comment
+; MSG_A_ELEMENTOS
+MSG_408 (408//)
+items
+; MSG_A_ELEGIDOS
+MSG_409 (409//)
+selected
+; MSG_A_LIBRES
+MSG_410 (410//)
+free
+; MSG_A_CANCELAR
+MSG_411 (411//)
+Cancel
+; MSG_A_NO_ABRE
+MSG_412 (412//)
+It cannot be opened:
+; MSG_A_CAJON_NUEVO
+MSG_413 (413//)
+New drawer
+; MSG_A_YA_HAY
+MSG_414 (414//)
+There is already one with that name:
+; MSG_A_NO_RENOMBRA
+MSG_415 (415//)
+It could not be renamed
+; MSG_A_NO_CAJON
+MSG_416 (416//)
+That drawer does not exist:
+; MSG_A_COPIANDO
+MSG_417 (417//)
+Copying
+; MSG_A_MOVIENDO
+MSG_418 (418//)
+Moving
+; MSG_A_SIN_PAPELERA
+MSG_419 (419//)
+This disk has no trash (it cannot be written):
+; MSG_A_A_PAPELERA
+MSG_420 (420//)
+To the trash
+; MSG_A_BORRAR_SEGURO
+MSG_421 (421//)
+Delete for ever (it does not go to the trash)?
+; MSG_A_BOTONES_BORRAR
+MSG_422 (422//)
+_Delete|_Cancel
+; MSG_A_BORRANDO
+MSG_423 (423//)
+Deleting
+; MSG_A_VACIAR_SEGURO
+MSG_424 (424//)
+Empty the trash of this disk? It cannot be undone.
+; MSG_A_BOTONES_VACIAR
+MSG_425 (425//)
+_Empty|_Cancel
+; MSG_A_VACIANDO
+MSG_426 (426//)
+Emptying the trash
+; MSG_A_DEVOLVIENDO
+MSG_427 (427//)
+Restoring
+; MSG_A_EXISTE
+MSG_428 (428//)
+It already exists:
+; MSG_A_BOTONES_EXISTE
+MSG_429 (429//)
+_Replace|_Skip|Replace _all|Skip a_ll|_Cancel
+; MSG_A_FALLOS
+MSG_430 (430//)
+could not be done (write-protected, in use or the disk is full)
+; MSG_A_M_ARCHIVO
+MSG_431 (431//)
+File
+; MSG_A_M_NUEVO
+MSG_432 (432//)
+New drawer
+; MSG_A_M_ABRIR
+MSG_433 (433//)
+Open
+; MSG_A_M_RENOMBRAR
+MSG_434 (434//)
+Rename (F2)
+; MSG_A_M_PAPELERA
+MSG_435 (435//)
+Move to the trash (Del)
+; MSG_A_M_DEVOLVER
+MSG_436 (436//)
+Restore from the trash
+; MSG_A_M_BORRAR
+MSG_437 (437//)
+Delete for ever (Shift+Del)
+; MSG_A_M_VACIAR
+MSG_438 (438//)
+Empty the trash
+; MSG_A_M_SALIR
+MSG_439 (439//)
+Close
+; MSG_A_M_EDITAR
+MSG_440 (440//)
+Edit
+; MSG_A_M_CORTAR
+MSG_441 (441//)
+Cut
+; MSG_A_M_COPIAR
+MSG_442 (442//)
+Copy
+; MSG_A_M_PEGAR
+MSG_443 (443//)
+Paste
+; MSG_A_M_TODO
+MSG_444 (444//)
+Select all
+; MSG_A_M_NADA
+MSG_445 (445//)
+Select none
+; MSG_A_M_VER
+MSG_446 (446//)
+View
+; MSG_A_M_LISTA
+MSG_447 (447//)
+As a list
+; MSG_A_M_ICONOS
+MSG_448 (448//)
+As icons
+; MSG_A_M_POR_NOMBRE
+MSG_449 (449//)
+Sort by name
+; MSG_A_M_POR_TAMANO
+MSG_450 (450//)
+Sort by size
+; MSG_A_M_POR_FECHA
+MSG_451 (451//)
+Sort by date
+; MSG_A_M_INFO
+MSG_452 (452//)
+Show the .info files
+; MSG_A_M_ACTUALIZAR
+MSG_453 (453//)
+Refresh
+; MSG_A_M_IR
+MSG_454 (454//)
+Go
+; MSG_A_M_ATRAS
+MSG_455 (455//)
+Back
+; MSG_A_M_ADELANTE
+MSG_456 (456//)
+Forward
+; MSG_A_M_ARRIBA
+MSG_457 (457//)
+Up
+; MSG_A_M_IR_A
+MSG_458 (458//)
+Go to...

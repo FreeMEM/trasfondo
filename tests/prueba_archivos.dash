@@ -1,0 +1,66 @@
+# Prueba de TrasfondoArchivos con el teclado, como una persona (la lanza tests/prueba_archivos.py, con
+# DH0:Archivos): en RAM:pa, copiar a.txt (Amiga+C), entrar en el cajón d (Return) y pegar (Amiga+V); subir
+# (Retroceso); a.txt a la papelera (Supr); renombrar b.txt a bx.txt (escribir "b" lo elige, F2, "x", Return); un
+# cajón nuevo (Amiga+N, Return); borrarlo del todo (Mayús+Supr y "D" en la pregunta); cerrar (Amiga+Q).
+
+func tecla(c: Int, q: Int)
+    input_key(c, q)
+    time_delay(25)
+end
+
+func esperar_archivos() -> Bool
+    for k in (0..100)
+        if input_active_title() == "Archivos: RAM:pa"
+            return true
+        end
+        time_delay(10)
+    end
+    return false
+end
+
+Main
+    ok = dir_create("RAM:pa")
+    ok = dir_create("RAM:pa/d")
+    t = ""
+    for k in (1..2000)
+        t = t + "0123456789"
+    end
+    ok = file_write_text("RAM:pa/a.txt", t)
+    ok = file_set_comment("RAM:pa/a.txt", "nota")
+    ok = file_write_text("RAM:pa/b.txt", "bbb")
+    run_program("DH0:Archivos RAM:pa")
+    Print "abierta #{esperar_archivos()}"
+    time_delay(50)
+    tecla(0x4D, 0)                 # abajo: d
+    tecla(0x4D, 0)                 # abajo: a.txt
+    tecla(0x33, 8)                 # Amiga+C
+    tecla(0x4C, 0)                 # arriba: d
+    tecla(0x44, 0)                 # Return: entra
+    tecla(0x34, 8)                 # Amiga+V
+    time_delay(100)
+    Print "pegado #{file_size(\"RAM:pa/d/a.txt\") == 20000} " + file_comment("RAM:pa/d/a.txt")
+    tecla(0x41, 0)                 # Retroceso: sube (d elegido)
+    tecla(0x4D, 0)                 # abajo: a.txt
+    tecla(0x46, 0)                 # Supr: a la papelera
+    time_delay(50)
+    Print "papelera #{not file_exists(\"RAM:pa/a.txt\")} #{file_exists(\"RAM:.Papelera/a.txt\")} #{str_contains(file_read_text(\"RAM:.Papelera/.indice\"), \"RAM:pa/a.txt\")}"
+    tecla(0x35, 0)                 # "b": salta a b.txt
+    tecla(0x51, 0)                 # F2
+    tecla(0x32, 0)                 # "x" antes de ".txt"
+    tecla(0x44, 0)                 # Return
+    time_delay(25)
+    Print "renombrado #{file_exists(\"RAM:pa/bx.txt\")} #{not file_exists(\"RAM:pa/b.txt\")}"
+    tecla(0x36, 8)                 # Amiga+N
+    tecla(0x44, 0)                 # Return: "New drawer"
+    time_delay(25)
+    Print "cajon nuevo #{file_exists(\"RAM:pa/New drawer\")}"
+    tecla(0x46, 1)                 # Mayús+Supr
+    time_delay(25)
+    tecla(0x22, 0)                 # "D": Delete
+    time_delay(75)
+    Print "borrado #{not file_exists(\"RAM:pa/New drawer\")}"
+    tecla(0x10, 8)                 # Amiga+Q
+    time_delay(50)
+    Print "cerrada #{input_active_title() != \"Archivos: RAM:pa\"}"
+    Print "fin"
+end
