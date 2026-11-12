@@ -1044,7 +1044,7 @@ Main
     end
     filas_s = (claves.length + 2) / 2                           # (+1: los segundos van en la rejilla)
     columna = 26 + 8 + largo_s + 12
-    if m * 2 + columna * 2 > screen_width() - 8
+    if m * 2 + columna * 2 > rtg_get_width() - 8
         filas_s = claves.length + 1                             # no caben dos: una
         columna = 0
     end
@@ -1063,13 +1063,14 @@ Main
     if ancho < x_campo + 220
         ancho = x_campo + 220
     end
-    if ancho > screen_width() - 8
-        ancho = screen_width() - 8
+    if ancho > rtg_get_width() - 8
+        ancho = rtg_get_width() - 8
     end
     alto = alto_ventana()
+    # (rtg_get_*: la pantalla del Workbench; screen_width/height dan 640x256 mientras no hay ventana)
     # en una pantalla baja (640x256 con una fuente grande) no cabe: todo más junto. El borde de arriba es el
     # título, con la fuente de la pantalla
-    cabe = screen_height() - (f + 3) - 4
+    cabe = rtg_get_height() - (f + 3) - 4
     if not wm_can_hide()                     # (AmigaOS 3.1: no puede esconder ventanas, no hay espacios)
         v_espacios = false
         alto = alto_ventana()
@@ -1088,15 +1089,15 @@ Main
         alto = alto_ventana()
     end
     izquierda = 60                           # y la ventana, más a la izquierda y más arriba si hace falta
-    if izquierda + ancho + 8 > screen_width()
-        izquierda = screen_width() - ancho - 8
+    if izquierda + ancho + 8 > rtg_get_width()
+        izquierda = rtg_get_width() - ancho - 8
         if izquierda < 0
             izquierda = 0
         end
     end
     arriba = 30
-    if arriba + alto + f + 3 + 4 > screen_height()
-        arriba = screen_height() - alto - f - 3 - 4
+    if arriba + alto + f + 3 + 4 > rtg_get_height()
+        arriba = rtg_get_height() - alto - f - 3 - 4
         if arriba < 0
             arriba = 0
         end
