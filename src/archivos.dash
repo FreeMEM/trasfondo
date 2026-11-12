@@ -56,7 +56,8 @@ const ID_M_IR = 43
 const ID_M_DEVOLVER = 44
 const ID_M_DOS = 37
 const ID_M_INFO_DE = 17
-const ID_M_DESHACER = 25      # la ventana de información
+const ID_M_DESHACER = 25
+const ID_M_FILTRO = 45      # la ventana de información
 const ID_I_GUARDAR = 50
 const ID_I_CANCELAR = 51
 
@@ -175,7 +176,8 @@ var buscar_txt: String = ""
 var buscar_ms: Int = 0
 
 # editar un texto dentro del lienzo (renombrar, cajón nuevo, ir a una ruta)
-var editando: Int = 0        # 0 nada, 1 renombrar, 2 cajón nuevo, 3 ruta
+var editando: Int = 0        # 0 nada, 1 renombrar, 2 cajón nuevo, 3 ruta, 4 filtro
+var filtro: String = ""      # solo se ven los nombres que lo llevan (Amiga+F), sin mirar mayúsculas
 var ed_texto: String = ""
 var ed_pos: Int = 0
 var ed_de: Int = -1          # el que se renombra (índice de nombres)
@@ -409,8 +411,9 @@ end
 
 func ordenar()
     orden = []
+    f = str_lower(filtro)
     for i in (0..nombres.length - 1)
-        if con_info or not es_info(nombres[i])
+        if (con_info or not es_info(nombres[i])) and (f == "" or str_contains(str_lower(nombres[i]), f))
             orden.push(i)
         end
     end
@@ -517,6 +520,7 @@ func ir(r: String)
     end
     adelante = []
     editando = 0
+    filtro = ""
     leer(r, false)
 end
 
@@ -793,7 +797,7 @@ func pintar_barra()
     # la ruta en trozos (o el campo para escribirla)
     x = ox + 8 + 3 * (bh + 4) + 8
     fin_x = ox + ancho - 8 - 2 * (bh + 4) - 8
-    if editando == 3
+    if editando == 3 or editando == 4
         campo(x, by, fin_x - x, bh)
     else
         trozos = trozos_ruta()
@@ -819,6 +823,14 @@ func pintar_barra()
             redondo(x, by, x + w - 1, by + bh - 1, 4, fondo)
             texto_en(x + 8, by + (bh - font_height()) / 2, t, color)
             x = x + w + 4
+        end
+        if filtro != ""                          # el filtro puesto, al final de la ruta
+            t = tr(MSG_A_FILTRO, "Filter") + ": " + filtro
+            w = font_text_width(t) + 16
+            if x + w <= fin_x
+                redondo(x, by, x + w - 1, by + bh - 1, 4, C_ACENTO)
+                texto_en(x + 8, by + (bh - font_height()) / 2, t, C_SOBRE_ACENTO)
+            end
         end
     end
     # lista e iconos, a la derecha
@@ -1775,6 +1787,9 @@ func empezar_edicion(que: Int)
         if cursor > 0
             a_la_vista(cursor - 1)
         end
+    elif que == 4
+        ed_texto = filtro
+        ed_pos = ed_texto.length
     else
         ed_texto = ruta
         ed_pos = ed_texto.length
@@ -1784,6 +1799,24 @@ func empezar_edicion(que: Int)
 end
 
 func teclear(c: Int, ch: String)
+    if editando == 4 and c == K_ESC
+        editando = 0
+        filtro = ""
+        ordenar()
+        cursor = -1
+        primera = 0
+        return
+    end
+    teclear_texto(c, ch)
+    if editando == 4                             # se ve al momento
+        filtro = ed_texto
+        ordenar()
+        cursor = -1
+        primera = 0
+    end
+end
+
+func teclear_texto(c: Int, ch: String)
     if c == K_RETURN or c == K_INTRO
         acabar_edicion(true)
     elif c == K_ESC
@@ -2483,6 +2516,7 @@ func menus()
         x = mui_menu_item(tr(MSG_A_M_ADELANTE, "Forward"), "]", ID_M_ADELANTE)
         x = mui_menu_item(tr(MSG_A_M_ARRIBA, "Up"), "U", ID_M_ARRIBA)
         x = mui_menu_item(tr(MSG_A_M_IR_A, "Go to..."), "L", ID_M_IR)
+        x = mui_menu_item(tr(MSG_A_M_FILTRO, "Filter..."), "F", ID_M_FILTRO)
     mui_menu_end()
 end
 
@@ -2549,6 +2583,8 @@ func menu(ev: Int) -> Bool
         subir()
     elif ev == ID_M_IR
         empezar_edicion(3)
+    elif ev == ID_M_FILTRO
+        empezar_edicion(4)
     end
     return true
 end

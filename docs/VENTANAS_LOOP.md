@@ -142,3 +142,5 @@ coordinar con freememlang-40)
   índice). `tests/prueba_archivos.py`: todo bien (también dos paneles, información y deshacer).
 - 2026-11-12: Dash 2.11.0 y Forja 0.6.1 publicadas (aprobado por el usuario). `wm-eventos` con main fusionado
   (944779a): 626/626 sin emulador; test_wm_eventos, test_file_attrs, test_ctrl_c y test_wm bien en A1200 y A500.
+- 2026-11-12: filtro (Amiga+F: solo los nombres que llevan el texto, al momento; Esc lo quita; cambiar de cajón
+  también), con su píldora en la barra. Probado en `prueba_archivos.py`.

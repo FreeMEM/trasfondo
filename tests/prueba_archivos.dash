@@ -86,6 +86,18 @@ Main
     tecla(0x31, 8)                 # Amiga+Z
     time_delay(50)
     Print "deshacer #{fuera} #{file_exists(\"RAM:pa/bx.txt\")} #{not str_contains(file_read_text(\"RAM:.Papelera/.indice\"), \"bx.txt\")}"
+    # filtro "bx" (Amiga+F, b, x, Return): lo primero que se ve es bx.txt (sin filtro sería el cajón d); Inicio, Supr
+    # lo manda a la papelera; Amiga+Z lo devuelve
+    tecla(0x23, 8)                 # Amiga+F
+    tecla(0x35, 0)
+    tecla(0x32, 0)
+    tecla(0x44, 0)
+    tecla(0x70, 0)                 # Inicio
+    tecla(0x46, 0)                 # Supr
+    time_delay(25)
+    Print "filtro #{not file_exists(\"RAM:pa/bx.txt\")} #{file_exists(\"RAM:pa/d\")}"
+    tecla(0x31, 8)                 # Amiga+Z
+    time_delay(25)
     tecla(0x10, 8)                 # Amiga+Q
     time_delay(50)
     Print "cerrada #{input_active_title() != \"Archivos: RAM:pa\"}"
