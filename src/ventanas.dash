@@ -58,6 +58,9 @@ const K_ESP_ARRIBA = 21       # espacios: el de arriba y el de abajo
 const K_ESP_ABAJO = 22
 const K_ESP_LLEVAR_ARRIBA = 23  # la ventana activa al espacio de arriba o al de abajo
 const K_ESP_LLEVAR_ABAJO = 24
+const K_T_MOVER_IZQ = 25     # la tira: la columna activa a la izquierda o a la derecha, y su ancho
+const K_T_MOVER_DER = 26
+const K_T_ANCHO = 27
 const K_ESP_IR = 30          # 30 + n: al espacio n (1 a 9)
 const K_ESP_LLEVAR = 40      # 40 + n: la ventana activa al espacio n
 
@@ -288,6 +291,26 @@ func restaurar()
     end
 end
 
+# --- la tira (MODO=TIRA), como Niri: cada ventana es una columna de una tira más ancha que la pantalla ---
+
+var modo_tira: Bool = false
+var t_id: [Int] = []         # las columnas en orden (de todos los espacios), su ancho en % de la zona útil y si
+var t_ancho: [Int] = []      # la escondió la tira por quedar fuera de la vista
+var t_oculta: [Bool] = []
+var t_foco: Int = 0          # la columna activa (su id)
+var t_cam: [Int] = []        # dónde empieza la vista en la tira, en píxeles, por espacio
+var t_anchos: [Int] = [50, 33, 67, 100]   # los anchos que va dando Ctrl Alt R
+var t_ancho_nuevo: Int = 50
+
+func t_buscar(id: Int) -> Int
+    for k in (0..t_id.length - 1)
+        if t_id[k] == id
+            return k
+        end
+    end
+    return -1
+end
+
 # --- espacios virtuales, uno encima de otro (AmigaOS 3.2: wm_hide) ---
 # Cada ventana es de un espacio; las de los demás, escondidas. Una ventana que no estaba apuntada es del espacio en
 # el que se la ve. Al salir, todas vuelven a la vista.
@@ -303,6 +326,14 @@ var esp_activa: [Int] = []   # la última activa de cada espacio (posición n - 
 func esp_elegible(i: Int) -> Bool
     f = wm_flags(i)
     return f & 16 != 0 and f & (2 + 32) == 0 and not str_starts(wm_task(i), "Trasfondo")
+end
+
+# una columna de la tira que esconden los espacios: la tira la tiene por escondida (la enseñará al volver)
+func esp_t_oculta(id: Int)
+    k = t_buscar(id)
+    if k >= 0
+        t_oculta[k] = true
+    end
 end
 
 func esp_buscar(id: Int) -> Int
@@ -343,21 +374,23 @@ end
 
 # enseña las ventanas del espacio n de atrás adelante (quedan como estaban) y activa la última que lo estuvo
 func esp_mostrar(n: Int)
-    hecho = true
-    tope = 1000
-    while hecho
-        hecho = false
+    var hecha: [Bool] = []
+    for k in (0..esp_id.length - 1)
+        # (en la tira, las de este espacio que van en ella las pone t_colocar: enseña solo las que caben)
+        hecha.push(esp_de[k] != n or (modo_tira and t_buscar(esp_id[k]) >= 0))
+    end
+    seguir = true
+    while seguir
         mejor = -1
         for k in (0..esp_id.length - 1)
-            if esp_de[k] == n and esp_z[k] < tope and (mejor < 0 or esp_z[k] > esp_z[mejor])
+            if not hecha[k] and (mejor < 0 or esp_z[k] > esp_z[mejor])
                 mejor = k
             end
         end
-        if mejor >= 0
+        seguir = mejor >= 0
+        if seguir
             ok = wm_show(esp_id[mejor])
-            tope = esp_z[mejor]
-            esp_z[mejor] = -1                  # (ya está)
-            hecho = true
+            hecha[mejor] = true
         end
     end
     a = esp_activa[n - 1]
@@ -384,10 +417,15 @@ func esp_ir(n: Int)
     for k in (0..esp_id.length - 1)
         if esp_de[k] == esp_actual
             ok = wm_hide(esp_id[k])
+            esp_t_oculta(esp_id[k])
         end
     end
     esp_actual = n
     esp_mostrar(n)
+    if modo_tira
+        t_foco = esp_activa[n - 1]
+        t_colocar()
+    end
 end
 
 # la ventana activa al espacio n: se esconde, y se activa otra del espacio de ahora
@@ -409,6 +447,7 @@ func esp_llevar(n: Int)
     esp_z[k] = -1
     esp_activa[n - 1] = id
     ok = wm_hide(id)
+    esp_t_oculta(id)
     for j in (0..esp_id.length - 1)
         if esp_de[j] == esp_actual and esp_id[j] != id
             wm_activate(esp_id[j])
@@ -438,6 +477,218 @@ func esp_rescatar()
             ok = wm_show(wm_id(i))
         end
     end
+end
+
+# --- la tira: colocar, seguir a la activa y las teclas ---
+
+# el espacio de una ventana (1 sin espacios; una que no está apuntada, del de ahora)
+func t_espacio(id: Int) -> Int
+    if espacios == 0
+        return 1
+    end
+    k = esp_buscar(id)
+    if k < 0
+        return esp_actual
+    end
+    return esp_de[k]
+end
+
+# las columnas del espacio de ahora, en orden (posiciones en t_id)
+func t_columnas() -> [Int]
+    var r: [Int] = []
+    for k in (0..t_id.length - 1)
+        if t_espacio(t_id[k]) == esp_actual
+            r.push(k)
+        end
+    end
+    return r
+end
+
+func t_ancho_px(pc: Int) -> Int
+    return (z_w + hueco) * pc / 100 - hueco
+end
+
+# coloca las columnas del espacio de ahora: la vista se mueve lo justo para que se vea entera la activa; las que no
+# caben enteras en la vista, escondidas
+func t_colocar()
+    cols = t_columnas()
+    if cols.length == 0
+        return
+    end
+    calcular_zona()
+    while t_cam.length < esp_actual
+        t_cam.push(0)
+    end
+    cam = t_cam[esp_actual - 1]
+    # dónde empieza cada columna en la tira
+    var xs: [Int] = []
+    x = 0
+    fx = 0
+    fw = -1
+    for k in cols
+        w = t_ancho_px(t_ancho[k])
+        xs.push(x)
+        if t_id[k] == t_foco or fw < 0
+            fx = x
+            fw = w
+        end
+        x = x + w + hueco
+    end
+    total = x - hueco
+    if fx < cam
+        cam = fx
+    elif fx + fw > cam + z_w
+        cam = fx + fw - z_w
+    end
+    if cam > total - z_w
+        cam = total - z_w                      # sin hueco vacío a la derecha si sobra tira
+    end
+    if cam < 0
+        cam = 0
+    end
+    t_cam[esp_actual - 1] = cam
+    for j in (0..cols.length - 1)
+        k = cols[j]
+        w = t_ancho_px(t_ancho[k])
+        if xs[j] >= cam and xs[j] + w <= cam + z_w + 1
+            wm_set_box(t_id[k], z_x + xs[j] - cam, z_y, w, z_h)
+            if t_oculta[k]
+                ok = wm_show(t_id[k])
+                t_oculta[k] = false
+            end
+        elif not t_oculta[k]
+            ok = wm_hide(t_id[k])
+            t_oculta[k] = true
+        end
+    end
+    if t_foco != 0
+        wm_activate(t_foco)
+    end
+end
+
+# mira si entró o salió alguna ventana, o si cambió la activa; coloca otra vez si hace falta
+func t_mirar()
+    if espacios > 0
+        esp_apuntar()                          # (una nueva queda apuntada en el espacio de ahora)
+    end
+    cambio = false
+    n = wm_read()
+    k = t_id.length - 1
+    while k >= 0
+        if buscar(t_id[k]) < 0
+            if t_id[k] == t_foco
+                t_foco = 0
+            end
+            t_id.remove(k)
+            t_ancho.remove(k)
+            t_oculta.remove(k)
+            cambio = true
+        end
+        k = k - 1
+    end
+    n = wm_read()
+    for i in (0..n - 1)
+        id = wm_id(i)
+        if manejable(i) and wm_flags(i) & (32 + 128) == 0 and not str_starts(wm_task(i), "Trasfondo") and t_buscar(id) < 0
+            # la nueva, a la derecha de la activa (o al final), y pasa a ser la activa
+            p = t_buscar(t_foco)
+            if p < 0
+                t_id.push(id)
+                t_ancho.push(t_ancho_nuevo)
+                t_oculta.push(false)
+            else
+                t_id.insert(p + 1, id)
+                t_ancho.insert(p + 1, t_ancho_nuevo)
+                t_oculta.insert(p + 1, false)
+            end
+            t_foco = id
+            cambio = true
+        end
+    end
+    a = wm_active()
+    if a != 0 and a != t_foco and t_buscar(a) >= 0
+        t_foco = a
+        cambio = true
+    end
+    if cambio
+        t_colocar()
+    end
+end
+
+# la columna de al lado (-1 izquierda, 1 derecha) pasa a ser la activa
+func t_ir(lado: Int)
+    t_mirar()
+    cols = t_columnas()
+    for j in (0..cols.length - 1)
+        if t_id[cols[j]] == t_foco
+            if j + lado >= 0 and j + lado < cols.length
+                t_foco = t_id[cols[j + lado]]
+                t_colocar()
+            end
+            return
+        end
+    end
+end
+
+# la columna activa cambia de sitio con la de al lado
+func t_mover(lado: Int)
+    t_mirar()
+    cols = t_columnas()
+    for j in (0..cols.length - 1)
+        if t_id[cols[j]] == t_foco
+            if j + lado >= 0 and j + lado < cols.length
+                a = cols[j]
+                b = cols[j + lado]
+                id = t_id[a]
+                t_id[a] = t_id[b]
+                t_id[b] = id
+                an = t_ancho[a]
+                t_ancho[a] = t_ancho[b]
+                t_ancho[b] = an
+                oc = t_oculta[a]
+                t_oculta[a] = t_oculta[b]
+                t_oculta[b] = oc
+                t_colocar()
+            end
+            return
+        end
+    end
+end
+
+# el ancho de la columna activa: el siguiente de t_anchos (o entera y como estaba, con maximizar)
+func t_otro_ancho(entera: Bool)
+    t_mirar()
+    k = t_buscar(t_foco)
+    if k < 0
+        return
+    end
+    if entera
+        if t_ancho[k] == 100
+            t_ancho[k] = t_ancho_nuevo
+        else
+            t_ancho[k] = 100
+        end
+    else
+        j = 0
+        while j < t_anchos.length and t_anchos[j] != t_ancho[k]
+            j = j + 1
+        end
+        t_ancho[k] = t_anchos[(j + 1) % t_anchos.length]
+    end
+    t_colocar()
+end
+
+# todas las columnas escondidas por la tira, a la vista (al salir)
+func t_todas()
+    for k in (0..t_id.length - 1)
+        if t_oculta[k] and buscar(t_id[k]) >= 0
+            ok = wm_show(t_id[k])
+        end
+    end
+    t_id = []
+    t_ancho = []
+    t_oculta = []
+    t_foco = 0
 end
 
 # --- mosaico ---
@@ -1117,6 +1368,16 @@ Main
         tecla("TECLA_MOSAICO", "ctrl alt t", K_MOSAICO)
         tecla("TECLA_AUTOMATICO", "ctrl alt a", K_AUTOMATICO)
         tecla("RATON_MOVER", "rawmouse lalt mouse_leftpress", K_MOVER)
+        modo_tira = str_upper(ajuste("VENTANAS_MODO", "MODO", "NORMAL")) == "TIRA" and wm_can_hide()
+        t_ancho_nuevo = Int(ajuste("VENTANAS_TIRA_ANCHO", "TIRA_ANCHO", "50"))
+        if t_ancho_nuevo < 10 or t_ancho_nuevo > 100
+            t_ancho_nuevo = 50
+        end
+        if modo_tira
+            tecla("TECLA_TIRA_MOVER_IZQUIERDA", "ctrl alt shift left", K_T_MOVER_IZQ)
+            tecla("TECLA_TIRA_MOVER_DERECHA", "ctrl alt shift right", K_T_MOVER_DER)
+            tecla("TECLA_TIRA_ANCHO", "ctrl alt r", K_T_ANCHO)
+        end
         espacios = Int(ajuste("VENTANAS_ESPACIOS", "ESPACIOS", "4"))
         if espacios > 9
             espacios = 9
@@ -1142,7 +1403,7 @@ Main
         seguir = true
         while seguir
             espera = 60000
-            if automatico and activo
+            if (automatico or modo_tira) and activo
                 espera = CADA
             end
             c = cx_wait(espera)
@@ -1160,9 +1421,22 @@ Main
                 seguir = false
             elif c == 3
                 activo = false
+                t_todas()
                 esp_todas()
             elif c == 4
                 activo = true
+            elif c == 100 + K_MAXIMIZAR and modo_tira and activo
+                t_otro_ancho(true)
+            elif c == 100 + K_IZQUIERDA and modo_tira and activo
+                t_ir(-1)
+            elif c == 100 + K_DERECHA and modo_tira and activo
+                t_ir(1)
+            elif c == 100 + K_T_MOVER_IZQ and activo
+                t_mover(-1)
+            elif c == 100 + K_T_MOVER_DER and activo
+                t_mover(1)
+            elif c == 100 + K_T_ANCHO and activo
+                t_otro_ancho(false)
             elif c == 100 + K_MAXIMIZAR
                 encajar(0)
             elif c == 100 + K_IZQUIERDA
@@ -1201,7 +1475,11 @@ Main
             if automatico and activo and seguir
                 mirar_mosaico()
             end
+            if modo_tira and activo and seguir
+                t_mirar()
+            end
         end
+        t_todas()
         esp_todas()                            # al salir, todas las ventanas a la vista
     end
 end

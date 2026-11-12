@@ -1,0 +1,65 @@
+# Prueba del modo tira de TrasfondoVentanas (MODO=TIRA; la lanza GUION=prueba_tira.dash tests/prueba_ventanas.py,
+# AmigaOS 3.2). Cada ventana nueva entra a la derecha de la activa con la mitad del ancho; la vista sigue a la activa
+# y esconde lo que no cabe. Ctrl Alt izquierda/derecha cambia de columna, Ctrl Alt R su ancho, Ctrl Alt Mayús
+# derecha la mueve, Ctrl Alt arriba la pone entera. Al parar, todas a la vista.
+
+func idx(t: String) -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_title(i) == t and wm_flags(i) & 32 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+func estado(t: String) -> String
+    i = idx(t)
+    if i < 0
+        return "-"
+    elif wm_flags(i) & 256 != 0
+        return "e"
+    end
+    return "#{wm_box(i, 0)}+#{wm_box(i, 2)}"
+end
+
+func ver(que: String)
+    Print que + ": A " + estado("A") + " B " + estado("B") + " C " + estado("C") + " activa " + input_active_title()
+end
+
+func tecla(codigo: Int, cual: Int)
+    input_key(codigo, cual)
+    time_delay(40)
+end
+
+Main
+    Print "pantalla #{rtg_get_width()}"
+    run_program("DH0:ventanas MODO=TIRA")
+    time_delay(150)
+    a = window_create("A", 40, 40, 200, 100, 1)
+    time_delay(80)
+    ver("abre A")
+    b = window_create("B", 60, 50, 200, 100, 1)
+    time_delay(80)
+    ver("abre B")
+    c = window_create("C", 80, 60, 200, 100, 1)
+    time_delay(80)
+    ver("abre C")
+    tecla(0x4F, 6)
+    ver("izquierda")
+    tecla(0x4F, 6)
+    ver("izquierda otra")
+    tecla(0x13, 6)
+    ver("ancho")
+    tecla(0x4E, 7)
+    ver("mueve a la derecha")
+    tecla(0x4C, 6)
+    ver("entera")
+    run_program("DH0:ventanas")
+    time_delay(60)
+    ver("al parar")
+    window_close(c)
+    window_close(b)
+    window_close(a)
+    Print "fin"
+end
