@@ -1190,7 +1190,11 @@ func a_abrir(atras: Bool)
         for i in (0..n - 1)
             id = wm_id(i)
             f = wm_flags(i)
-            elegible = f & (2 + 4 + 32 + 256) == 0 and wm_title(i) != ""
+            # las de este espacio; en la tira, también las columnas que quedan fuera de la vista
+            elegible = f & (2 + 4 + 32) == 0 and wm_title(i) != ""
+            if elegible and f & 256 != 0
+                elegible = modo_tira and t_buscar(id) >= 0 and t_espacio(id) == esp_actual
+            end
             if elegible and ((pasada == 0) == (id == activa))
                 m_ids.push(id)
                 m_ops.push(OP_IR + m_ids.length - 1)
