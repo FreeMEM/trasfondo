@@ -168,3 +168,7 @@ coordinar con freememlang-40)
   completa en marcha antes de fusionar. El actualizador (`src/actualizar.dash`) trae también TrasfondoArchivos
   (índice 11, ARCHIVOS) y lo pone en el cajón; compila, SIN probar (su prueba necesita una release en GitHub).
   Forja: el árbol de variables (idea de David Martínez) lo hace un agente en `~/Projects/forja/.worktrees/arbol`.
+- 2026-11-12: PR #162 fusionado en main de Dash (f8a53d2): batería completa bien (el lote del A1200, repetido con el
+  cerrojo: 911/911). Lleva también el arreglo del depurador (variables ocultas). Sin etiqueta ni release: falta el
+  sí del usuario para publicar Dash 2.12.0 y Trasfondo con las ventanas y el explorador. Forja: árbol de variables
+  fusionado en main local (4c71741), sin subir.
