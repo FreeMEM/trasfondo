@@ -153,3 +153,7 @@ coordinar con freememlang-40)
   Pendiente al publicar: `src/actualizar.dash` (el actualizador) no conoce TrasfondoArchivos (sus índices son fijos);
   miniaturas de imágenes; vista previa del encaje (1c, movimiento propio); "lista de ventanas" en la barra (es de
   Tachyon2).
+- 2026-11-12: 1c: vista previa del encaje en el arrastre propio (Alt + botón izquierdo): al llegar el puntero a un
+  borde sale un marco del color del acento donde quedará la ventana (cuatro ventanas finas sin borde); al alejarse se
+  quita; al soltar con el marco puesto, encaja. `GUION=prueba_mover.dash tests/prueba_ventanas.py`: bien; captura
+  bien. Con el arrastre de Intuition (la barra de título) sigue encajando al soltar, sin marco.

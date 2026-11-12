@@ -6,7 +6,8 @@
 #   Ctrl Alt abajo       como estaba; si ya lo estaba, detrás de todas (lo más parecido a minimizar)
 #   Ctrl Alt T           mosaico, una vez: la primera a la izquierda, las demás apiladas a la derecha
 #   Ctrl Alt A           mosaico automático, sí o no: cada ventana nueva entra y las demás se reparten
-#   Alt + botón izq.     mover la ventana de debajo del puntero, desde cualquier punto
+#   Alt + botón izq.     mover la ventana de debajo del puntero, desde cualquier punto; contra un borde enseña
+#                        dónde encajará (un marco) y al soltar encaja
 #   Alt + botón der.     cambiar su tamaño
 #   doble clic en la barra de título: maximizar (otra vez: como estaba)
 #   clic central en la barra de título, o Ctrl Alt Espacio: el menú de la ventana (maximizar, mitades, cuartos,
@@ -362,6 +363,59 @@ end
 # --- arrastrar con Alt ---
 
 # mover (tamano false) o cambiar el tamaño de la ventana de debajo del puntero hasta soltar el botón
+# la vista previa del encaje en el arrastre propio (Alt + botón): un marco del color del acento donde quedará la
+# ventana, hecho con cuatro ventanas finas sin borde (con el arrastre de Intuition no se puede: bloquea la pantalla)
+var vp: [Int] = []
+var vp_lado: Int = 0
+const VP_GRUESO = 4
+
+func vp_quitar()
+    for w in vp
+        window_close(w)
+    end
+    vp = []
+    vp_lado = 0
+    ok = window_use(0)
+end
+
+func vp_tira(x: Int, y: Int, w: Int, h: Int)
+    v = window_create("", x, y, w, h, 2 + 4 + 8)
+    if v != 0
+        vp.push(v)
+        ok = window_use(v)
+        m_pluma(C_M_SEL, 3)
+        if not m_paleta
+            pluma(tema_color("ACENTO", 0x8ab4f8))
+        end
+        gfx_rect(0, 0, w - 1, h - 1)
+    end
+end
+
+func vp_poner(lado: Int)
+    if lado == vp_lado
+        return
+    end
+    vp_quitar()
+    if lado == 0
+        return
+    end
+    como = lado
+    if lado == 7
+        como = 0
+    end
+    c = str_split(caja_de(como), ",")
+    x = Int(c[0])
+    y = Int(c[1])
+    w = Int(c[2])
+    h = Int(c[3])
+    g = VP_GRUESO
+    vp_tira(x, y, w, g)
+    vp_tira(x, y + h - g, w, g)
+    vp_tira(x, y + g, g, h - 2 * g)
+    vp_tira(x + w - g, y + g, g, h - 2 * g)
+    vp_lado = lado
+end
+
 func arrastrar(tamano: Bool)
     px = wm_pointer_x()
     py = wm_pointer_y()
@@ -400,6 +454,9 @@ func arrastrar(tamano: Bool)
                 wm_set_box(id, x0, y0, w0 + x - px, h0 + y - py)
             else
                 wm_set_box(id, x0 + x - px, y0 + y - py, w0, h0)
+                if con_encajar
+                    vp_poner(borde_de(x, y, 1, 1, 0))   # (solo el puntero: aquí no se para en el borde)
+                end
             end
             ultimo_x = x
             ultimo_y = y
@@ -411,6 +468,15 @@ func arrastrar(tamano: Bool)
         end
     end
     cx_key_add("", soltar)
+    lado = vp_lado
+    vp_quitar()
+    if lado != 0 and not tamano                 # soltada con la vista previa puesta: ahí queda
+        como = lado
+        if lado == 7
+            como = 0
+        end
+        encajar_id(id, como, "#{x0},#{y0},#{w0},#{h0}")
+    end
 end
 
 # --- la barra de título con el ratón: doble clic y encajar al soltar ---

@@ -1,0 +1,59 @@
+# Prueba de la vista previa del encaje en el arrastre propio de TrasfondoVentanas (la lanza
+# GUION=prueba_mover.dash tests/prueba_ventanas.py). Para poder hacerlo sin Alt pulsada (input_button no deja), se
+# arranca con RATON_MOVER sin Alt: cualquier clic izquierdo mueve. Llevar la ventana hasta el borde izquierdo enseña
+# el marco (cuatro ventanas sin borde de "ventanas"); al soltar, queda en la mitad izquierda.
+
+var sw: Int = 640
+var sh: Int = 256
+
+func propia() -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_title(i) == "Prueba" and wm_flags(i) & 32 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+# las ventanas sin borde de TrasfondoVentanas (el marco)
+func marcos() -> Int
+    n = wm_read()
+    k = 0
+    for i in (0..n - 1)
+        if wm_task(i) == "ventanas" and wm_flags(i) & 4 != 0
+            k = k + 1
+        end
+    end
+    return k
+end
+
+Main
+    sw = rtg_get_width()
+    sh = rtg_get_height()
+    run_program("DH0:ventanas \"RATON_MOVER=rawmouse mouse_leftpress\"")
+    time_delay(150)
+    a = window_create("Prueba", 200, 80, 200, 100, 1)
+    time_delay(50)
+    i = propia()
+    input_move_screen(wm_box(i, 0) + 100, wm_box(i, 1) + 40, 0)
+    time_delay(5)
+    input_button(1, true)
+    time_delay(10)
+    input_move_screen(0, sh / 2, 1)
+    time_delay(20)
+    Print "marco #{marcos() == 4}"
+    input_move_screen(sw / 2, sh / 2, 1)
+    time_delay(20)
+    Print "sin marco lejos #{marcos() == 0}"
+    input_move_screen(0, sh / 2, 1)
+    time_delay(20)
+    input_button(1, false)
+    time_delay(40)
+    i = propia()
+    Print "mitad #{wm_box(i, 0) < 10} #{abs(wm_box(i, 2) - sw / 2) < 12} #{marcos() == 0}"
+    window_close(a)
+    run_program("DH0:ventanas")
+    time_delay(50)
+    Print "fin"
+end

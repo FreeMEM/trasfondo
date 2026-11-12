@@ -28,7 +28,7 @@ def preparar(hd):
 
 
 capturas = [(40, sys.argv[1])] if len(sys.argv) > 1 else None
-r = run_programs([raiz / "tests/prueba_ventanas.dash"], timeout=900, workbench=True,
+r = run_programs([raiz / "tests" / os.environ.get("GUION", "prueba_ventanas.dash")], timeout=900, workbench=True,
                  kickstart=os.environ["DASH_KICKSTART_32"], system=str(Path.home() / ".cache/dash-emu/sys32"),
                  screenshot=capturas, on_disk=preparar)
 print(r[0].output if hasattr(r[0], "output") else r[0])
