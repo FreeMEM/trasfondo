@@ -1,6 +1,6 @@
 # Prueba de TrasfondoArchivos con el teclado, como una persona (la lanza tests/prueba_archivos.py, con
 # DH0:Archivos): en RAM:pa, copiar a.txt (Amiga+C), entrar en el cajón d (Return) y pegar (Amiga+V); subir
-# (Retroceso); a.txt a la papelera (Supr); renombrar b.txt a bx.txt (escribir "b" lo elige, F2, "x", Return); un
+# (Retroceso); a.txt a la papelera (Supr); renombrar b.txt a bx.txt (escribir "b" lo elige, F2, "b" sustituye al nombre elegido, "x", Return); un
 # cajón nuevo (Amiga+N, Return); borrarlo del todo (Mayús+Supr y "D" en la pregunta); cerrar (Amiga+Q).
 
 func tecla(c: Int, q: Int)
@@ -45,7 +45,8 @@ Main
     time_delay(50)
     Print "papelera #{not file_exists(\"RAM:pa/a.txt\")} #{file_exists(\"RAM:.Papelera/a.txt\")} #{str_contains(file_read_text(\"RAM:.Papelera/.indice\"), \"RAM:pa/a.txt\")}"
     tecla(0x35, 0)                 # "b": salta a b.txt
-    tecla(0x51, 0)                 # F2
+    tecla(0x51, 0)                 # F2: "b" elegido, sin ".txt"
+    tecla(0x35, 0)                 # "b" sustituye a lo elegido (antes se añadía: "bb")
     tecla(0x32, 0)                 # "x" antes de ".txt"
     tecla(0x44, 0)                 # Return
     time_delay(25)

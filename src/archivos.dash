@@ -210,6 +210,7 @@ var pintado_ms: Int = 0
 var ed_texto: String = ""
 var ed_pos: Int = 0
 var ed_de: Int = -1          # el que se renombra (índice de nombres)
+var ed_elegido: Bool = false # el texto hasta ed_pos está elegido: lo que se escriba lo cambia (como Nautilus)
 
 # portapapeles
 var porta: [String] = []
@@ -1260,6 +1261,11 @@ func campo(x: Int, y: Int, w: Int, h: Int)
     ty = y + (h - font_height()) / 2
     texto_en(x + 6, ty, t, C_TEXTO)
     cx = x + 6 + font_text_width(ed_texto[desde:ed_pos])
+    if ed_elegido and cx > x + 6
+        pluma(C_ACENTO)
+        gfx_rect(x + 6, ty, cx - 1, ty + font_height() - 1)
+        texto_en(x + 6, ty, cabe(ed_texto[desde:ed_pos], w - 12), C_SOBRE_ACENTO)
+    end
     pluma(C_ACENTO)
     gfx_rect(cx, ty, cx + 1, ty + font_height() - 1)
 end
@@ -2101,6 +2107,7 @@ end
 # --- editar un texto en el lienzo ---
 
 func empezar_edicion(que: Int)
+    ed_elegido = que == 1 or que == 2
     if que == 1
         if cursor < 0 or cursor >= orden.length or en_busqueda
             return
@@ -2158,6 +2165,22 @@ func teclear(c: Int, ch: String)
 end
 
 func teclear_texto(c: Int, ch: String)
+    if ed_elegido                                # la primera tecla tras F2 o "Cajón nuevo"
+        ed_elegido = false
+        if c == K_RETROCESO or c == K_SUPR       # borra lo elegido
+            ed_texto = ed_texto[ed_pos:]
+            ed_pos = 0
+            return
+        elif c == K_IZQUIERDA or c == K_INICIO   # al principio de lo elegido
+            ed_pos = 0
+            return
+        elif c == K_DERECHA                      # al final de lo elegido
+            return
+        elif c != K_RETURN and c != K_INTRO and c != K_ESC and c != K_FIN and ch != "" and str_code(ch, 0) >= 32
+            ed_texto = ed_texto[ed_pos:]         # lo escrito sustituye a lo elegido
+            ed_pos = 0
+        end
+    end
     if c == K_RETURN or c == K_INTRO
         acabar_edicion(true)
     elif c == K_ESC
