@@ -235,6 +235,14 @@ func campo(y: Int, texto: String, clave: String)
 end
 
 # un ciclo: nombres (lo que se ve) y opciones (lo que va al fichero), con |
+# un campo de texto largo (hasta 250 letras)
+func campo_largo(y: Int, texto: String, clave: String)
+    g_num.push(gt_string(x_campo, y, ancho - x_campo - m, f + 6, texto, valores[clave], 250))
+    g_clave.push(clave)
+    g_clase.push(G_TEXTO)
+    g_opciones.push("")
+end
+
 func ciclo(y: Int, texto: String, clave: String, nombres: String, opciones: String)
     g_num.push(gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, texto, nombres))
     g_clave.push(clave)
@@ -435,7 +443,7 @@ func pagina(n: Int, linea_version: String)
     g_lanzadores = -1
     seccion = n
     y = m
-    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup"))
+    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup|Files"))
     y = y + fila + hueco
     x = m
     ancho_n = screen_font_text_width("000") + 24
@@ -515,6 +523,11 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         campo(y, tr(MSG_CAPTURA_CARPETA, "Screenshots to"), "CAPTURA_CARPETA")
         y = y + fila + 2
+        # los botones de abajo del panel de ajustes rápidos (Ferrán García): Nombre=programa o cajón, con |
+        campo_largo(y, tr(MSG_RAPIDO_BOTONES, "Quick panel"), "RAPIDO_BOTONES")
+        y = y + fila + 2
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RAPIDO_AYUDA, "Name=program or drawer, separated by | (without : it is in SYS:Prefs)"))
+        y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen"))
     elif n == 2
         ciclo(y, tr(MSG_POSICION, "Position"), "DOCK_POSICION", tr(MSG_POSICIONES, "Bottom|Top|Left|Right"), "ABAJO|ARRIBA|IZQUIERDA|DERECHA")
@@ -578,6 +591,13 @@ func pagina(n: Int, linea_version: String)
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_IMAGEN_AYUDA, "Empty: the Workbench backdrop picture"))
         y = y + fila + 6
         y_muestras = y
+    elif n == 6
+        # el explorador: la botonera (Ferrán García; la de Opus 4, David Martínez) y dónde se abre
+        casilla(x, y, tr(MSG_A_M_BOTONES, "Buttons"), "ARCHIVOS_BOTONES")
+        y = y + fila + 2
+        ciclo(y, tr(MSG_A_BOTONERA, "Button style"), "ARCHIVOS_BOTONERA", tr(MSG_A_BOTONERAS, "A row with keys (Opus 5)|Big buttons (Opus 4)"), "OPUS5|OPUS4")
+        y = y + fila + 2
+        campo(y, tr(MSG_A_INICIO, "Opens at"), "ARCHIVOS_INICIO")
     else
         var piezas: [String] = str_split(PIEZAS, "|")
         var textos_a: [String] = [tr(MSG_ARR_FONDO, "The background: on, and with the Workbench"), tr(MSG_ARR_BARRA, "The bar: on, and with the Workbench"), tr(MSG_ARR_DOCK, "The dock: on, and with the Workbench"), tr(MSG_ARR_VENTANAS, "The window keys: on, and with the Workbench")]
@@ -649,7 +669,7 @@ func alto_ventana() -> Int
     if ventanas > fondo
         fondo = ventanas
     end
-    barra = m + fila + hueco + 10 * (fila + 2)
+    barra = m + fila + hueco + 13 * (fila + 2)
     if barra > fondo
         fondo = barra
     end
@@ -711,7 +731,7 @@ func fichero() -> String
     # PREFS=2: escritas sabiendo de la fecha; 3, de la temperatura
     texto = "PREFS=3\nMOSTRAR=" + mostrar_texto() + "\nTAREAS=#{n}\nCX_POPKEY=" + valores["CX_POPKEY"] + "\nCX_POPUP=" + popup
     texto = texto + "\nBUSCAR=" + valores["BUSCAR"] + "\nSEGUNDOS=" + valores["SEGUNDOS"] + "\nCADA=" + valores["CADA"] + "\nFONDO=" + valores["FONDO"] + "\nPOSICION=" + valores["POSICION"] + "\nCOLOR=" + valores["COLOR"] + "\n"
-    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU", "VENTANAS_ESPACIOS", "VENTANAS_TIRA", "VENTANAS_TECLA_ESPACIOS"]
+    var mas: [String] = ["UNIDADES", "BARRA_ESTILO", "BARRA_PROFUNDIDAD", "BARRA_CIUDAD", "BARRA_LAT", "BARRA_LON", "BARRA_VER_FECHA", "BARRA_VER_TIEMPO", "BARRA_VER_CPU", "BARRA_VER_MEMORIA", "BARRA_VER_TEMPERATURA", "CAPTURA_TECLA", "CAPTURA_CARPETA", "DOCK_POSICION", "DOCK_ICONO", "DOCK_ESCONDER", "DOCK_HUECO", "DOCK_FONDO", "DOCK_COLOR", "TEMA", "TEMA_MODO", "TEMA_ESQUEMA", "TEMA_IMAGEN", "VENTANAS_HUECO", "VENTANAS_MOSAICO", "VENTANAS_TECLA_MAXIMIZAR", "VENTANAS_TECLA_IZQUIERDA", "VENTANAS_TECLA_DERECHA", "VENTANAS_TECLA_RESTAURAR", "VENTANAS_TECLA_MOSAICO", "VENTANAS_TECLA_AUTOMATICO", "VENTANAS_RATON_MOVER", "VENTANAS_RATON_TAMANO", "VENTANAS_ENCAJAR", "VENTANAS_DOBLE_CLIC", "VENTANAS_MENU", "VENTANAS_ALT_TAB", "VENTANAS_TECLA_MENU", "VENTANAS_ESPACIOS", "VENTANAS_TIRA", "VENTANAS_TECLA_ESPACIOS", "RAPIDO_BOTONES", "ARCHIVOS_BOTONES", "ARCHIVOS_BOTONERA", "ARCHIVOS_INICIO"]
     for k in mas
         texto = texto + k + "=" + valores[k] + "\n"
     end
@@ -1007,6 +1027,10 @@ Main
     valores["VENTANAS_ESPACIOS"] = conf("VENTANAS_ESPACIOS", "4")
     valores["VENTANAS_TIRA"] = si(str_upper(conf("VENTANAS_TIRA", "NO")) == "SI")
     valores["VENTANAS_TECLA_ESPACIOS"] = conf("VENTANAS_TECLA_ESPACIOS", "ctrl alt")
+    valores["RAPIDO_BOTONES"] = conf("RAPIDO_BOTONES", "Screen=ScreenMode|Locale|Font|Pattern=WBPattern|Palette|Time|Input|Network")
+    valores["ARCHIVOS_BOTONES"] = si(str_upper(conf("ARCHIVOS_BOTONES", "SI")) != "NO")
+    valores["ARCHIVOS_BOTONERA"] = str_upper(conf("ARCHIVOS_BOTONERA", "OPUS5"))
+    valores["ARCHIVOS_INICIO"] = conf("ARCHIVOS_INICIO", "SYS:")
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         valores["ARR_" + p] = si(en_arranque(p) or corriendo(p))   # marcada: en marcha (y al arrancar)

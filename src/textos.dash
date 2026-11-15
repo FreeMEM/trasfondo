@@ -350,3 +350,13 @@ const MSG_P_AVISOS = 499
 const MSG_P_LIMPIAR = 500
 # TrasfondoPanel: la lista de avisos vacía
 const MSG_P_SIN_AVISOS = 501
+# TrasfondoPrefs, página Barra: los botones de abajo del panel de ajustes rápidos (Ferrán García)
+const MSG_RAPIDO_BOTONES = 502
+# TrasfondoPrefs: ayuda de ese campo
+const MSG_RAPIDO_AYUDA = 503
+# TrasfondoPrefs, sección Archivos: el estilo de la botonera del explorador (David Martínez)
+const MSG_A_BOTONERA = 504
+# TrasfondoPrefs: los dos estilos, separados por |
+const MSG_A_BOTONERAS = 505
+# TrasfondoPrefs, sección Archivos: el cajón en el que se abre el explorador
+const MSG_A_INICIO = 506

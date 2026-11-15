@@ -233,7 +233,7 @@ MSG_111 (111//)
 Section
 ; MSG_SECCIONES
 MSG_112 (112//)
-Background|Bar|Dock|Windows|Colours|Startup
+Background|Bar|Dock|Windows|Colours|Startup|Files
 ; MSG_CIUDAD
 MSG_113 (113//)
 City
@@ -789,3 +789,18 @@ Clear all
 ; MSG_P_SIN_AVISOS
 MSG_501 (501//)
 No notifications
+; MSG_RAPIDO_BOTONES
+MSG_502 (502//)
+Quick panel
+; MSG_RAPIDO_AYUDA
+MSG_503 (503//)
+Name=program or drawer, separated by | (without : it is in SYS:Prefs)
+; MSG_A_BOTONERA
+MSG_504 (504//)
+Button style
+; MSG_A_BOTONERAS
+MSG_505 (505//)
+A row with keys (Opus 5)|Big buttons (Opus 4)
+; MSG_A_INICIO
+MSG_506 (506//)
+Opens at

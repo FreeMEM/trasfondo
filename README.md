@@ -45,7 +45,9 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
 
 - **TrasfondoBarra**: a bar at the top with the time, the date, the weather, the CPU and the memory. Clicking it
   opens its panels: **TrasfondoPanel** (clock, calendar, weather and notifications) and **TrasfondoRapido**
-  (quick settings: preferences, network, memory, reboot). It can be a whole bar at the top or sit inside the
+  (quick settings: preferences, network, memory, reboot). The buttons at the bottom of the quick settings are set in
+  TrasfondoPrefs, Bar section, "Quick panel" (Ferrán García): `Name=program or drawer`, separated by `|`, up to 8;
+  without `:`, the program is in SYS:Prefs. For example, `Scout=SYS:Tools/Scout|Prefs=SYS:Prefs|Locale`. It can be a whole bar at the top or sit inside the
   screen's title bar, on the right, without covering it (TrasfondoPrefs, Bar section, "Style"; or `ESTILO=TITULO`).
   It stays behind the other windows, like the Workbench title bar, or always in front of them ("Depth"; or
   `PROFUNDIDAD=DELANTE`).
@@ -92,7 +94,10 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   filtering (Amiga+F), searching subdrawers (Amiga+B), information with comment and permissions (Amiga+I) and
   drag and drop, icons from the Workbench too. .info files always go with their file. At the bottom, a row of
   buttons with their key underneath ("Copy F5", "Rename F2"...), to use the mouse or the key (asked for by Ferrán
-  García); View > Buttons hides it. It comes pinned to the dock (the last icon); removing it from the dock does not put it back.
+  García); View > Buttons hides it. TrasfondoPrefs, Files section, chooses the style: that row, as in Opus 5, or big
+  buttons in two rows, as in Opus 4 (asked for by David Martínez; or `ARCHIVOS_BOTONERA=OPUS4`). It comes pinned to
+  the dock (the last icon); removing it from the dock does not put it back. It also opens from the bar's quick
+  settings, with the folder button (for those who do not use the dock, Ferrán García's idea).
 - **Colours**: the bar, the panels and the dock take their colours from the desktop backdrop, dark or light,
   with six schemes, one of them with the Workbench colours. TrasfondoPrefs shows a preview.
 - **TrasfondoPrefs** comes in sections (backdrop, bar, dock, windows, colours and startup). In Startup, ticking

@@ -1,6 +1,6 @@
 # TrasfondoRapido: el panel de ajustes rápidos que abre la barra desde su derecha. Arriba la máquina (memoria) con
-# los botones de captura, Prefs y reiniciar; en medio la red, los discos y la memoria; abajo, los Prefs del sistema a
-# un clic. Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
+# los botones del explorador, captura, Prefs y reiniciar; en medio la red, los discos y la memoria; abajo, los
+# botones de la rejilla (los Prefs del sistema de serie; se cambian con RAPIDO_BOTONES, Ferrán García). Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
 
 @workbench_output "NIL:"
 @version "TrasfondoRapido 2.9.4"
@@ -8,9 +8,10 @@
 import "dibujo.dash"
 import "tema.dash"
 import "captura.dash"
+import "ajustes.dash"
 
 const ANCHO = 400
-const ALTO = 300            # = PREFS_Y + dos filas de Prefs + el margen
+var alto: Int = 300          # = PREFS_Y + las filas de la rejilla + el margen
 const ALTO_BARRA = 24
 const M = 12
 const R = 10
@@ -26,9 +27,13 @@ var C_TENUE: Int = 0x5f6368
 var C_ACENTO: Int = 0x8ab4f8
 var C_PELIGRO: Int = 0xf28b82
 
-# los Prefs del sistema de la rejilla de abajo: el nombre en pantalla y el programa de SYS:Prefs
-const PREFS = "Screen|Locale|Font|Pattern|Palette|Time|Input|Network"
-const PREFS_PROG = "ScreenMode|Locale|Font|WBPattern|Palette|Time|Input|Network"
+# la rejilla de abajo (Ferrán García): RAPIDO_BOTONES, "Nombre=ruta|...", hasta 8. Una ruta sin ":" es de SYS:Prefs;
+# sin "=", el nombre es también la ruta. Una ruta puede ser un programa o un cajón (se abre en el Workbench)
+const PREFS = "Screen=ScreenMode|Locale|Font|Pattern=WBPattern|Palette|Time|Input|Network"
+const MAX_BOTONES = 8
+const P_ALTO = 34
+var p_nombre: [String] = []
+var p_ruta: [String] = []
 
 const BOTON = 36             # los botones redondos de arriba
 const CABECERA_Y = M
@@ -39,10 +44,12 @@ const PREFS_Y = TARJETAS_Y + 2 * (TARJETA_ALTO + 8)
 
 var f_normal: Int = 0
 var f_negrita: Int = 0
-var b_captura_x: Int = 0     # dónde están los botones de arriba
+var b_archivos_x: Int = 0    # dónde están los botones de arriba
+var b_captura_x: Int = 0
 var b_prefs_x: Int = 0
 var b_reiniciar_x: Int = 0
 var captura: Bool = false    # se pulsó la cámara: la captura, ya cerrado el panel
+var archivos: String = ""    # TrasfondoArchivos, en el cajón del panel ("" si no está)
 var confirmar: Bool = false  # se pulsó reiniciar una vez: la segunda reinicia
 var confirmar_desde: Int = 0 # time_ms de la primera (un doble clic no cuenta como dos)
 
@@ -102,6 +109,63 @@ func encendido(cx: Int, cy: Int, rgb: Int, fondo: Int)
     gfx_rect(cx - 1, cy - 9, cx + 1, cy + 1)
 end
 
+# una carpeta: el explorador (Ferrán García no usa el dock)
+func carpeta(cx: Int, cy: Int, rgb: Int, fondo: Int)
+    pluma(rgb)
+    gfx_rect(cx - 9, cy - 6, cx - 2, cy - 4)
+    gfx_rect(cx - 9, cy - 4, cx + 9, cy + 7)
+    pluma(fondo)
+    gfx_rect(cx - 7, cy - 1, cx + 7, cy + 5)
+    pluma(rgb)
+    gfx_rect(cx - 7, cy + 1, cx + 7, cy + 5)
+end
+
+func leer_botones()
+    t = str_trim(ajuste("RAPIDO_BOTONES", "BOTONES", PREFS))
+    if t == ""
+        t = PREFS
+    end
+    p_nombre = []
+    p_ruta = []
+    for e in str_split(t, "|")
+        e = str_trim(e)
+        igual = str_find(e, "=")
+        n = e
+        r = e
+        if igual >= 0
+            n = str_trim(e[0:igual])
+            r = str_trim(e[igual + 1:e.length])
+        end
+        if r != "" and p_ruta.length < MAX_BOTONES
+            if not str_contains(r, ":")
+                r = "SYS:Prefs/" + r
+            end
+            if n == ""                       # sin nombre: el último trozo de la ruta
+                n = r
+                k = str_find(n, ":")
+                while k >= 0
+                    n = n[k + 1:n.length]
+                    k = str_find(n, "/")
+                end
+                if n == ""
+                    n = r
+                end
+            end
+            p_nombre.push(n)
+            p_ruta.push(r)
+        end
+    end
+end
+
+# un botón de la rejilla: un cajón se abre en el Workbench; un programa se arranca
+func lanzar(r: String)
+    if str_ends(r, ":") or dir_read(r) >= 0
+        run_program("C:WBRun \"" + r + "\"")
+    else
+        run_program("\"" + r + "\"")
+    end
+end
+
 func pintar_cabecera()
     redondo(M, CABECERA_Y, ANCHO - M - 1, CABECERA_Y + CABECERA_ALTO - 1, R, C_TARJETA)
     # el "logo": un círculo con la A
@@ -110,25 +174,44 @@ func pintar_cabecera()
     font_use(f_negrita)
     font_style(2)
     centrado(M + 32, CABECERA_Y + 32 - font_height() / 2 + font_baseline(), "A", C_FONDO)
+    # los botones: el explorador, captura (JaviTecH), Prefs y reiniciar
+    y = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
+    b_reiniciar_x = ANCHO - M - 12 - BOTON
+    b_prefs_x = b_reiniciar_x - 8 - BOTON
+    b_captura_x = b_prefs_x - 8 - BOTON
+    b_archivos_x = b_captura_x
+    if archivos != ""
+        b_archivos_x = b_captura_x - 8 - BOTON
+    end
+    cabe_t = b_archivos_x - 8 - (M + 62)
+    titulo = "Amiga"
+    texto = "Chip " + mb(mem_chip_total())
+    if mem_fast_total() > 0
+        fast = "Fast " + mb(mem_fast_total())
+        font_use(f_normal)
+        if font_text_width(texto + " · " + fast) <= cabe_t
+            texto = texto + " · " + fast
+        else                                 # no cabe en una línea: la Chip arriba, en lugar de "Amiga"
+            titulo = texto
+            texto = fast
+        end
+    end
+    font_use(f_negrita)
+    font_style(2)
     pluma(C_TEXTO)
-    gfx_text_at(M + 62, CABECERA_Y + 16 + font_baseline(), "Amiga")
+    gfx_text_at(M + 62, CABECERA_Y + 16 + font_baseline(), titulo)
     font_style(0)
     font_use(f_normal)
     pluma(C_SUAVE)
-    texto = "Chip " + mb(mem_chip_total())
-    if mem_fast_total() > 0
-        texto = texto + " · Fast " + mb(mem_fast_total())
-    end
     if confirmar
         pluma(C_PELIGRO)
         texto = "Click again to restart"
     end
     gfx_text_at(M + 62, CABECERA_Y + 36 + font_baseline(), texto)
-    # los botones: captura (JaviTecH), Prefs y reiniciar
-    y = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
-    b_reiniciar_x = ANCHO - M - 12 - BOTON
-    b_prefs_x = b_reiniciar_x - 8 - BOTON
-    b_captura_x = b_prefs_x - 8 - BOTON
+    if archivos != ""
+        redondo(b_archivos_x, y, b_archivos_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
+        carpeta(b_archivos_x + BOTON / 2, y + BOTON / 2, C_TEXTO, C_BOTON)
+    end
     redondo(b_captura_x, y, b_captura_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
     camara(b_captura_x + BOTON / 2, y + BOTON / 2, C_TEXTO, C_BOTON)
     redondo(b_prefs_x, y, b_prefs_x + BOTON - 1, y + BOTON - 1, BOTON / 2, C_BOTON)
@@ -208,23 +291,28 @@ func pintar_tarjetas()
 end
 
 func pintar_prefs()
-    nombres = str_split(PREFS, "|")
     w = (ANCHO - 2 * M - 3 * 8) / 4
-    h = 34
-    for i in (0..nombres.length - 1)
+    h = P_ALTO
+    font_use(f_normal)
+    i = 0
+    while i < p_nombre.length
         x = M + (i % 4) * (w + 8)
         y = PREFS_Y + (i / 4) * (h + 8)
         redondo(x, y, x + w - 1, y + h - 1, h / 2, C_TARJETA)
-        font_use(f_normal)
-        centrado(x + w / 2, y + h / 2 - font_height() / 2 + font_baseline(), nombres[i], C_TEXTO)
+        t = p_nombre[i]
+        while t.length > 1 and font_text_width(t) > w - 12
+            t = t[0:t.length - 1]
+        end
+        centrado(x + w / 2, y + h / 2 - font_height() / 2 + font_baseline(), t, C_TEXTO)
+        i = i + 1
     end
 end
 
 func pintar_todo()
     pluma(C_BORDE)
-    gfx_rect(0, 0, ANCHO - 1, ALTO - 1)
+    gfx_rect(0, 0, ANCHO - 1, alto - 1)
     pluma(C_FONDO)
-    gfx_rect(1, 1, ANCHO - 2, ALTO - 2)
+    gfx_rect(1, 1, ANCHO - 2, alto - 2)
     pintar_cabecera()
     pintar_tarjetas()
     pintar_prefs()
@@ -234,6 +322,10 @@ end
 func pulsar(x: Int, y: Int) -> Bool
     by = CABECERA_Y + (CABECERA_ALTO - BOTON) / 2
     if y >= by and y < by + BOTON
+        if archivos != "" and x >= b_archivos_x and x < b_archivos_x + BOTON
+            run_program("\"" + archivos + "\"")
+            return true
+        end
         if x >= b_captura_x and x < b_captura_x + BOTON
             captura = true
             return true
@@ -257,14 +349,13 @@ func pulsar(x: Int, y: Int) -> Bool
         end
     end
     w = (ANCHO - 2 * M - 3 * 8) / 4
-    h = 34
+    h = P_ALTO
     if y >= PREFS_Y and x >= M
         c = (x - M) / (w + 8)
         f = (y - PREFS_Y) / (h + 8)
         i = f * 4 + c
-        progs = str_split(PREFS_PROG, "|")
-        if c < 4 and i < progs.length and (x - M) % (w + 8) < w and (y - PREFS_Y) % (h + 8) < h
-            run_program("SYS:Prefs/" + progs[i])
+        if c < 4 and i < p_ruta.length and (x - M) % (w + 8) < w and (y - PREFS_Y) % (h + 8) < h
+            lanzar(p_ruta[i])
             return true
         end
     end
@@ -321,6 +412,15 @@ Main
     else
         f_normal = abrir_fuente(12)
         f_negrita = abrir_fuente(14)
+        leer_botones()
+        filas = (p_ruta.length + 3) / 4
+        alto = PREFS_Y + filas * (P_ALTO + 8) + M - 8
+        if filas == 0
+            alto = PREFS_Y - 8 + M
+        end
+        if file_exists("PROGDIR:TrasfondoArchivos")
+            archivos = file_real_path("PROGDIR:TrasfondoArchivos")
+        end
         Rapido.open                  # de 1 x 1 en la esquina: a su sitio y luego a su tamaño (no se ve saltar)
         sx = rtg_get_width() - ANCHO - 6
         window_move(0, sx, ALTO_BARRA + 4)
@@ -329,9 +429,9 @@ Main
             time_delay(1)
             k = k + 1
         end
-        window_resize(0, ANCHO, ALTO)
+        window_resize(0, ANCHO, alto)
         k = 0
-        while (Rapido.width != ANCHO or Rapido.height != ALTO) and k < 100
+        while (Rapido.width != ANCHO or Rapido.height != alto) and k < 100
             time_delay(1)
             k = k + 1
         end

@@ -45,7 +45,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
 
 - **TrasfondoBarra**: una barra arriba con la hora, la fecha, el tiempo, la CPU y la memoria. Al pulsarla salen
   sus paneles: **TrasfondoPanel** (reloj, calendario, tiempo y avisos) y **TrasfondoRapido** (ajustes rápidos:
-  preferencias, red, memoria, reiniciar). Puede ser una barra entera arriba o ir dentro de la barra de título de
+  preferencias, red, memoria, reiniciar). Los botones de abajo de los ajustes rápidos se cambian en TrasfondoPrefs,
+  sección Barra, "Panel rápido" (Ferrán García): `Nombre=programa o cajón`, separados por `|`, hasta 8; sin `:`, el
+  programa es de SYS:Prefs. Por ejemplo, `Scout=SYS:Tools/Scout|Prefs=SYS:Prefs|Locale`. Puede ser una barra entera arriba o ir dentro de la barra de título de
   la pantalla, a la derecha, sin taparla (TrasfondoPrefs, sección Barra, "Estilo"; o `ESTILO=TITULO`). Se queda
   detrás de las demás ventanas, como la barra de título del Workbench, o siempre delante ("Profundidad"; o
   `PROFUNDIDAD=DELANTE`). En la
@@ -91,7 +93,10 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   filtrar (Amiga+F), buscar en los subcajones (Amiga+B), información con comentario y permisos (Amiga+I) y
   arrastrar y soltar, también iconos desde el Workbench. Los .info van siempre con su fichero. Abajo, una fila
   de botones con su tecla debajo ("Copiar F5", "Renombrar F2"...), para usar el ratón o la tecla (lo pidió Ferrán
-  García); Ver > Botones la quita. Viene fijado en el dock (el último icono); quitarlo del dock no lo vuelve a poner.
+  García); Ver > Botones la quita. En TrasfondoPrefs, sección Archivos, se elige el estilo: esa fila, como en Opus
+  5, o botones grandes en dos filas, como en Opus 4 (lo pidió David Martínez; o `ARCHIVOS_BOTONERA=OPUS4`). Viene
+  fijado en el dock (el último icono); quitarlo del dock no lo vuelve a poner. También se abre desde los ajustes
+  rápidos de la barra, con el botón de la carpeta (para quien no usa el dock, idea de Ferrán García).
 - **Colores**: la barra, los paneles y el dock toman los colores del fondo de escritorio, en oscuro o claro,
   con seis esquemas, uno de ellos con los colores del Workbench. TrasfondoPrefs enseña una vista previa.
 - **TrasfondoPrefs** va por secciones (fondo, barra, dock, ventanas, colores y arranque). En Arranque, marcar

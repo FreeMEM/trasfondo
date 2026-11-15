@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (13.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (15.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -234,8 +234,8 @@ MSG_111
 Sección
 ; Section
 MSG_112
-Fondo|Barra|Dock|Ventanas|Colores|Arranque
-; Background|Bar|Dock|Windows|Colours|Startup
+Fondo|Barra|Dock|Ventanas|Colores|Arranque|Archivos
+; Background|Bar|Dock|Windows|Colours|Startup|Files
 MSG_113
 Ciudad
 ; City
@@ -791,3 +791,18 @@ Descartar todos
 MSG_501
 Sin avisos
 ; No notifications
+MSG_502
+Panel rápido
+; Quick panel
+MSG_503
+Nombre=programa o cajón, separados por | (sin : es de SYS:Prefs)
+; Name=program or drawer, separated by | (without : it is in SYS:Prefs)
+MSG_504
+Botonera
+; Button style
+MSG_505
+Una fila con teclas (Opus 5)|Botones grandes (Opus 4)
+; A row with keys (Opus 5)|Big buttons (Opus 4)
+MSG_506
+Se abre en
+; Opens at

@@ -113,6 +113,8 @@ var barra_h: Int = 34        # alto de la barra de arriba
 var pie_h: Int = 22          # alto de la de abajo
 var bot_h: Int = 0           # alto de la fila de botones (0 sin ella)
 var con_botones: Bool = true # la fila de botones de abajo, con la tecla de cada uno (lo pidió Ferrán García)
+var opus4: Bool = false      # los botones gordos en dos filas, como en Directory Opus 4 (David Martínez); si no, una
+                             # fila con la tecla debajo, como en Opus 5 (ARCHIVOS_BOTONERA = OPUS4 u OPUS5)
 var bt_texto: [String] = []  # los botones que se ven: texto, tecla, la orden (un ID_ de menú) y si se puede ya
 var bt_tecla: [String] = []
 var bt_id: [Int] = []
@@ -628,6 +630,9 @@ func medir()
     bot_h = 0
     if con_botones
         bot_h = 2 * font_height() + 12       # el nombre y, debajo, su tecla
+        if opus4
+            bot_h = 2 * (font_height() + 12) + 6   # dos filas de botones gordos
+        end
     end
 end
 
@@ -1337,18 +1342,54 @@ func boton(t: String, k: String, id: Int, activo: Bool)
     bt_activo.push(activo)
 end
 
-# el botón en x del lienzo (en la fila de los botones), o -1
-func boton_en(mx: Int) -> Int
+# cuántos botones van en cada fila
+func bt_por_fila() -> Int
+    n = bt_texto.length
+    if opus4
+        return (n + 1) / 2
+    end
+    return n
+end
+
+# el botón en x, y del lienzo (en la botonera), o -1
+func boton_en(mx: Int, my: Int) -> Int
     n = bt_texto.length
     if n == 0
         return -1
     end
-    w = (ancho - 8 + 4) / n
+    pf = bt_por_fila()
+    w = (ancho - 8 + 4) / pf
     k = (mx - 4) / w
-    if mx < 4 or k >= n
+    if mx < 4 or k >= pf
+        return -1
+    end
+    if opus4 and my >= alto - pie_h - bot_h / 2
+        k = k + pf
+    end
+    if k >= n
         return -1
     end
     return k
+end
+
+# un botón con relieve, como los de Opus 4: claro arriba y a la izquierda, oscuro abajo y a la derecha
+func boton_gordo(x1: Int, y1: Int, x2: Int, y2: Int, t: String, fondo: Int, color: Int, hundido: Bool)
+    pluma(fondo)
+    gfx_rect(x1, y1, x2, y2)
+    luz = C_SUAVE
+    sombra = C_FONDO
+    if hundido
+        luz = C_FONDO
+        sombra = C_SUAVE
+    end
+    pluma(luz)
+    gfx_rect(x1, y1, x2, y1)
+    gfx_rect(x1, y1, x1, y2)
+    pluma(sombra)
+    gfx_rect(x1, y2, x2, y2)
+    gfx_rect(x2, y1, x2, y2)
+    t = cabe(t, x2 - x1 - 8)
+    texto_en(x1 + (x2 - x1 + 1 - font_text_width(t)) / 2, y1 + (y2 - y1 + 1 - font_height()) / 2, t, color)
 end
 
 func pintar_botones(y: Int)
@@ -1358,11 +1399,27 @@ func pintar_botones(y: Int)
     pluma(C_BORDE)
     gfx_line(ox, y, ox + ancho - 1, y)
     n = bt_texto.length
-    w = (ancho - 8 + 4) / n
+    pf = bt_por_fila()
+    w = (ancho - 8 + 4) / pf
     usar_letra()
     for k in (0..n - 1)
-        bx = ox + 4 + k * w
+        bx = ox + 4 + (k % pf) * w
         bw = w - 4
+        if opus4
+            fila_b = k / pf
+            fh = (bot_h - 6) / 2
+            by = y + 3 + fila_b * fh
+            fondo = C_BOTON
+            color = C_TEXTO
+            if not bt_activo[k]
+                color = C_TENUE
+            elif k == bt_encima
+                fondo = C_ACENTO
+                color = C_SOBRE_ACENTO
+            end
+            boton_gordo(bx, by + 1, bx + bw - 1, by + fh - 2, bt_texto[k], fondo, color, false)
+            continue
+        end
         fondo = C_BOTON
         color = C_TEXTO
         suave = C_SUAVE
@@ -1720,7 +1777,7 @@ func clic(mx: Int, my: Int, q: Int)
     # los botones: lo mismo que su tecla o su menú
     if con_botones and my >= alto - pie_h - bot_h and my < alto - pie_h
         poner_botones()
-        k = boton_en(mx)
+        k = boton_en(mx, my)
         if k >= 0 and bt_activo[k]
             boton_pulsado = bt_id[k]
         end
@@ -2978,6 +3035,7 @@ Main
     end
     letra = abrir_fuente(13)
     con_botones = str_upper(ajuste("ARCHIVOS_BOTONES", "BOTONES", "SI")) != "NO"
+    opus4 = str_upper(ajuste("ARCHIVOS_BOTONERA", "BOTONERA", "OPUS5")) == "OPUS4"
     inicio = ajuste("ARCHIVOS_INICIO", "INICIO", "SYS:")
     if arg_count() > 0
         inicio = arg(0)                          # TrasfondoArchivos Work:Proyectos
@@ -3097,7 +3155,7 @@ Main
                 encima = bajo(mx, my)
                 lat_encima = lateral_bajo(mx, my)
                 if con_botones and my >= alto - pie_h - bot_h and my < alto - pie_h
-                    bt_encima = boton_en(mx)
+                    bt_encima = boton_en(mx, my)
                 end
             end
             if encima != antes_e or lat_encima != antes_l or bt_encima != antes_b
