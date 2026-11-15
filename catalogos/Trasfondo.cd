@@ -794,7 +794,7 @@ MSG_502 (502//)
 Quick panel
 ; MSG_RAPIDO_AYUDA
 MSG_503 (503//)
-Name=program or drawer, separated by | (without : it is in SYS:Prefs)
+Name=program or drawer, separated by |
 ; MSG_A_BOTONERA
 MSG_504 (504//)
 Button style

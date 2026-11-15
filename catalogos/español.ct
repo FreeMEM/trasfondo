@@ -795,8 +795,8 @@ MSG_502
 Panel rápido
 ; Quick panel
 MSG_503
-Nombre=programa o cajón, separados por | (sin : es de SYS:Prefs)
-; Name=program or drawer, separated by | (without : it is in SYS:Prefs)
+Nombre=programa o cajón, separados por |
+; Name=program or drawer, separated by |
 MSG_504
 Botonera
 ; Button style

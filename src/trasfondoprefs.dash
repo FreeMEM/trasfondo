@@ -526,7 +526,7 @@ func pagina(n: Int, linea_version: String)
         # los botones de abajo del panel de ajustes rápidos (Ferrán García): Nombre=programa o cajón, con |
         campo_largo(y, tr(MSG_RAPIDO_BOTONES, "Quick panel"), "RAPIDO_BOTONES")
         y = y + fila + 2
-        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RAPIDO_AYUDA, "Name=program or drawer, separated by | (without : it is in SYS:Prefs)"))
+        gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RAPIDO_AYUDA, "Name=program or drawer, separated by |"))
         y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_RTG, "The bar, the dock and their panels need an RTG screen"))
     elif n == 2
