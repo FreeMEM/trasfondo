@@ -32,6 +32,7 @@ const REDES = 3              # interfaces de red, como mucho
 const CADA_DISCOS = 10       # segundos entre dos lecturas de los discos: cambian despacio, y cada una pregunta a todos
 const CADA_TEMP = 10         # y de la temperatura de la PiStorm: cambia despacio
 const CADA_SENAL = 10        # y de la señal de la WiFi: preguntarla manda órdenes al chip (wifipi.device despierta su receptor)
+const LENTO_MS = 30000       # un driver de red que no contestó a tiempo no se vuelve a preguntar en este rato
 
 const CX_OCULTAR = 1         # las órdenes de cx_wait
 const CX_MOSTRAR = 2
@@ -97,6 +98,8 @@ var firmas: [String] = []    # lo que enseñaban la cabecera y cada sección al 
 var temp: Int = -1           # la temperatura de la Raspberry Pi de una PiStorm, en décimas de grado (-1: sin Emu68)
 var faltan_temp: Int = 0     # segundos para volver a leerla
 var faltan_senal: Int = 0    # segundos para volver a preguntar la señal de la WiFi
+var lento: {String: Int} = {}   # driver de red que no contestó a tiempo -> hasta cuándo (time_ms) no preguntarle
+var orden_guardada: Int = 0  # una orden de Exchange que llegó midiendo: se atiende al acabar, sin esperar a la medida entera
 
 func por_ciento(milesimas: Int) -> String
     return "#{milesimas / 10}" + tr(MSG_COMA, ".") + "#{milesimas % 10} %"
@@ -404,6 +407,28 @@ func leer_discos()
     end
 end
 
+# una orden de Exchange esperando (sin esperar nada): midiendo la red, para cortar y atenderla ya (lo contó Ferrán García)
+func orden_pendiente() -> Bool
+    if orden_guardada == 0
+        orden_guardada = cx_command()
+    end
+    return orden_guardada != 0
+end
+
+# si a ese driver de red hay que dejarlo en paz un rato (no contestó a tiempo la última vez)
+func es_lento(n: String) -> Bool
+    if not lento.has(n)
+        return false
+    end
+    return time_ms() < lento[n]
+end
+
+func apuntar_lento(n: String, codigo: Int)
+    if codigo == 1
+        lento[n] = time_ms() + LENTO_MS
+    end
+end
+
 func leer_red()
     ahora = time_ms()
     decimas = (ahora - r_ms) / 100      # décimas de segundo desde la lectura anterior
@@ -436,6 +461,9 @@ func leer_red()
         else
             n = net_if_name(i)
         end
+        if orden_pendiente()             # Exchange espera: la red se mide en la vuelta siguiente
+            return
+        end
         if n != "lo0" and nombre.length < REDES
             nombre.push(n)
             w = 0
@@ -450,14 +478,28 @@ func leer_red()
                 end
             end
             nueva_senal = toca_senal or previo < 0
+            callado = es_lento(n)            # no contestó hace poco: lo de antes, sin preguntarle
             if r_paquetes
-                if nueva_senal
+                if callado and previo >= 0
+                    w = r_wifi[previo]
+                elif callado
+                    w = 1
+                elif nueva_senal
                     w = wifi_read_device(n, 0, 300)
+                    apuntar_lento(n, w)
                 else
                     w = r_wifi[previo]
                 end
-                d = net_driver_read(n, 0, 300)
-                if d == 0 and net_driver_has_bytes()     # los drivers que cuentan bytes (por tipo de paquete)
+                d = 1
+                if not callado and not es_lento(n) and not orden_pendiente()
+                    d = net_driver_read(n, 0, 300)
+                    apuntar_lento(n, d)
+                end
+                if d != 0 and previo >= 0                # sin respuesta: los contadores de antes (los del último que contestó serían de otro driver)
+                    bi = r_bytes_in[previo]
+                    bo = r_bytes_out[previo]
+                    pq = r_en_paquetes[previo]
+                elif d == 0 and net_driver_has_bytes()     # los drivers que cuentan bytes (por tipo de paquete)
                     bi = net_driver_bytes_in()
                     bo = net_driver_bytes_out()
                 else
@@ -471,10 +513,13 @@ func leer_red()
                     arriba.push(1)
                 end
             else
-                if nueva_senal
+                if nueva_senal and not callado
                     w = wifi_read(n, 300)
-                else
+                    apuntar_lento(n, w)
+                elif previo >= 0
                     w = r_wifi[previo]
+                else
+                    w = 1
                 end
                 d = 0
                 bi = net_if_bytes_in(i)
@@ -1245,7 +1290,11 @@ Main
                 if espera < 1
                     espera = 1
                 end
-                orden = cx_wait(espera)
+                orden = orden_guardada
+                orden_guardada = 0
+                if orden == 0
+                    orden = cx_wait(espera)
+                end
                 act_paso()
                 if act_idioma_nuevo() and lienzo != 0   # llegó el catálogo: en castellano ya
                     pintar_todo()
