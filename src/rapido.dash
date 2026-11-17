@@ -3,7 +3,7 @@
 # botones de la rejilla (los Prefs del sistema de serie; se cambian con RAPIDO_BOTONES, Ferrán García). Como el panel de resumen: lanzarlo otra vez lo cierra, y Esc y pulsar fuera también. Solo con RTG.
 
 @workbench_output "NIL:"
-@version "TrasfondoRapido 2.9.5"
+@version "TrasfondoRapido 2.9.6"
 
 import "dibujo.dash"
 import "tema.dash"
