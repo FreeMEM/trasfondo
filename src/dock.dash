@@ -1337,7 +1337,9 @@ func vigilar()
         return
     end
     if escondido
-        if raton_en_borde()
+        # con otra pantalla delante (la de DOpus), el puntero sigue moviéndose en la del Workbench: el dock salía
+        # y la ponía delante (lo contó Ernesto Laura de la Fuente)
+        if raton_en_borde() and wm_screen_front()
             mostrar_ya()
         end
         return

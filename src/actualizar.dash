@@ -434,10 +434,12 @@ func act_comprobar(c: Int, nombre: String, programa: String) -> String
     if a_completar                        # las piezas que faltan son de esta misma versión
         version = a_version
     end
-    marca = "$VER: " + programa + " " + version
+    # (sin el "$" en el texto: si no, el ejecutable de Trasfondo llevaba un "$VER: " vacío antes del suyo y Version
+    # decía eso; lo vio JaviTecH)
+    marca = "VER: " + programa + " " + version
     i = c
-    while i < h_n - marca.length
-        if buffer_get_byte(h_buf, i) == 36 and str_from_buffer(h_buf, i, marca.length) == marca
+    while i < h_n - marca.length - 1
+        if buffer_get_byte(h_buf, i) == 36 and str_from_buffer(h_buf, i + 1, marca.length) == marca
             return ""
         end
         i = i + 1
