@@ -50,6 +50,7 @@ var reloj_x2: Int = 0
 var rapido: String = "TrasfondoRapido"   # la orden de los ajustes rápidos
 var derecha_x: Int = 0       # dónde empieza el grupo de la derecha: al pulsarlo se abren los ajustes rápidos
 var tic: Int = 0             # vueltas del temporizador (5 por segundo)
+var seg_temp: Int = 0        # segundos desde que se leyó la temperatura (cada 10, como el panel)
 var aviso: String = "TrasfondoAviso"   # la orden que enseña el último aviso
 var avisos_tam: Int = -1     # el tamaño de ENV:Trasfondo.avisos la última vez que se miró
 var n_avisos: Int = 0
@@ -628,6 +629,13 @@ Main
                     tic = 0
                     cpu_sample()
                     cpu = cpu_total()
+                    if temp >= 0     # la de la PiStorm cambia: se leía solo al arrancar (lo contó Ingloriond)
+                        seg_temp = seg_temp + 1
+                        if seg_temp >= 10
+                            seg_temp = 0
+                            temp = pistorm_temperature()
+                        end
+                    end
                     pintar()
                 elif t_cambio or mirar_avisos() or mirar_espacio()
                     t_cambio = false
