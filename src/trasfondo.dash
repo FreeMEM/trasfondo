@@ -81,6 +81,8 @@ var d_libre: [Int] = []
 var r_nombre: [String] = []  # los interfaces de red de Roadshow, sin lo0; sin Roadshow, los drivers de red
 var r_paquetes: Bool = false # sin Roadshow: los contadores vienen de los drivers
 var r_en_paquetes: [Int] = []  # 1 si los contadores de esa red son paquetes (un driver que no cuenta bytes)
+var r_paq: [Int] = []        # los paquetes (entrada más salida) del driver en la lectura anterior, cuente o no bytes
+var sin_bytes: {String: Int} = {}   # drivers cuyos bytes no se mueven aunque pasen paquetes: con ellos, paquetes
 var r_arriba: [Int] = []     # 1 conectado
 var r_bytes_in: [Int] = []   # los contadores de la lectura anterior, para la velocidad
 var r_bytes_out: [Int] = []
@@ -429,6 +431,25 @@ func apuntar_lento(n: String, codigo: Int)
     end
 end
 
+# el driver dice que cuenta bytes por tipo de paquete, pero no los cuenta: siguen a cero con paquetes ya pasados, o
+# no se mueven mientras pasan paquetes (wifipi.device con AmiNetXDuo; con Roadshow no se pregunta al driver).
+# Entonces, sus paquetes (lo contó JaviTecH)
+func bytes_parados(n: String, previo: Int) -> Bool
+    if sin_bytes.has(n)
+        return true
+    end
+    pin = net_driver_packets_in()
+    pout = net_driver_packets_out()
+    if net_driver_bytes_in() == 0 and net_driver_bytes_out() == 0 and (pin != 0 or pout != 0)
+        return true
+    end
+    if previo >= 0 and r_en_paquetes[previo] == 0 and r_paq[previo] >= 0 and pin + pout != r_paq[previo] and net_driver_bytes_in() == r_bytes_in[previo] and net_driver_bytes_out() == r_bytes_out[previo]
+        sin_bytes[n] = 1
+        return true
+    end
+    return false
+end
+
 func leer_red()
     ahora = time_ms()
     decimas = (ahora - r_ms) / 100      # décimas de segundo desde la lectura anterior
@@ -444,6 +465,7 @@ func leer_red()
     var wifi: [Int] = []
     var senal: [Int] = []
     var en_paquetes: [Int] = []
+    var paq: [Int] = []
     toca_senal = faltan_senal <= 0
     if toca_senal
         faltan_senal = CADA_SENAL
@@ -499,7 +521,7 @@ func leer_red()
                     bi = r_bytes_in[previo]
                     bo = r_bytes_out[previo]
                     pq = r_en_paquetes[previo]
-                elif d == 0 and net_driver_has_bytes()     # los drivers que cuentan bytes (por tipo de paquete)
+                elif d == 0 and net_driver_has_bytes() and not bytes_parados(n, previo)   # los drivers que cuentan bytes (por tipo de paquete)
                     bi = net_driver_bytes_in()
                     bo = net_driver_bytes_out()
                 else
@@ -533,6 +555,11 @@ func leer_red()
             b_in.push(bi)
             b_out.push(bo)
             en_paquetes.push(pq)
+            if r_paquetes and d == 0
+                paq.push(net_driver_packets_in() + net_driver_packets_out())
+            else
+                paq.push(-1)
+            end
             e = 0
             s = 0
             if d != 0
@@ -569,6 +596,7 @@ func leer_red()
     r_wifi = wifi
     r_senal = senal
     r_en_paquetes = en_paquetes
+    r_paq = paq
     r_ms = ahora
     # para la gráfica, la suma de las redes conectadas en bytes; si ninguna los da, en paquetes
     h_paquetes = true
