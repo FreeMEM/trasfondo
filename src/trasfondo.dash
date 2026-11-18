@@ -84,6 +84,7 @@ var r_en_paquetes: [Int] = []  # 1 si los contadores de esa red son paquetes (un
 var r_paq: [Int] = []        # los paquetes (entrada más salida) del driver en la lectura anterior, cuente o no bytes
 var sin_bytes: {String: Int} = {}   # drivers cuyos bytes no se mueven aunque pasen paquetes: con ellos, paquetes
 var r_arriba: [Int] = []     # 1 conectado
+var ifs_cuentan: Bool = false      # alguna interfaz de la pila ha contado bytes (con AmiNetXDuo, nunca)
 var r_bytes_in: [Int] = []   # los contadores de la lectura anterior, para la velocidad
 var r_bytes_out: [Int] = []
 var r_entra: [Int] = []      # bytes (o paquetes) por segundo; -1 si el driver no los da
@@ -473,7 +474,19 @@ func leer_red()
     faltan_senal = faltan_senal - cada
     m = net_ifs_read()
     r_paquetes = m < 0
-    if m < 0                             # sin Roadshow: los drivers de red en uso, con cualquier pila
+    # AmiNetXDuo responde como Roadshow pero con los contadores de bytes a cero: mientras ninguna interfaz haya
+    # contado un byte, se mide por los drivers, que sí cuentan paquetes (anxwifipi.device; lo vio JaviTecH con SondaRed)
+    if not r_paquetes and not ifs_cuentan
+        for i in (0..m - 1)
+            if net_if_name(i) != "lo0" and (net_if_bytes_in(i) != 0 or net_if_bytes_out(i) != 0)
+                ifs_cuentan = true
+            end
+        end
+        if not ifs_cuentan
+            r_paquetes = true
+        end
+    end
+    if r_paquetes                        # sin Roadshow: los drivers de red en uso, con cualquier pila
         m = net_drivers_read()
     end
     for i in (0..m - 1)
