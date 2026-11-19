@@ -100,7 +100,12 @@ def main():
         shutil.copy(caj / nombre, rel / ("trasfondo" if nombre == "Trasfondo" else nombre))
     shutil.copy(os.path.join(cats, b"spanish", b"Trasfondo.catalog"), rel / "Trasfondo-espanol.catalog")
     (rel / "Arranque.info").write_bytes(info(icono(), WBPROJECT, herramienta="@@HERRAMIENTA@@", tooltypes=["DONOTWAIT"]))
+    # las firmas, para las notas de la release (tools/firmar.py: sin ellas Actualizar no baja nada)
+    sys.path.insert(0, str(Path(__file__).resolve().parent))
+    import firmar
+    (rel / "FIRMAS.txt").write_text(firmar.firmas(version, rel))
     print(rel)
+    print("Pega build/release/FIRMAS.txt en las notas de la release (no lo subas como fichero)")
 
 
 if __name__ == "__main__":

@@ -1,0 +1,23 @@
+# Prueba: la firma de las versiones (src/actualizar.dash, act_leer_firmas; aviso de seguridad del 31/10/2026). Unas notas de
+# release firmadas valen y dan el SHA-256 de cada fichero; con otra versión o un SHA-256 cambiado, no.
+#   DASH=~/Projects/FreeMEMLang python3 $DASH/tools/emu_run.py tests/prueba_firma.dash
+# expect: firmada: true hola true | otra versión: false | cambiada: false | sin firma: false | otra vez: true
+
+import "../src/textos.dash"
+import "../src/actualizar.dash"
+
+Main
+    j = "{\"tag_name\":\"v9.9\",\"body\":\"Notas.\r\n\r\n[sha256 b221d9dbb083a7f33428d7c2a3c3198ae925614d70210e28716ccaa7cd4ddb79 trasfondo]\r\n[sha256 6bea0bdc5c3d60ced0dd7f71d1314cd3d51d740468802955515fc71cecd1cd15 TrasfondoPrefs]\r\n[firma fe0d42a36db6fa13d3aee2dddbd452b33d5623a27ef02cbe195f26ce1ee5e50a07fb3a62809fa7ae4680888df06d3e7dcba3d272c03e84ebd331fb44ef033800]\r\n\"}"
+    b = buffer_alloc(8)
+    buffer_set_byte(b, 0, 104)
+    buffer_set_byte(b, 1, 111)
+    buffer_set_byte(b, 2, 108)
+    buffer_set_byte(b, 3, 97)
+    l = "firmada: " + act_leer_firmas(j, "9.9") + " hola " + (sha256(b, 4) == a_sha["trasfondo"])
+    l = l + " | otra versión: " + act_leer_firmas("{\"tag_name\":\"v9.8\",\"body\":\"Notas.\r\n\r\n[sha256 b221d9dbb083a7f33428d7c2a3c3198ae925614d70210e28716ccaa7cd4ddb79 trasfondo]\r\n[sha256 6bea0bdc5c3d60ced0dd7f71d1314cd3d51d740468802955515fc71cecd1cd15 TrasfondoPrefs]\r\n[firma fe0d42a36db6fa13d3aee2dddbd452b33d5623a27ef02cbe195f26ce1ee5e50a07fb3a62809fa7ae4680888df06d3e7dcba3d272c03e84ebd331fb44ef033800]\r\n\"}", "9.8")
+    l = l + " | cambiada: " + act_leer_firmas("{\"tag_name\":\"v9.9\",\"body\":\"Notas.\r\n\r\n[sha256 b221d9dbb083a7f33428d7c2a3c3198ae925614d70210e28716ccaa7cd4ddb79 trasfondo]\r\n[sha256 c63a855fcfec62cc64a47280a4f51d052b67930873906af30aa92de2ce160c06 TrasfondoPrefs]\r\n[firma fe0d42a36db6fa13d3aee2dddbd452b33d5623a27ef02cbe195f26ce1ee5e50a07fb3a62809fa7ae4680888df06d3e7dcba3d272c03e84ebd331fb44ef033800]\r\n\"}", "9.9")
+    l = l + " | sin firma: " + act_leer_firmas("{}", "9.9")
+    l = l + " | otra vez: " + act_leer_firmas(j, "9.9")
+    Print l
+    buffer_free(b)
+end

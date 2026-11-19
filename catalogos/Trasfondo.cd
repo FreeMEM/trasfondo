@@ -804,3 +804,6 @@ A row with keys (Opus 5)|Big buttons (Opus 4)
 ; MSG_A_INICIO
 MSG_506 (506//)
 Opens at
+; MSG_SIN_FIRMA
+MSG_507 (507//)
+%s: not signed by FreeMEM

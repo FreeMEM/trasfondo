@@ -360,3 +360,5 @@ const MSG_A_BOTONERA = 504
 const MSG_A_BOTONERAS = 505
 # TrasfondoPrefs, sección Archivos: el cajón en el que se abre el explorador
 const MSG_A_INICIO = 506
+# Actualizar: lo bajado no cuadra con la firma de la versión (aviso de seguridad del 31/10/2026)
+const MSG_SIN_FIRMA = 507

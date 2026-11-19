@@ -39,6 +39,13 @@ var a_falta_cat: Bool = false      # el sistema está en castellano y no hay cat
 var a_idioma: Bool = false         # llegó el catálogo: hay que repintar
 var a_red: Bool = false            # se abrió la red: al acabar se suelta (net_release)
 var a_estado: String = ""
+# La firma de cada versión (aviso de seguridad del 31/10/2026: con la cuenta de GitHub robada se podían repartir ejecutables
+# falsos). Las notas de la release llevan "[sha256 <64 cifras> <fichero>]" por cada fichero y "[firma <128 cifras>]",
+# la firma Ed25519 de "Trasfondo <versión>\n" y esas líneas ("<cifras> <fichero>\n", en su orden), hecha con
+# tools/firmar.py. Sin firma buena no se baja nada; cada fichero bajado debe dar su SHA-256.
+const FIRMA_CLAVE = "869ce6fb3521b5e4e23de43ad0d48502c42009d2844ec0961f0853baa2241e33"
+var a_sha: {String: String} = {}
+var a_firma_vista: String = ""     # la última firma que valió: la consulta de cada hora no la comprueba otra vez
 
 # la conexión en curso: HTTPS, HTTP/1.0 (sin trozos), siguiendo las redirecciones
 var h_host: String = ""
@@ -361,6 +368,7 @@ func act_consulta_hecha()
     if str_starts(etiqueta, "v")
         etiqueta = etiqueta[1:etiqueta.length]
     end
+    firmada = act_leer_firmas(j, etiqueta)
     completa = true                       # los dos ejecutables; el catálogo y las piezas pueden faltar
     for k in (0..N_FICH - 1)
         a_url[k] = ""
@@ -372,7 +380,7 @@ func act_consulta_hecha()
         if i >= 0
             a_tam[k] = json_numero(j, "size", i)
             a_url[k] = json_texto(j, "browser_download_url", i)
-            if a_tam[k] <= 0 or not str_starts(a_url[k], "https://")
+            if a_tam[k] <= 0 or not str_starts(a_url[k], "https://") or not firmada or not a_sha.has(nombre)
                 a_url[k] = ""
             end
         end
@@ -397,6 +405,46 @@ func act_consulta_hecha()
     end
 end
 
+# Lee las firmas de las notas de la release (en el JSON de la API) y comprueba la firma; true si vale. Deja en a_sha
+# el SHA-256 de cada fichero
+func act_leer_firmas(j: String, version: String) -> Bool
+    var nada: {String: String} = {}
+    a_sha = nada
+    mensaje = "Trasfondo " + version + "\n"
+    cuantos = 0
+    i = str_find(j, "[sha256 ")
+    while i >= 0
+        f = str_find_from(j, "]", i)
+        if f < 0
+            break
+        end
+        linea = j[i + 8:f]
+        e = str_find(linea, " ")
+        if e == 64
+            a_sha[linea[65:linea.length]] = str_lower(linea[0:64])
+            mensaje = mensaje + linea + "\n"
+            cuantos = cuantos + 1
+        end
+        i = str_find_from(j, "[sha256 ", f)
+    end
+    p = str_find(j, "[firma ")
+    if p < 0 or cuantos == 0 or p + 7 + 128 > j.length
+        a_sha = nada
+        return false
+    end
+    firma = j[p + 7:p + 7 + 128]
+    # (comprobarla lleva unos segundos en un Amiga sin acelerar: la misma firma con el mismo mensaje no se repite)
+    if firma + mensaje == a_firma_vista
+        return true
+    end
+    if ed25519_verify_text(FIRMA_CLAVE, firma, mensaje)
+        a_firma_vista = firma + mensaje
+        return true
+    end
+    a_sha = nada
+    return false
+end
+
 # --- bajar, comprobar e instalar ---
 
 func act_bajar(cual: Int)
@@ -414,6 +462,13 @@ func act_comprobar(c: Int, nombre: String, programa: String) -> String
     n = h_n - c
     if n != a_tam[a_cual]
         return con3(tr(MSG_TAMANO, "%1: the size does not match (%2 instead of %3)"), nombre, "#{n}", "#{a_tam[a_cual]}")
+    end
+    publicado = act_nombre(a_cual)
+    if a_cual == 2
+        publicado = CAT_ASSET
+    end
+    if not a_sha.has(publicado) or sha256(h_buf + c, n) != a_sha[publicado]
+        return con(tr(MSG_SIN_FIRMA, "%s: not signed by FreeMEM"), nombre)
     end
     if a_cual == 2                        # un catálogo: FORM ... CTLG
         if buffer_get_long(h_buf, c) != 0x464F524D or buffer_get_long(h_buf, c + 8) != 0x43544C47
