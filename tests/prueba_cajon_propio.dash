@@ -1,0 +1,72 @@
+# Prueba: Trasfondo en WBStartup pasado a un cajón propio (src/mover.dash; Ferrán García). Un WBStartup de mentira
+# en RAM: con el fondo y la barra arrancando (iconos de herramienta), el panel y Archivos (este con icono) y los
+# iconos de Arranque/ que deja el actualizador; sin plantilla de arranque no se toca nada.
+#   DASH=~/Projects/FreeMEMLang python3 $DASH/tools/emu_run.py tests/prueba_cajon_propio.dash
+# expect: sin plantilla: no | movido: si
+# expect: propio: trasfondo=si barra=si panel=si archivos=si archivos.info=si
+# expect: arranque: RAM:Propio/trasfondo RAM:Propio/TrasfondoBarra
+# expect: wbstartup: trasfondo=no barra=no panel=no archivos=no archivos.info=no arranque=no fondo.info=si barra.info=si
+# expect: wbstartup fondo.info: RAM:Propio/trasfondo
+# expect: cajon: RAM:Propio
+
+import "../src/mover.dash"
+
+func si_no(b: Bool) -> String
+    if b
+        return "si"
+    end
+    return "no"
+end
+
+# un icono de mentira: 80 bytes, la herramienta (largo con su cero y el texto) y 20 bytes detrás
+func icono(ruta: String, herramienta: String)
+    n = 80 + 4 + herramienta.length + 1 + 20
+    b = buffer_alloc(n)
+    buffer_set_byte(b, 0, 0xE3)
+    buffer_set_byte(b, 1, 0x10)
+    buffer_set_long(b, 80, herramienta.length + 1)
+    str_to_buffer(herramienta, b, 84)
+    buffer_set_byte(b, 84 + herramienta.length, 0)
+    file_save(ruta, b, n)
+    buffer_free(b)
+end
+
+# la herramienta de un icono (lo que hay tras el largo, en la posición 84)
+func herramienta(ruta: String) -> String
+    n = file_size(ruta)
+    if n < 90
+        return "?"
+    end
+    b = buffer_alloc(n)
+    file_load(ruta, b, n)
+    largo = buffer_get_long(b, 80)
+    t = str_from_buffer(b, 84, largo - 1)
+    buffer_free(b)
+    return t
+end
+
+Main
+    w = "RAM:WBStartup/"
+    dir_create("RAM:WBStartup")
+    for x in ["trasfondo", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoArchivos"]
+        file_write_text(w + x, "programa " + x)
+    end
+    icono(w + "trasfondo.info", "")
+    icono(w + "TrasfondoBarra.info", "")
+    icono(w + "TrasfondoArchivos.info", "")
+    # sin las plantillas de Arranque/: no se mueve
+    r = mover_a_cajon_propio(w, "RAM:Propio")
+    l = "sin plantilla: " + si_no(file_exists("RAM:Propio/trasfondo"))
+    dir_create("RAM:WBStartup/Arranque")
+    for p in ["Trasfondo", "TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
+        icono(w + "Arranque/" + p + ".info", w + p)
+    end
+    r = mover_a_cajon_propio(w, "RAM:Propio")
+    Print l + " | movido: " + si_no(str_contains(r, "RAM:Propio"))
+    q = "RAM:Propio/"
+    Print "propio: trasfondo=" + si_no(file_exists(q + "trasfondo")) + " barra=" + si_no(file_exists(q + "TrasfondoBarra")) + " panel=" + si_no(file_exists(q + "TrasfondoPanel")) + " archivos=" + si_no(file_exists(q + "TrasfondoArchivos")) + " archivos.info=" + si_no(file_exists(q + "TrasfondoArchivos.info"))
+    Print "arranque: " + herramienta(q + "Arranque/Trasfondo.info") + " " + herramienta(q + "Arranque/TrasfondoBarra.info")
+    Print "wbstartup: trasfondo=" + si_no(file_exists(w + "trasfondo")) + " barra=" + si_no(file_exists(w + "TrasfondoBarra")) + " panel=" + si_no(file_exists(w + "TrasfondoPanel")) + " archivos=" + si_no(file_exists(w + "TrasfondoArchivos")) + " archivos.info=" + si_no(file_exists(w + "TrasfondoArchivos.info")) + " arranque=" + si_no(file_exists(w + "Arranque")) + " fondo.info=" + si_no(file_exists(w + "Trasfondo.info")) + " barra.info=" + si_no(file_exists(w + "TrasfondoBarra.info"))
+    Print "wbstartup fondo.info: " + herramienta(w + "Trasfondo.info")
+    Print "cajon: " + str_trim(file_read_text("ENV:Trasfondo.cajon"))
+end

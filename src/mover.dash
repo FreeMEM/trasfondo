@@ -1,0 +1,129 @@
+# Trasfondo en WBStartup (Ferrán García, 2026-11-20): de cuando solo eran el fondo y la barra, todas las piezas
+# acabaron en WBStartup, y lo que tiene icono ahí arranca solo. TrasfondoPrefs (sección Arranque) ofrece pasarlo a un
+# cajón propio con mover_a_cajon_propio. Prueba: tests/prueba_cajon_propio.dash.
+
+import "textos.dash"
+
+# Si un cajón es WBStartup (lo que tiene icono ahí arranca con el Workbench)
+func es_wbstartup(c: String) -> Bool
+    l = str_lower(c)
+    return str_ends(l, "wbstartup/") or str_ends(l, "wbstartup")
+end
+
+# El cajón propio al que se pasa Trasfondo: SYS:Utilities/Trasfondo, o SYS:Trasfondo si no hay Utilities
+func cajon_propio() -> String
+    if file_exists("SYS:Utilities")
+        return "SYS:Utilities/Trasfondo"
+    end
+    return "SYS:Trasfondo"
+end
+
+# Copia un icono de proyecto de arranque cambiando su herramienta (de viejo a nuevo; las dos, rutas enteras)
+func icono_herramienta(origen: String, destino: String, viejo: String, nuevo: String) -> Bool
+    n = file_size(origen)
+    if n < 80 or n > 65536
+        return false
+    end
+    b = buffer_alloc(n)
+    if b == 0
+        return false
+    end
+    if file_load(origen, b, n) != n
+        buffer_free(b)
+        return false
+    end
+    # la herramienta va como un largo (con su cero) y el texto: se busca el texto y se cambia con su largo
+    v = str_lower(viejo)
+    i = 4
+    sitio = -1
+    while i + v.length < n and sitio < 0
+        if str_lower(str_from_buffer(b, i, v.length)) == v and buffer_get_long(b, i - 4) == v.length + 1
+            sitio = i
+        end
+        i = i + 1
+    end
+    if sitio < 0
+        buffer_free(b)
+        return false
+    end
+    resto = sitio + v.length + 1
+    total = sitio + nuevo.length + 1 + (n - resto)
+    s = buffer_alloc(total)
+    hecho = false
+    if s != 0
+        buffer_copy(s, 0, b, 0, sitio - 4)
+        buffer_set_long(s, sitio - 4, nuevo.length + 1)
+        str_to_buffer(nuevo, s, sitio)
+        buffer_set_byte(s, sitio + nuevo.length, 0)
+        buffer_copy(s, sitio + nuevo.length + 1, b, resto, n - resto)
+        hecho = file_save(destino, s, total) == total
+        buffer_free(s)
+    end
+    buffer_free(b)
+    return hecho
+end
+
+# Pasa Trasfondo de WBStartup a su cajón propio: copia allí sus programas (y sus iconos), escribe el cajón en ENV y
+# ENVARC, deja en WBStartup solo los iconos de arranque de las piezas que arrancaban (apuntando al cajón nuevo) y
+# quita de ahí lo demás. Lo que ya está en marcha sigue; al reiniciar arranca desde el cajón nuevo. Si no se puede
+# copiar todo, no se borra nada. Devuelve qué pasó, para la ventana.
+func mover_a_cajon_propio(viejo: String, nuevo_sin: String) -> String
+    nuevo = nuevo_sin + "/"
+    if not file_exists(nuevo_sin) and not dir_create(nuevo_sin)
+        return con(tr(MSG_NO_MOVIDO, "Not moved: %s"), nuevo_sin)
+    end
+    if not file_exists(nuevo + "Arranque")
+        dir_create(nuevo + "Arranque")
+    end
+    var todas: [String] = ["trasfondo", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoAviso", "TrasfondoRapido", "TrasfondoDock", "TrasfondoVentanas", "TrasfondoArchivos", "TrasfondoPrefs"]
+    var arrancan: [String] = ["Trasfondo", "TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
+    # 0. lo que arranca con el Workbench necesita su icono de arranque (Arranque/, de la 2.1 en adelante): sin él no
+    # se toca nada (si no, esa pieza dejaría de arrancar)
+    for p in arrancan
+        if file_exists(viejo + p + ".info") and not file_exists(viejo + "Arranque/" + p + ".info")
+            return con(tr(MSG_NO_MOVIDO, "Not moved: %s"), viejo + "Arranque/" + p + ".info")
+        end
+    end
+    # 1. los programas, copiados (nada se borra hasta que esté todo)
+    for x in todas
+        if file_exists(viejo + x) and not file_copy(viejo + x, nuevo + x)
+            return con(tr(MSG_NO_MOVIDO, "Not moved: %s"), nuevo + x)
+        end
+    end
+    # 2. los iconos de arranque, con la herramienta en el cajón nuevo
+    for p in arrancan
+        prog = p
+        if p == "Trasfondo"
+            prog = "trasfondo"
+        end
+        if file_exists(viejo + "Arranque/" + p + ".info") and not icono_herramienta(viejo + "Arranque/" + p + ".info", nuevo + "Arranque/" + p + ".info", viejo + p, nuevo + prog)
+            return con(tr(MSG_NO_MOVIDO, "Not moved: %s"), viejo + "Arranque/" + p + ".info")
+        end
+    end
+    # 3. el cajón nuevo, para las piezas y las Prefs
+    file_write_text("ENV:Trasfondo.cajon", nuevo_sin + "\n")
+    file_write_text("ENVARC:Trasfondo.cajon", nuevo_sin + "\n")
+    # 4. WBStartup: lo que arrancaba, con su icono de arranque nuevo; lo demás, fuera (con su icono al cajón nuevo)
+    var arr_bajo: [String] = []
+    for p in arrancan
+        arr_bajo.push(str_lower(p))
+        estaba = file_exists(viejo + p + ".info")
+        file_delete(viejo + p + ".info")
+        if estaba and file_exists(nuevo + "Arranque/" + p + ".info")
+            file_copy(nuevo + "Arranque/" + p + ".info", viejo + p + ".info")
+        end
+    end
+    for x in todas
+        if not (str_lower(x) in arr_bajo) and file_exists(viejo + x + ".info")
+            file_copy(viejo + x + ".info", nuevo + x + ".info")
+            file_delete(viejo + x + ".info")
+        end
+        file_delete(viejo + x)
+    end
+    for p in arrancan
+        file_delete(viejo + "Arranque/" + p + ".info")
+    end
+    file_delete(viejo + "Arranque")
+    return con(tr(MSG_MOVIDO, "Done: Trasfondo is in %s. It starts from there next time"), nuevo_sin)
+end
+

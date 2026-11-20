@@ -17,6 +17,7 @@
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
+import "mover.dash"
 import "tema.dash"
 import "paleta.dash"
 
@@ -66,6 +67,8 @@ var g_cancelar: Int = -1
 var g_actualizar: Int = -1
 var g_estado: Int = -1
 var g_lanzadores: Int = -1
+var g_mover: Int = -1                   # sección Arranque: pasar Trasfondo de WBStartup a un cajón propio
+var mover_hecho: String = ""            # lo que dijo al pasarlo
 var seccion: Int = 0
 var y_muestras: Int = 0                # dónde van las muestras de los colores (página 4)
 
@@ -441,6 +444,7 @@ func pagina(n: Int, linea_version: String)
     g_actualizar = -1
     g_estado = -1
     g_lanzadores = -1
+    g_mover = -1
     seccion = n
     y = m
     g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup|Files"))
@@ -610,6 +614,17 @@ func pagina(n: Int, linea_version: String)
         if cajon == ""
             y = y + 4
             gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_SIN_CAJON, "Install Trasfondo with its installer to choose this"))
+        elif es_wbstartup(cajon)
+            # todas las piezas en WBStartup (de cuando solo eran el fondo y la barra): lo que tiene icono ahí arranca
+            # solo; se ofrece pasarlas a un cajón propio y dejar en WBStartup solo los iconos de arranque (Ferrán García)
+            y = y + 4
+            gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_EN_WBSTARTUP, "Trasfondo is in WBStartup, all of its pieces too"))
+            y = y + fila
+            g_mover = gt_button(x, y, ancho - m * 2, alto_boton, con(tr(MSG_MOVER, "Move it to %s"), cajon_propio()))
+            y = y + alto_boton + 4
+        end
+        if mover_hecho != ""
+            gt_text(x, y, ancho - m * 2, f + 6, "", mover_hecho)
         end
     end
     y = alto - m - alto_boton
@@ -1194,6 +1209,14 @@ Main
             gt_set_text(g_estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
             ultimo = ""
             pedido = time_ms()
+        elif e == g_mover and g_mover >= 0
+            recoger()
+            mover_hecho = mover_a_cajon_propio(cajon, cajon_propio())
+            nuevo_c = file_read_text("ENV:Trasfondo.cajon")
+            if nuevo_c != nil and not es_wbstartup(str_trim(nuevo_c))
+                cajon = str_trim(str_replace(nuevo_c, "\n", "")) + "/"
+            end
+            pagina(seccion, linea_version)
         elif e == g_lanzadores and g_lanzadores >= 0
             recoger()                        # (lo de la página, que se pinta otra vez al volver)
             editar_lanzadores()

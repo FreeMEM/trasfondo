@@ -643,9 +643,17 @@ end
 # el icono de TrasfondoArchivos si le falta: la 2.9 lo bajaba sin .info y el Workbench no lo enseñaba (le pasó
 # a quien actualizó con el botón). Copia el de otra pieza, que es el mismo dibujo de herramienta, sin sitio fijo
 # (el Workbench lo coloca). Va al arrancar el fondo y al poner las piezas
+# Si un cajón es WBStartup (lo que tiene icono ahí arranca con el Workbench)
+func act_es_wbstartup(c: String) -> Bool
+    l = str_lower(c)
+    return str_ends(l, "wbstartup/") or str_ends(l, "wbstartup")
+end
+
 func act_icono_archivos()
     cajon = act_cajon()
-    if cajon == ""
+    # en WBStartup, un icono de herramienta arranca el programa en cada arranque: ahí no (Ferrán García; TrasfondoPrefs,
+    # sección Arranque, ofrece pasar Trasfondo a un cajón propio)
+    if cajon == "" or act_es_wbstartup(cajon)
         return
     end
     destino = cajon + "TrasfondoArchivos.info"

@@ -807,3 +807,15 @@ Opens at
 ; MSG_SIN_FIRMA
 MSG_507 (507//)
 %s: not signed by FreeMEM
+; MSG_EN_WBSTARTUP
+MSG_508 (508//)
+Trasfondo is in WBStartup, all of its pieces too
+; MSG_MOVER
+MSG_509 (509//)
+Move it to %s
+; MSG_MOVIDO
+MSG_510 (510//)
+Done: Trasfondo is in %s. It starts from there next time
+; MSG_NO_MOVIDO
+MSG_511 (511//)
+Not moved: %s

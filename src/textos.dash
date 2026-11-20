@@ -362,3 +362,11 @@ const MSG_A_BOTONERAS = 505
 const MSG_A_INICIO = 506
 # Actualizar: lo bajado no cuadra con la firma de la versión (aviso de seguridad del 31/10/2026)
 const MSG_SIN_FIRMA = 507
+# TrasfondoPrefs, sección Arranque: Trasfondo está en WBStartup (Ferrán García)
+const MSG_EN_WBSTARTUP = 508
+# TrasfondoPrefs, sección Arranque: el botón que lo pasa a un cajón propio (%s: el cajón)
+const MSG_MOVER = 509
+# TrasfondoPrefs: hecho (%s: el cajón)
+const MSG_MOVIDO = 510
+# TrasfondoPrefs: no se pudo (%s: lo que falló)
+const MSG_NO_MOVIDO = 511

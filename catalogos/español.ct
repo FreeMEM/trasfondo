@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (19.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (20.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -809,3 +809,15 @@ Se abre en
 MSG_507
 %s: no lleva la firma de FreeMEM
 ; %s: not signed by FreeMEM
+MSG_508
+Trasfondo está en WBStartup, y todas sus piezas también
+; Trasfondo is in WBStartup, all of its pieces too
+MSG_509
+Pasarlo a %s
+; Move it to %s
+MSG_510
+Hecho: Trasfondo está en %s. Arranca desde ahí la próxima vez
+; Done: Trasfondo is in %s. It starts from there next time
+MSG_511
+No se ha movido: %s
+; Not moved: %s
