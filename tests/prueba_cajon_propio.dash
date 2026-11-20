@@ -4,6 +4,7 @@
 #   DASH=~/Projects/FreeMEMLang python3 $DASH/tools/emu_run.py tests/prueba_cajon_propio.dash
 # expect: sin plantilla: no | movido: si
 # expect: propio: trasfondo=si barra=si panel=si archivos=si archivos.info=si
+# expect: tooltypes: trasfondo.info=CX_POPUP=NO barra.info=CIUDAD=Lleida
 # expect: arranque: RAM:Propio/trasfondo RAM:Propio/TrasfondoBarra
 # expect: wbstartup: trasfondo=no barra=no panel=no archivos=no archivos.info=no arranque=no fondo.info=si barra.info=si
 # expect: wbstartup fondo.info: RAM:Propio/trasfondo
@@ -51,8 +52,8 @@ Main
     for x in ["trasfondo", "TrasfondoBarra", "TrasfondoPanel", "TrasfondoArchivos"]
         file_write_text(w + x, "programa " + x)
     end
-    icono(w + "trasfondo.info", "")
-    icono(w + "TrasfondoBarra.info", "")
+    icono(w + "trasfondo.info", "CX_POPUP=NO")
+    icono(w + "TrasfondoBarra.info", "CIUDAD=Lleida")
     icono(w + "TrasfondoArchivos.info", "")
     # sin las plantillas de Arranque/: no se mueve
     r = mover_a_cajon_propio(w, "RAM:Propio")
@@ -65,6 +66,7 @@ Main
     Print l + " | movido: " + si_no(str_contains(r, "RAM:Propio"))
     q = "RAM:Propio/"
     Print "propio: trasfondo=" + si_no(file_exists(q + "trasfondo")) + " barra=" + si_no(file_exists(q + "TrasfondoBarra")) + " panel=" + si_no(file_exists(q + "TrasfondoPanel")) + " archivos=" + si_no(file_exists(q + "TrasfondoArchivos")) + " archivos.info=" + si_no(file_exists(q + "TrasfondoArchivos.info"))
+    Print "tooltypes: trasfondo.info=" + herramienta(q + "trasfondo.info") + " barra.info=" + herramienta(q + "TrasfondoBarra.info")
     Print "arranque: " + herramienta(q + "Arranque/Trasfondo.info") + " " + herramienta(q + "Arranque/TrasfondoBarra.info")
     Print "wbstartup: trasfondo=" + si_no(file_exists(w + "trasfondo")) + " barra=" + si_no(file_exists(w + "TrasfondoBarra")) + " panel=" + si_no(file_exists(w + "TrasfondoPanel")) + " archivos=" + si_no(file_exists(w + "TrasfondoArchivos")) + " archivos.info=" + si_no(file_exists(w + "TrasfondoArchivos.info")) + " arranque=" + si_no(file_exists(w + "Arranque")) + " fondo.info=" + si_no(file_exists(w + "Trasfondo.info")) + " barra.info=" + si_no(file_exists(w + "TrasfondoBarra.info"))
     Print "wbstartup fondo.info: " + herramienta(w + "Trasfondo.info")

@@ -108,6 +108,15 @@ func mover_a_cajon_propio(viejo: String, nuevo_sin: String) -> String
     for p in arrancan
         arr_bajo.push(str_lower(p))
         estaba = file_exists(viejo + p + ".info")
+        # su icono de herramienta, con los tooltypes del usuario, va con el programa: un programa de Dash lee los
+        # tooltypes de su propio icono (el de la herramienta), no del de proyecto de WBStartup (Ferrán García)
+        prog = p
+        if p == "Trasfondo"
+            prog = "trasfondo"
+        end
+        if estaba and file_exists(viejo + prog) and not file_exists(nuevo + prog + ".info")
+            file_copy(viejo + p + ".info", nuevo + prog + ".info")
+        end
         file_delete(viejo + p + ".info")
         if estaba and file_exists(nuevo + "Arranque/" + p + ".info")
             file_copy(nuevo + "Arranque/" + p + ".info", viejo + p + ".info")
