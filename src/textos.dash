@@ -370,3 +370,8 @@ const MSG_MOVER = 509
 const MSG_MOVIDO = 510
 # TrasfondoPrefs: no se pudo (%s: lo que falló)
 const MSG_NO_MOVIDO = 511
+# TrasfondoPrefs: el botón que cierra la ventana (Guardar y Usar ya no la cierran)
+const MSG_CERRAR = 512
+# TrasfondoPrefs: lo hecho al pulsar Guardar o Usar, en la línea de abajo
+const MSG_GUARDADO = 513
+const MSG_APLICADO = 514

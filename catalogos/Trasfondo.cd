@@ -819,3 +819,12 @@ Done: Trasfondo is in %s. It starts from there next time
 ; MSG_NO_MOVIDO
 MSG_511 (511//)
 Not moved: %s
+; MSG_CERRAR
+MSG_512 (512//)
+Close
+; MSG_GUARDADO
+MSG_513 (513//)
+Saved and applied
+; MSG_APLICADO
+MSG_514 (514//)
+Applied until you restart

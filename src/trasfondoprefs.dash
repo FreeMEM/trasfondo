@@ -631,7 +631,8 @@ func pagina(n: Int, linea_version: String)
     boton = (ancho - m * 2 - 16) / 3
     g_guardar = gt_button(m, y, boton, alto_boton, tr(MSG_GUARDAR, "Save"))
     g_usar = gt_button(m + boton + 8, y, boton, alto_boton, tr(MSG_USAR, "Use"))
-    g_cancelar = gt_button(m + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CANCELAR, "Cancel"))
+    # Guardar y Usar aplican y la ventana sigue abierta (lo pidió el usuario: así se cambian varias cosas seguidas)
+    g_cancelar = gt_button(m + (boton + 8) * 2, y, boton, alto_boton, tr(MSG_CERRAR, "Close"))
     gt_attach()
     gt_set_value(g_seccion, n)
     i = 0
@@ -1251,7 +1252,21 @@ Main
             elif e == g_guardar and valores["TEMA"] == "FONDO"
                 escribir_tema(true)             # (lo de Usar, también a ENVARC:)
             end
-            break
+            # la ventana sigue abierta: lo de ahora es el punto de partida del siguiente cambio
+            for k in valores.keys()
+                antes_v[k] = valores[k]
+                if str_starts(k, "ARR_")
+                    arr_antes[k] = valores[k]
+                end
+            end
+            dock_editado = false
+            if g_estado >= 0
+                if e == g_guardar
+                    gt_set_text(g_estado, tr(MSG_GUARDADO, "Saved and applied"))
+                else
+                    gt_set_text(g_estado, tr(MSG_APLICADO, "Applied until you restart"))
+                end
+            end
         end
     end
     gt_cleanup()

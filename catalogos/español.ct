@@ -821,3 +821,12 @@ Hecho: Trasfondo está en %s. Arranca desde ahí la próxima vez
 MSG_511
 No se ha movido: %s
 ; Not moved: %s
+MSG_512
+Cerrar
+; Close
+MSG_513
+Guardado y aplicado
+; Saved and applied
+MSG_514
+Aplicado hasta reiniciar
+; Applied until you restart
