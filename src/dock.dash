@@ -701,6 +701,9 @@ end
 
 # marca: el sitio donde caería lo que se arrastra (-1 ninguno)
 func pintar(marca: Int)
+    # en la ventana del dock, aunque el menú esté abierto (con el menú de pulsación larga, el dock se pintaba dentro
+    # del menú: salían sus dos primeros iconos en vez de las opciones; lo contó el usuario)
+    ok = window_use(0)
     oculto = oculto_listo()
     if oculto
         bitmap_draw_to(0)
@@ -1057,6 +1060,9 @@ func menu_cerrar()
 end
 
 func menu_pintar(sel: Int)
+    if menu == 0 or not window_use(menu)
+        return
+    end
     w = 0
     pluma(C_BORDE)
     gfx_rect(0, 0, menu_ancho() - 1, menu_textos.length * menu_alto + 7)
@@ -1128,6 +1134,7 @@ func menu_abrir(i: Int)
         window_activate(menu)
         gfx_mode(0)                    # (el texto, sin fondo)
         menu_pintar(-1)
+        ok = window_use(0)
     end
 end
 
