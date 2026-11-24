@@ -379,3 +379,5 @@ const MSG_APLICADO = 514
 const MSG_COMO_PILA = 515
 const MSG_COMO_CAJON = 516
 const MSG_ABRIR_CAJON = 517
+# TrasfondoDock: abrir lo de un icono desde su menú
+const MSG_LANZAR = 518

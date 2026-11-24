@@ -834,8 +834,11 @@ MSG_515
 Mostrar como pila
 ; Show as a stack
 MSG_516
-Abrir como cajón
-; Open as a drawer
+Mostrar como icono
+; Show as an icon
 MSG_517
 Abrir el cajón
 ; Open the drawer
+MSG_518
+Abrir
+; Open

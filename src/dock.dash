@@ -84,7 +84,8 @@ var C_MENU_SEL: Int = 0x3c4350
 const OP_FIJAR = 1
 const OP_QUITAR = 2
 const OP_ABRIR = 3
-const OP_PILA = 4            # un cajón fijado: en pila (subdock) o como cajón del Workbench
+const OP_PILA = 4            # un cajón fijado: en pila (subdock) o como su icono
+const OP_LANZAR = 5          # abrirlo (como pulsarlo; en pila, el cajón en el Workbench)
 
 struct Item
     ruta: String = ""        # la ruta real (file_real_path, como la da wm_path)
@@ -1142,6 +1143,74 @@ func menu_cerrar()
         window_close(menu)
         menu = 0
         ok = window_use(0)
+        devolver_foco()
+    end
+end
+
+# ---- el botón derecho ----
+# Intuition da el botón derecho a la ventana activa (y RMBTRAP solo vale en ella): con otra activa, sobre el dock
+# salían los menús de esa otra. Con el ratón un momento sobre un icono, el dock se activa (sus clics derechos, a su
+# menú); al irse, vuelve a activa la de antes. Los menús del resto del sistema no se tocan (lo pidió el usuario)
+const ACTIVAR_TRAS = 200     # ms sobre un icono
+var antes_activa: Int = 0    # la ventana activa antes de activarse el dock, 0 ninguna
+var sobre_desde: Int = 0     # time_ms desde que el ratón está sobre un icono sin el dock activo
+
+# ¿es del dock la ventana activa (el dock, su menú, su pila)?
+func activa_nuestra() -> Bool
+    a = wm_active()
+    if a == 0
+        return false
+    end
+    n = wm_read()
+    for k in (0..n - 1)
+        if wm_id(k) == a
+            return (wm_flags(k) & 32) != 0
+        end
+    end
+    return false
+end
+
+# (solo si nadie se la llevó: con un clic fuera del menú, esa otra ventana se queda activa)
+func devolver_foco()
+    if antes_activa != 0 and icono_del_raton() < 0
+        if wm_active() == 0 or activa_nuestra()
+            ok = wm_activate(antes_activa)
+        end
+        antes_activa = 0
+    end
+end
+
+func activar_al_pasar()
+    if menu != 0 or pila != 0 or escondido or apagado
+        sobre_desde = 0
+        return
+    end
+    if icono_del_raton() >= 0
+        if activa_nuestra()
+            sobre_desde = 0
+        elif sobre_desde == 0
+            sobre_desde = time_ms()
+        elif time_ms() - sobre_desde >= ACTIVAR_TRAS
+            sobre_desde = 0
+            a = wm_active()
+            if a != 0
+                antes_activa = a
+            end
+            ok = window_use(0)
+            window_activate(0)
+        end
+    else
+        sobre_desde = 0
+        if antes_activa != 0
+            mx = wm_pointer_x()
+            my = wm_pointer_y()
+            if (mx < dx or my < dy or mx >= dx + ancho or my >= dy + alto) and activa_nuestra()
+                ok = wm_activate(antes_activa)
+            end
+            if mx < dx or my < dy or mx >= dx + ancho or my >= dy + alto
+                antes_activa = 0
+            end
+        end
     end
 end
 
@@ -1183,13 +1252,9 @@ func menu_abrir(i: Int)
     menu_de = i
     menu_ops = []
     menu_textos = []
-    if it.fijo
-        menu_ops.push(OP_QUITAR)
-        menu_textos.push(tr(MSG_QUITAR, "Remove from dock"))
-    else
-        menu_ops.push(OP_FIJAR)
-        menu_textos.push(tr(MSG_FIJAR, "Keep in dock"))
-    end
+    # lo mismo con el botón derecho que manteniendo pulsado: abrir, otro más, pila o icono, fijar o quitar
+    menu_ops.push(OP_LANZAR)
+    menu_textos.push(tr(MSG_LANZAR, "Open"))
     if it.win != 0
         menu_ops.push(OP_ABRIR)
         menu_textos.push(tr(MSG_ABRIR, "Open another"))
@@ -1197,10 +1262,17 @@ func menu_abrir(i: Int)
     if it.fijo and dir_read(it.ruta) >= 0
         menu_ops.push(OP_PILA)
         if it.pila
-            menu_textos.push(tr(MSG_COMO_CAJON, "Open as a drawer"))
+            menu_textos.push(tr(MSG_COMO_CAJON, "Show as an icon"))
         else
             menu_textos.push(tr(MSG_COMO_PILA, "Show as a stack"))
         end
+    end
+    if it.fijo
+        menu_ops.push(OP_QUITAR)
+        menu_textos.push(tr(MSG_QUITAR, "Remove from dock"))
+    else
+        menu_ops.push(OP_FIJAR)
+        menu_textos.push(tr(MSG_FIJAR, "Keep in dock"))
     end
     usar_letra()
     menu_alto = font_height() + 8
@@ -1224,7 +1296,7 @@ func menu_abrir(i: Int)
     if x + w > sw
         x = sw - w
     end
-    menu = window_create("", x, y, w, h, 2 + 4 + 8)
+    menu = window_create("", x, y, w, h, 2 + 4 + 8 + 16)
     if menu != 0
         window_activate(menu)
         gfx_mode(0)                    # (el texto, sin fondo)
@@ -1258,6 +1330,14 @@ func menu_elegir(y: Int)
         end
     elif op == OP_ABRIR
         lanzar(items[i].ruta)
+    elif op == OP_LANZAR
+        if items[i].pila
+            if not wb_open(items[i].ruta)
+                lanzar(items[i].ruta)
+            end
+        else
+            pulsar(i)
+        end
     elif op == OP_PILA
         items[i].pila = not items[i].pila
         guardar()
@@ -1300,6 +1380,7 @@ func pila_cerrar()
         pila_cerrada_de = pila_de
         pila_cerrada_en = time_ms()
         ok = window_use(0)
+        devolver_foco()
     end
     for ic in pila_iconos
         icon_free(ic)
@@ -1422,7 +1503,7 @@ func pila_abrir(i: Int)
     pila_sel = -1
     pila_x = x
     pila_y = y
-    pila = window_create("", x, y, w, h, 2 + 4 + 8)
+    pila = window_create("", x, y, w, h, 2 + 4 + 8 + 16)
     if pila == 0
         pila_rutas = []
         pila_nombres = []
@@ -1534,7 +1615,8 @@ func etiqueta_poner(i: Int)
     if x + w > sw
         x = sw - w
     end
-    etiqueta = window_create("", x, y, w, h, 2 + 4 + 8)
+    # (sin activarse, 32: robaba el foco a la ventana del usuario, y el botón derecho iba a ella)
+    etiqueta = window_create("", x, y, w, h, 2 + 4 + 8 + 16 + 32)
     if etiqueta != 0
         gfx_mode(0)
         pluma(C_BORDE)
@@ -1672,6 +1754,7 @@ func vigilar()
     end
     mirar_encima()
     pila_mirar()
+    activar_al_pasar()
     if esconder and menu == 0 and pila == 0
         if raton_lejos()
             if lejos_desde == 0

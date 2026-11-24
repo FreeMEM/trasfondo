@@ -833,7 +833,10 @@ MSG_515 (515//)
 Show as a stack
 ; MSG_COMO_CAJON
 MSG_516 (516//)
-Open as a drawer
+Show as an icon
 ; MSG_ABRIR_CAJON
 MSG_517 (517//)
 Open the drawer
+; MSG_LANZAR
+MSG_518 (518//)
+Open

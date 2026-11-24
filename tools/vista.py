@@ -52,9 +52,12 @@ def guion(pasos):
                        "    time_delay(50)", "    poke_byte(0xBFE001, peek_byte(0xBFE001) & 0xBF)",
                        "    poke_byte(0xBFE201, peek_byte(0xBFE201) | 0x40)", "    time_delay(150)",
                        "    poke_byte(0xBFE201, peek_byte(0xBFE201) & 0xBF)"]
+        elif p[0] == "menus":
+            lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)", "    input_button(2, true)", "    time_delay(150)",
+                       "    input_button(2, false)"]
         elif p[0] == "derecho":
             lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({p[1]}, {p[2]} - 500)",
-                       "    time_delay(10)", "    input_button(2, true)", "    time_delay(5)",
+                       "    time_delay(40)", "    input_button(2, true)", "    time_delay(5)",
                        "    input_button(2, false)"]
         elif p[0] == "pulsar":
             lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)", "    input_button(1, true)", "    time_delay(5)",
@@ -87,6 +90,8 @@ def main():
                     help="X,Y,SEGUNDOS: salta ahí (activa antes el guion) y mantiene el botón izquierdo 1,5 s")
     ap.add_argument("--mantener-hw", action="append", dest="pasos", type=lambda v: ("mantener_hw", v),
                     help="X,Y,SEGUNDOS: como --mantener, pero con el botón del puerto del ratón (CIA), 3 s")
+    ap.add_argument("--menus", action="append", dest="pasos", type=lambda v: ("menus", v),
+                    help="X,Y,SEGUNDOS: lleva el puntero ahí y mantiene el botón derecho 3 s (los menús de Intuition)")
     ap.add_argument("--derecho", action="append", dest="pasos", type=lambda v: ("derecho", v),
                     help="X,Y,SEGUNDOS: salta ahí (activa antes el guion) y pulsa el botón derecho")
     ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
@@ -107,7 +112,7 @@ def main():
         compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
-        if tipo in ("clic", "mover", "aqui", "pulsar", "mantener", "mantener_hw", "derecho"):
+        if tipo in ("clic", "mover", "aqui", "pulsar", "mantener", "mantener_hw", "derecho", "menus"):
             x, y, seg = v.split(",")
             pasos.append((tipo, int(x), int(y), float(seg)))
         elif tipo == "tecla":
