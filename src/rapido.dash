@@ -157,10 +157,18 @@ func leer_botones()
     end
 end
 
-# un botón de la rejilla: un cajón se abre en el Workbench; un programa se arranca
+# un botón de la rejilla: un cajón se abre en el Workbench; un programa se arranca. El cajón, como un doble clic
+# (wb_open) antes que con C:WBRun: el WBRun 2.2 de Aminet solo carga programas, y sin WBRun no se abría (como en el
+# dock, lo contó Ferrán García)
+func abrir_cajon(r: String)
+    if not wb_open(r)
+        run_program("C:WBRun \"" + r + "\"")
+    end
+end
+
 func lanzar(r: String)
     if str_ends(r, ":") or dir_read(r) >= 0
-        run_program("C:WBRun \"" + r + "\"")
+        abrir_cajon(r)
     else
         run_program("\"" + r + "\"")
     end
@@ -331,7 +339,7 @@ func pulsar(x: Int, y: Int) -> Bool
             return true
         end
         if x >= b_prefs_x and x < b_prefs_x + BOTON
-            run_program("C:WBRun SYS:Prefs")
+            abrir_cajon("SYS:Prefs")
             return true
         end
         if x >= b_reiniciar_x and x < b_reiniciar_x + BOTON
