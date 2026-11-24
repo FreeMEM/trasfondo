@@ -483,6 +483,22 @@ func esp_ir(n: Int)
     end
 end
 
+# el espacio que pide la barra al pulsar uno de sus puntos (ENV:TrasfondoEspacio.ir, "2"; lo pidieron Ferrán García
+# y Santi)
+var esp_pedido: Int = 0      # su file_notify, 0 sin él
+
+func esp_ir_pedido()
+    t = file_read_text("ENV:TrasfondoEspacio.ir")
+    if t == nil
+        return
+    end
+    ok = file_delete("ENV:TrasfondoEspacio.ir")
+    t = str_trim(t)
+    if t != ""
+        esp_ir(Int(t))
+    end
+end
+
 # la ventana activa al espacio n: se esconde, y se activa otra del espacio de ahora
 func esp_llevar(n: Int)
     if espacios == 0 or n < 1 or n > espacios
@@ -1526,6 +1542,8 @@ Main
             tecla("TECLA_LLEVAR_ARRIBA", "ctrl alt shift lcommand up", K_ESP_LLEVAR_ARRIBA)
             tecla("TECLA_LLEVAR_ABAJO", "ctrl alt shift lcommand down", K_ESP_LLEVAR_ABAJO)
             ok = file_write_text("ENV:TrasfondoEspacio", "1/#{espacios}")
+            ok = file_delete("ENV:TrasfondoEspacio.ir")
+            esp_pedido = file_notify("ENV:TrasfondoEspacio.ir")
         else
             espacios = 0
         end
@@ -1546,6 +1564,9 @@ Main
             c = cx_wait(espera)
             if av_win != 0 and time_ms() >= av_hasta
                 av_cerrar()
+            end
+            if esp_pedido != 0 and file_changed(esp_pedido) and activo
+                esp_ir_pedido()
             end
             if c == 100 + W_CENTRAL and activo and con_menu
                 al_central()

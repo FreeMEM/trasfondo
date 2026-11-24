@@ -67,6 +67,8 @@ var captura_en: Int = 0       # time_ms en que toca la captura pedida; 0, ningun
 
 var esp_n: Int = 0
 var esp_total: Int = 0
+var esp_x: Int = 0           # dónde empiezan los puntos en la barra y lo que ocupa cada uno (para pulsarlos)
+var esp_paso: Int = 0
 
 func mirar_espacio() -> Bool
     n = 0
@@ -90,8 +92,19 @@ func mirar_espacio() -> Bool
     return true
 end
 
+# pulsar un punto lleva a ese espacio: se lo pide a TrasfondoVentanas, que vigila ENV:TrasfondoEspacio.ir (lo
+# pidieron Ferrán García y Santi)
+func espacio_en(x: Int) -> Int
+    if esp_total == 0 or esp_paso <= 0 or x < esp_x or x >= esp_x + esp_total * esp_paso
+        return 0
+    end
+    return (x - esp_x) / esp_paso + 1
+end
+
 # los puntos, centrados en alto, desde x con paso px entre ellos; el de ahora lleno
 func puntos(x: Int, paso: Int, r: Int, rgb: Int, rgb_otros: Int)
+    esp_x = x
+    esp_paso = paso
     for k in (1..esp_total)
         cx = x + (k - 1) * paso + paso / 2
         if k == esp_n
@@ -643,8 +656,13 @@ Main
                 end
             end
             On Click
+                esp = espacio_en(click_x())
                 # si ya estaba abierto, se está cerrando él solo (se pulsó fuera de él): no se abre otra vez
-                if click_x() >= reloj_x1 and click_x() < reloj_x2
+                if esp > 0
+                    if esp != esp_n
+                        ok = file_write_text("ENV:TrasfondoEspacio.ir", "#{esp}")
+                    end
+                elif click_x() >= reloj_x1 and click_x() < reloj_x2
                     if not corriendo("TrasfondoPanel")
                         if titulo                # debajo de la hora, no en medio
                             run_program(panel + " X=#{sw - gad - ancho_t}")
