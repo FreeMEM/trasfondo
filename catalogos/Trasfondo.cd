@@ -84,9 +84,6 @@ cannot connect to %s
 ; MSG_NO_PIDE
 MSG_54 (54//)
 cannot send the request
-; MSG_CERTIFICADO
-MSG_55 (55//)
-the certificate of %s is not valid
 ; MSG_MUY_GRANDE
 MSG_56 (56//)
 the answer is too big
@@ -135,6 +132,9 @@ Downloading %1: %2 %
 ; MSG_NO_CATALOGO
 MSG_71 (71//)
 %s: not a catalog
+; MSG_TLS_FALLO
+MSG_72 (72//)
+TLS failed: %2 (%1)
 ; MSG_TITULO
 MSG_80 (80//)
 Trasfondo Preferences

@@ -60,6 +60,8 @@ const MSG_BAJANDO = 68
 const MSG_ERROR = 69
 const MSG_BAJANDO_POR = 70
 const MSG_NO_CATALOGO = 71
+# la conexión segura (TLS) no salió: "%2" es el motivo (net_error: el certificado, el tiempo...), "%1" el servidor
+const MSG_TLS_FALLO = 72
 
 # TrasfondoPrefs
 const MSG_TITULO = 80

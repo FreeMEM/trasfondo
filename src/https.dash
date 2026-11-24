@@ -146,7 +146,7 @@ func https_paso()
             end
         elif r < 0
             s_tls = -1                         # ya está liberada
-            https_fallo("the certificate of " + s_host + " is not valid")
+            https_fallo("TLS failed: " + net_error() + " (" + s_host + ")")
         end
     elif s_paso == 3
         vueltas = 0                            # lo que haya ya, sin esperar

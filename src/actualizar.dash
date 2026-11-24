@@ -239,7 +239,10 @@ func http_paso()
             end
         elif r < 0
             h_tls = -1                         # ya está liberada
-            http_fallo(con(tr(MSG_CERTIFICADO, "the certificate of %s is not valid"), h_host))
+            # el motivo de verdad: el certificado (caducado, de otro, sin raíz conocida), el tiempo o el saludo
+            # (antes decía siempre "el certificado no vale"; lo contó Ferrán García)
+            motivo = net_error()
+            http_fallo(con2(tr(MSG_TLS_FALLO, "TLS failed: %2 (%1)"), h_host, motivo))
         end
     elif h_paso == 3
         vueltas = 0                            # lo que haya ya, sin esperar (y sin quedarse toda la tarde)
