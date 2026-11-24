@@ -82,7 +82,8 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   ver los clics antes que MCP o PowerWindows.
   Con AmigaOS 3.2, también **espacios virtuales**, como en Linux: Ctrl Alt 1 a 4 cambia de espacio (las ventanas de
   los demás se esconden), Ctrl Alt Mayús y el número lleva allí la ventana activa, y Ctrl Alt Mayús arriba o abajo
-  sube o baja de espacio. Un aviso y la barra enseñan en cuál estás. Y el **modo tira**, como Niri: cada ventana es
+  sube o baja de espacio. Un aviso y la barra enseñan en cuál estás; pulsar un punto de la barra lleva a ese
+  espacio (lo pidieron Ferrán García y Santi). Y el **modo tira**, como Niri: cada ventana es
   una columna de una tira más ancha que la pantalla; las nuevas entran a la derecha y la vista sigue a la activa
   (Ctrl Alt izquierda o derecha cambia de columna, Ctrl Alt R su ancho). En TrasfondoPrefs: "Espacios" (4; 0 sin
   ellos), "Ventanas en tira" y "Teclas de espacios" (lo que va delante del número, `ctrl alt`; en un emulador, si
