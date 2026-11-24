@@ -37,6 +37,37 @@ const FUERA = 40             # un icono soltado a más de esto del dock sale de 
 const MANTENER = 500         # ms con el botón pulsado sin moverlo: el menú (el botón derecho va a la ventana activa)
 
 var apagado: Bool = false    # escondido desde Exchange (Ocultar o Desactivar)
+
+# El botón izquierdo, por Commodities (cx_watch_add, sin quitárselo a nadie): mouse_button mira el puerto del ratón y no
+# ve un ratón USB (Poseidon) ni los clics que llegan por input.device; así la pulsación larga y el arrastre van con
+# cualquier ratón (y se pueden probar en el emulador)
+const W_PULSA = 1            # cx_command da 100 + esto
+const W_SUELTA = 2
+var cx_ok: Bool = false
+var izq: Bool = false        # pulsado, según Commodities
+var cx_pendiente: [Int] = [] # las órdenes de Exchange que llegaron mientras se miraba el botón
+
+func mirar_cx()
+    if not cx_ok
+        return
+    end
+    c = cx_command()
+    while c != 0
+        if c == 100 + W_PULSA
+            izq = true
+        elif c == 100 + W_SUELTA
+            izq = false
+        else
+            cx_pendiente.push(c)
+        end
+        c = cx_command()
+    end
+end
+
+func pulsado() -> Bool
+    mirar_cx()
+    return izq or mouse_button(0)
+end
 var C_DOCK: Int = 0x1b1e23
 var C_BORDE: Int = 0x30353d
 var C_TEXTO: Int = 0xe8eaed
@@ -449,7 +480,7 @@ end
 # había cambiado ya en la mirada anterior y sigue igual: lo que pasa por encima un momento (iconos arrastrados,
 # una ventana movida, la selección) no hace mover el dock. Con un botón del ratón pulsado, nada.
 func cambio_alrededor() -> Bool
-    if mouse_button(0) or mouse_button(1)
+    if pulsado() or mouse_button(1)
         return false
     end
     var ahora: [Int] = alrededor()
@@ -756,6 +787,7 @@ func pintar(marca: Int)
     end
     if oculto
         bitmap_draw_screen()
+        ok = window_use(0)             # (la copia, en el dock: no adonde se estuviera dibujando antes)
         bitmap_blit(0, 0, 0, ancho, alto, 0, 0)
     end
 end
@@ -829,6 +861,7 @@ end
 # el punto de los programas abiertos, sin pintar todo el dock (que parpadea): su sitio con el color del dock y
 # su trozo de borde, y el punto si está abierto
 func pintar_puntos()
+    ok = window_use(0)                 # (siempre en la ventana del dock, venga de donde venga)
     if transparente                    # el fondo no es de un color: todo de nuevo (es copiar la imagen)
         pintar(-1)
         return
@@ -1055,7 +1088,7 @@ func arrastrar(i: Int) -> Int
     t0 = time_ms()
     movido = false
     sitio = -1
-    while mouse_button(0)
+    while pulsado() and time_ms() - t0 < 30000      # (sin soltar 30 s: algo se perdió)
         px = wm_pointer_x()
         py = wm_pointer_y()
         if not movido and (abs(px - x0) > ARRASTRE or abs(py - y0) > ARRASTRE)
@@ -1130,6 +1163,7 @@ func menu_pintar(sel: Int)
         end
         centrado(menu_ancho() / 2, y + (menu_alto - font_height()) / 2 + font_baseline(), menu_textos[k], C_TEXTO)
     end
+    ok = window_use(0)                 # lo que se pinte después es del dock
 end
 
 func menu_ancho() -> Int
@@ -1602,6 +1636,7 @@ func esconder_ya()
 end
 
 func pintar_rayita()
+    ok = window_use(0)
     k = 0
     for j in (0..ph - 1)
         for i in (0..pw - 1)
@@ -1713,7 +1748,11 @@ Main
         Print "TrasfondoDock needs an RTG screen (15 bits or more)"
     else
         # en Exchange, como el fondo (Ferrán García): Quitar lo para; Ocultar o Desactivar lo esconden
-        ok = cx_broker("TrasfondoDock", program_version(), tr(MSG_CX_DOCK, "Program launcher at the edge of the screen"), 0)
+        cx_ok = cx_broker("TrasfondoDock", program_version(), tr(MSG_CX_DOCK, "Program launcher at the edge of the screen"), 0)
+        if cx_ok
+            ok = cx_watch_add("rawmouse mouse_leftpress", W_PULSA)
+            ok = cx_watch_add("rawmouse upstroke mouse_leftpress", W_SUELTA)
+        end
         posicion = str_upper(ajuste("DOCK_POSICION", "POSICION", "ABAJO"))
         vertical = posicion == "IZQUIERDA" or posicion == "DERECHA"
         lado_min = Int(ajuste("DOCK_ICONO", "ICONO", "40"))
@@ -1758,7 +1797,12 @@ Main
                 if break_check()
                     Stop
                 end
-                c = cx_command()
+                mirar_cx()
+                c = 0
+                if cx_pendiente.length > 0
+                    c = cx_pendiente[0]
+                    cx_pendiente.remove(0)
+                end
                 if c == 5
                     Stop
                 elif (c == 1 or c == 3) and not apagado
@@ -1832,7 +1876,7 @@ Main
             On Inactive
                 if menu != 0 and event_window() == menu
                     k = 0                    # que acabe el clic de fuera antes de cerrarlo (ver apartar del panel)
-                    while mouse_button(0) and k < 100
+                    while pulsado() and k < 100
                         time_delay(1)
                         k = k + 1
                     end
@@ -1840,7 +1884,7 @@ Main
                     menu_cerrar()
                 elif pila != 0 and event_window() == pila
                     k = 0                    # (lo mismo que el menú)
-                    while mouse_button(0) and k < 100
+                    while pulsado() and k < 100
                         time_delay(1)
                         k = k + 1
                     end

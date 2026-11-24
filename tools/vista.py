@@ -41,6 +41,21 @@ def guion(pasos):
             lineas += [f"    input_click({p[1]}, {p[2]}, 0)"]
         elif p[0] == "mover":
             lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)"]
+        elif p[0] == "mantener":
+            lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({p[1]}, {p[2]} - 500)",
+                       "    time_delay(50)", "    input_button(1, true)", "    time_delay(75)",
+                       "    input_button(1, false)"]
+        elif p[0] == "mantener_hw":
+            # el botón izquierdo "de verdad": la línea /FIR0 del CIA-A puesta a 0 como salida (DDRA), como si se
+            # pulsara el ratón; lo ven mouse_button y gameport.device (input.device, Intuition) igual que un ratón
+            lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({p[1]}, {p[2]} - 500)",
+                       "    time_delay(50)", "    poke_byte(0xBFE001, peek_byte(0xBFE001) & 0xBF)",
+                       "    poke_byte(0xBFE201, peek_byte(0xBFE201) | 0x40)", "    time_delay(150)",
+                       "    poke_byte(0xBFE201, peek_byte(0xBFE201) & 0xBF)"]
+        elif p[0] == "derecho":
+            lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({p[1]}, {p[2]} - 500)",
+                       "    time_delay(10)", "    input_button(2, true)", "    time_delay(5)",
+                       "    input_button(2, false)"]
         elif p[0] == "pulsar":
             lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)", "    input_button(1, true)", "    time_delay(5)",
                        "    input_button(1, false)"]
@@ -68,6 +83,12 @@ def main():
                     help="X,Y,SEGUNDOS: lleva el puntero ahí, sin pulsar")
     ap.add_argument("--pulsar", action="append", dest="pasos", type=lambda v: ("pulsar", v),
                     help="X,Y,SEGUNDOS: lleva el puntero ahí (pantalla) y pulsa, sin activar otra ventana antes")
+    ap.add_argument("--mantener", action="append", dest="pasos", type=lambda v: ("mantener", v),
+                    help="X,Y,SEGUNDOS: salta ahí (activa antes el guion) y mantiene el botón izquierdo 1,5 s")
+    ap.add_argument("--mantener-hw", action="append", dest="pasos", type=lambda v: ("mantener_hw", v),
+                    help="X,Y,SEGUNDOS: como --mantener, pero con el botón del puerto del ratón (CIA), 3 s")
+    ap.add_argument("--derecho", action="append", dest="pasos", type=lambda v: ("derecho", v),
+                    help="X,Y,SEGUNDOS: salta ahí (activa antes el guion) y pulsa el botón derecho")
     ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
                     help="CODIGO,CALIFICADORES,SEGUNDOS: una tecla en bruto (0x14 la T; 2 Ctrl + 4 Alt...)")
     ap.add_argument("--barra", default="CIUDAD=Mijas", help="argumentos de la barra")
@@ -86,7 +107,7 @@ def main():
         compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
-        if tipo in ("clic", "mover", "aqui", "pulsar"):
+        if tipo in ("clic", "mover", "aqui", "pulsar", "mantener", "mantener_hw", "derecho"):
             x, y, seg = v.split(",")
             pasos.append((tipo, int(x), int(y), float(seg)))
         elif tipo == "tecla":
