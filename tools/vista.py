@@ -52,6 +52,15 @@ def guion(pasos):
                        "    time_delay(50)", "    poke_byte(0xBFE001, peek_byte(0xBFE001) & 0xBF)",
                        "    poke_byte(0xBFE201, peek_byte(0xBFE201) | 0x40)", "    time_delay(150)",
                        "    poke_byte(0xBFE201, peek_byte(0xBFE201) & 0xBF)"]
+        elif p[0] == "abrir":
+            lineas += [f'    ok = wb_open("{p[1]}")']
+        elif p[0] == "arrastrar":
+            # pulsar en (x1, y1), llevarlo a (x2, y2) con el botón abajo y soltar: un icono del Workbench
+            x1, y1, x2, y2 = p[1]
+            lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({x1}, {y1} - 500)",
+                       "    time_delay(25)", "    input_button(1, true)", "    time_delay(10)",
+                       f"    input_move_screen({x1 + 8}, {y1 + 8}, 1)", "    time_delay(10)",
+                       f"    input_move_screen({x2}, {y2}, 1)", "    time_delay(25)", "    input_button(1, false)"]
         elif p[0] == "menus":
             lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)", "    input_button(2, true)", "    time_delay(150)",
                        "    input_button(2, false)"]
@@ -92,6 +101,10 @@ def main():
                     help="X,Y,SEGUNDOS: como --mantener, pero con el botón del puerto del ratón (CIA), 3 s")
     ap.add_argument("--menus", action="append", dest="pasos", type=lambda v: ("menus", v),
                     help="X,Y,SEGUNDOS: lleva el puntero ahí y mantiene el botón derecho 3 s (los menús de Intuition)")
+    ap.add_argument("--abrir", action="append", dest="pasos", type=lambda v: ("abrir", v),
+                    help="SEGUNDOS:RUTA: abre ese cajón en el Workbench")
+    ap.add_argument("--arrastrar", action="append", dest="pasos", type=lambda v: ("arrastrar", v),
+                    help="X1,Y1,X2,Y2,SEGUNDOS: arrastra con el botón izquierdo (un icono del Workbench al dock)")
     ap.add_argument("--derecho", action="append", dest="pasos", type=lambda v: ("derecho", v),
                     help="X,Y,SEGUNDOS: salta ahí (activa antes el guion) y pulsa el botón derecho")
     ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
@@ -103,6 +116,7 @@ def main():
     ap.add_argument("--fondo", default=None, help="arranca también el fondo (Trasfondo, de build/release) con estos "
                     "argumentos; TrasfondoPrefs queda en DH0: y ENV:Trasfondo.cajon apunta ahí")
     ap.add_argument("--copiar", action="append", default=[], help="fichero:Nombre, copiado a DH0:Nombre")
+    ap.add_argument("--carpeta", action="append", default=[], help="carpeta:Nombre, copiada entera a DH0:Nombre")
     ap.add_argument("--fijar", action="append", default=[], help="una ruta más en el dock (DH0:Trasfondo), al final")
     ap.add_argument("--inicio", action="append", default=[], help="una línea más para la Startup-Sequence, tras LoadWB")
     a = ap.parse_args()
@@ -112,7 +126,13 @@ def main():
         compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
-        if tipo in ("clic", "mover", "aqui", "pulsar", "mantener", "mantener_hw", "derecho", "menus"):
+        if tipo == "arrastrar":
+            x1, y1, x2, y2, seg = v.split(",")
+            pasos.append(("arrastrar", (int(x1), int(y1), int(x2), int(y2)), float(seg)))
+        elif tipo == "abrir":
+            seg, ruta = v.split(":", 1)
+            pasos.append(("abrir", ruta, float(seg)))
+        elif tipo in ("clic", "mover", "aqui", "pulsar", "mantener", "mantener_hw", "derecho", "menus"):
             x, y, seg = v.split(",")
             pasos.append((tipo, int(x), int(y), float(seg)))
         elif tipo == "tecla":
@@ -142,6 +162,9 @@ def main():
         for c in a.copiar:
             f, n = c.split(":", 1)
             shutil.copy(RAIZ / f, hd / n)
+        for c in a.carpeta:
+            f, n = c.split(":", 1)
+            shutil.copytree(RAIZ / f, hd / n, dirs_exist_ok=True)
         if a.dock is not None:
             # unos lanzadores de prueba: iconos de verdad (los que haya en ICONOS) con un programa cualquiera
             apps = hd / "Apps"

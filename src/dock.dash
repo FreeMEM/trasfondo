@@ -836,6 +836,8 @@ end
 # a su sitio y tamaño nuevos sin apartarse (cuando entra o sale un programa): las esquinas, de la franja; si no
 # sirve, colocar(). Al crecer, primero se mueve; al encoger, primero cambia de tamaño (siempre dentro de la pantalla)
 func recolocar()
+    etiqueta_quitar()                  # (los iconos cambian de sitio: el nombre de debajo del ratón, otra vez)
+    encima = -1
     caja()
     if not franja_vale()
         colocar()
@@ -1658,20 +1660,26 @@ end
 # ---- esconderse ----
 
 # la rayita: en el borde de la pantalla, en medio del lado del dock
+# Escondido, la ventana del dock es una franja a lo largo de su sitio, pegada al borde (ZONA de grueso): se ve la
+# rayita en medio y es donde se suelta un icono arrastrado desde el Workbench (el puntero se para en el borde: es
+# fácil de acertar). Arrastrando, el dock no sale: la franja se resalta y lo soltado se fija ahí (lo pidió el usuario)
+const ZONA = 8
+var resaltada: Bool = false  # la franja, resaltada: se está arrastrando algo encima
+
 func rayita()
-    pw = PILDORA
-    ph = GRUESO
-    px = dx + ancho / 2 - pw / 2
-    py = sh - ph - 1
+    pw = ancho
+    ph = ZONA
+    px = dx
+    py = sh - ph
     if posicion == "ARRIBA"
-        py = ALTO_BARRA + 1
+        py = ALTO_BARRA
     elif vertical
-        pw = GRUESO
-        ph = PILDORA
-        py = dy + alto / 2 - ph / 2
-        px = 1
+        pw = ZONA
+        ph = alto
+        py = dy
+        px = 0
         if posicion == "DERECHA"
-            px = sw - pw - 1
+            px = sw - pw
         end
     end
 end
@@ -1703,14 +1711,23 @@ func esconder_ya()
     etiqueta_quitar()
     encima = -1
     rayita()
+    # primero pequeña (en su esquina, lejos de la franja), y lo de detrás de la franja ya sin el dock encima
+    window_resize(0, pw, ph)
+    esperar_tamano(pw, ph)
+    if posicion == "ARRIBA"            # (del lado de dentro: arriba y a la izquierda tocaría la franja)
+        window_move(0, dx, dy + alto - ph)
+        esperar_sitio(dx, dy + alto - ph)
+    elif posicion == "IZQUIERDA"
+        window_move(0, dx + ancho - pw, dy)
+        esperar_sitio(dx + ancho - pw, dy)
+    end
+    time_delay(10)                     # (el Workbench repinta lo que deja ver)
     bajo_rayita = []
     for j in (0..ph - 1)
         for i in (0..pw - 1)
             bajo_rayita.push(screen_pixel_rgb(px + i, py + j))
         end
     end
-    window_resize(0, pw, ph)
-    esperar_tamano(pw, ph)
     window_move(0, px, py)
     esperar_sitio(px, py)
     escondido = true
@@ -1728,11 +1745,36 @@ func pintar_rayita()
             k = k + 1
         end
     end
-    redondo(0, 0, pw - 1, ph - 1, 2, C_PUNTO)
+    # la rayita, en medio y del lado del borde; resaltada, a lo largo de toda la franja y del color de marcar
+    l = PILDORA
+    c = C_PUNTO
+    if resaltada
+        l = pw
+        if vertical
+            l = ph
+        end
+        c = C_MARCA
+    end
+    if vertical
+        x0 = 1
+        if posicion == "DERECHA"
+            x0 = pw - GRUESO - 1
+        end
+        y0 = ph / 2 - l / 2
+        redondo(x0, y0, x0 + GRUESO - 1, y0 + l - 1, 2, c)
+    else
+        y0 = ph - GRUESO - 1
+        if posicion == "ARRIBA"
+            y0 = 1
+        end
+        x0 = pw / 2 - l / 2
+        redondo(x0, y0, x0 + l - 1, y0 + GRUESO - 1, 2, c)
+    end
 end
 
 func mostrar_ya()
     escondido = false
+    resaltada = false
     lejos_desde = 0
     window_move(0, dx, dy)             # antes de crecer, donde quepa (pegada al borde no puede)
     esperar_sitio(dx, dy)
@@ -1747,8 +1789,17 @@ func vigilar()
     if escondido
         # con otra pantalla delante (la de DOpus), el puntero sigue moviéndose en la del Workbench: el dock salía
         # y la ponía delante (lo contó Ernesto Laura de la Fuente)
-        if raton_en_borde() and wm_screen_front()
+        borde = raton_en_borde() and wm_screen_front()
+        if borde and pulsado()
+            if not resaltada               # arrastrando algo: la franja recibe lo que se suelte
+                resaltada = true
+                pintar_rayita()
+            end
+        elif borde
             mostrar_ya()
+        elif resaltada
+            resaltada = false
+            pintar_rayita()
         end
         return
     end
@@ -1899,6 +1950,21 @@ Main
                 end
                 vigilar()
                 tic = tic + 1
+                if tic % 3 == 0 and escondido and not apagado
+                    # soltado en la franja: el dock sale y lo fija donde cayó (a lo largo, como en el dock)
+                    d = app_drop()
+                    if d != ""
+                        ax = app_drop_x() + px - dx
+                        ay = app_drop_y() + py - dy
+                        mostrar_ya()
+                        while d != ""
+                            soltado(d, ax, ay)
+                            d = app_drop()
+                        end
+                        recolocar()
+                        leido_en = time_ms()
+                    end
+                end
                 if tic % 3 == 0 and not escondido   # lo de siempre, cada 0,3 s
                     d = app_drop()
                     cambio = false
