@@ -5,7 +5,7 @@
 # también con Esc o al pulsar fuera. Solo con RTG.
 
 @workbench_output "NIL:"
-@version "TrasfondoPanel 2.10.0"
+@version "TrasfondoPanel 2.10.1"
 @catalog "Trasfondo.catalog" 1       # el de Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "dibujo.dash"
