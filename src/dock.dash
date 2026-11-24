@@ -910,7 +910,12 @@ end
 
 # ---- lo que se hace ----
 
+# Un cajón (o un volumen) se abre en el Workbench, como con un doble clic, antes que con C:WBRun: el WBRun 2.2 de
+# Aminet (el de CaffeineOS, con parm.library) solo carga programas y el cajón no se abría (lo contó Ferrán García)
 func lanzar(r: String)
+    if dir_read(r) >= 0 and wb_open(r)
+        return
+    end
     if wbrun
         ok = run_program("C:WBRun \"" + r + "\"")
     elif not wb_open(r)
