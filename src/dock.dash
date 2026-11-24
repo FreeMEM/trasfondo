@@ -1096,6 +1096,7 @@ func arrastrar(i: Int) -> Int
         py = wm_pointer_y()
         if not movido and (abs(px - x0) > ARRASTRE or abs(py - y0) > ARRASTRE)
             movido = true
+            etiqueta_quitar()              # (el nombre se quedaba encima de donde estaba)
         end
         if not movido and time_ms() - t0 >= MANTENER
             return 2

@@ -58,7 +58,7 @@ def guion(pasos):
             # pulsar en (x1, y1), llevarlo a (x2, y2) con el botón abajo y soltar: un icono del Workbench
             x1, y1, x2, y2 = p[1]
             lineas += ["    window_activate(0)", "    time_delay(10)", f"    input_move({x1}, {y1} - 500)",
-                       "    time_delay(25)", "    input_button(1, true)", "    time_delay(10)",
+                       "    time_delay(25)", "    input_button(1, true)", "    time_delay(2)",
                        f"    input_move_screen({x1 + 8}, {y1 + 8}, 1)", "    time_delay(10)",
                        f"    input_move_screen({x2}, {y2}, 1)", "    time_delay(25)", "    input_button(1, false)"]
         elif p[0] == "menus":
