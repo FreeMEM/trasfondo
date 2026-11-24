@@ -1292,13 +1292,45 @@ func obedecer(orden: Int)
     end
 end
 
+# El registro de arranques y paradas (ENV:Trasfondo.registro, las últimas líneas): por qué se fue. Si la última es
+# "started", acabó sin pasar por ninguna salida suya: un error de Dash o una excepción, cuyo mensaje va a NIL:
+# (Ferrán García vio irse el fondo, también de Exchange, sin motivo aparente)
+const REGISTRO = "ENV:Trasfondo.registro"
+const REGISTRO_LINEAS = 30
+
+func apuntar(texto: String)
+    var lineas: [String] = []
+    previo = file_read_text(REGISTRO)
+    if previo != nil
+        for l in str_split(previo, "\n")
+            if l != ""
+                lineas.push(l)
+            end
+        end
+    end
+    lineas.push(date_text("%d-%b-%y %H:%M:%S") + " " + texto)
+    while lineas.length > REGISTRO_LINEAS
+        lineas.remove(0)
+    end
+    t = ""
+    for l in lineas
+        t = t + l + "\n"
+    end
+    ok = file_write_text(REGISTRO, t)
+end
+
 Main
     # lanzarlo otra vez lo para (y Ctrl-C, o Break desde la Shell, o Eliminar en Exchange)
+    if act_corriendo("Trasfondo")             # (antes de mandarle el Ctrl-C: que su línea quede detrás)
+        apuntar("launched again: stops the copy that was running (Workbench, dock, Shell or TrasfondoPrefs)")
+    end
     if not single_instance("Trasfondo")
         Print tr(MSG_YA_EN_MARCHA, "Trasfondo was already running: stopping it")
     elif not cpu_start()
+        apuntar("stopped: cannot measure the CPU")
         Print tr(MSG_NO_CPU, "Trasfondo: cannot measure the CPU (it needs OS 2.04 or later)")
     else
+        apuntar("started: " + program_version())
         linea = font_height() + 1
         leer_prefs()
         leer_secciones()
@@ -1314,6 +1346,9 @@ Main
         if visible
             medir_paneles()
             mostrar()
+        end
+        if visible and lienzo == 0
+            apuntar("stopped: cannot draw on the Workbench backdrop")
         end
         if not visible or lienzo != 0
             proximo = time_ms() + cada * 1000       # cada INTERVAL justo, aunque lleguen órdenes entre medias
@@ -1341,10 +1376,15 @@ Main
                     pintar_todo()
                 end
                 if act_listo()                          # instalada la versión nueva: arranca otra vez con ella
+                    apuntar("stopped: starts again with the new version")
                     program_relaunch()
                     break
                 end
-                if orden == -1 or orden == CX_ELIMINAR
+                if orden == -1
+                    apuntar("stopped: Ctrl-C (another copy was launched, or Break)")
+                    break
+                elif orden == CX_ELIMINAR
+                    apuntar("stopped: Remove in Exchange")
                     break
                 elif orden == CX_FICHERO
                     if aviso_prefs != 0 and file_changed(aviso_prefs) and leer_prefs()

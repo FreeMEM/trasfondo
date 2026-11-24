@@ -211,4 +211,13 @@ Main
     estado("doble clic arranca")
     orden(CXCMD_KILL)
     esperar(60)
+
+    # por qué se fue cada vez (ENV:Trasfondo.registro: Ferrán García vio irse el fondo sin motivo aparente)
+    reg = file_read_text("ENV:Trasfondo.registro")
+    if reg == nil
+        Print "registro: no está"
+    else
+        Print "registro:"
+        Print reg
+    end
 end

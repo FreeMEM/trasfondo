@@ -923,10 +923,35 @@ func lanzar(r: String)
     end
 end
 
+# Las piezas de Trasfondo se paran lanzándolas otra vez (single_instance). Desde el dock, pulsar una que ya está en
+# marcha (el fondo no tiene ventana: no sale con su punto) la apagaba sin querer (Ferrán García vio irse el fondo
+# trasteando con el dock). Ahora se le pide que se muestre, como Mostrar en Exchange
+func pieza_en_marcha(r: String) -> String
+    n = str_lower(nombre(r))
+    var piezas: [String] = ["Trasfondo", "TrasfondoBarra", "TrasfondoDock", "TrasfondoVentanas"]
+    for p in piezas
+        if n == str_lower(p)
+            k = ports_read()
+            for j in (0..k - 1)
+                if port_name(j) == p
+                    return p
+                end
+            end
+        end
+    end
+    return ""
+end
+
 func pulsar(i: Int)
     it = items[i]
+    p = ""
+    if it.win == 0
+        p = pieza_en_marcha(it.ruta)
+    end
     if it.win != 0 and wm_front(it.win)
         ok = wm_activate(it.win)
+    elif p != ""
+        ok = cx_send(p, 19)                 # (CXCMD_APPEAR)
     else
         lanzar(it.ruta)
     end

@@ -72,6 +72,7 @@ def main():
     ap.add_argument("--fondo", default=None, help="arranca también el fondo (Trasfondo, de build/release) con estos "
                     "argumentos; TrasfondoPrefs queda en DH0: y ENV:Trasfondo.cajon apunta ahí")
     ap.add_argument("--copiar", action="append", default=[], help="fichero:Nombre, copiado a DH0:Nombre")
+    ap.add_argument("--fijar", action="append", default=[], help="una ruta más en el dock (DH0:Trasfondo), al final")
     ap.add_argument("--inicio", action="append", default=[], help="una línea más para la Startup-Sequence, tras LoadWB")
     a = ap.parse_args()
     for n in PROGRAMAS:
@@ -121,7 +122,7 @@ def main():
                     shutil.copy(ico, apps / f"{n}.info")
                     shutil.copy(RAIZ / "build" / "avisa", apps / n)
                     lista += f"DH0:Apps/{n}\n"
-            lista += "SYS:System/Shell\nSYS:Prefs\n"
+            lista += "SYS:System/Shell\nSYS:Prefs\n" + "".join(f + "\n" for f in a.fijar)
             (hd / "dock.txt").write_text(lista)
             extra += f"Copy DH0:dock.txt ENV:Trasfondo.dock QUIET\nRun >NIL: DH0:TrasfondoDock {a.dock}\n"
         if a.ventanas is not None:
