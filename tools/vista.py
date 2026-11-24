@@ -41,6 +41,9 @@ def guion(pasos):
             lineas += [f"    input_click({p[1]}, {p[2]}, 0)"]
         elif p[0] == "mover":
             lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)"]
+        elif p[0] == "pulsar":
+            lineas += [f"    input_move_screen({p[1]}, {p[2]}, 0)", "    input_button(1, true)", "    time_delay(5)",
+                       "    input_button(1, false)"]
         elif p[0] == "tecla":
             lineas += [f"    input_key({p[1]}, {p[2]})"]
         else:
@@ -63,6 +66,8 @@ def main():
                     help="X,Y,SEGUNDOS: clic desde la esquina de la ventana activa, sin activar otra")
     ap.add_argument("--mover", action="append", dest="pasos", type=lambda v: ("mover", v),
                     help="X,Y,SEGUNDOS: lleva el puntero ahí, sin pulsar")
+    ap.add_argument("--pulsar", action="append", dest="pasos", type=lambda v: ("pulsar", v),
+                    help="X,Y,SEGUNDOS: lleva el puntero ahí (pantalla) y pulsa, sin activar otra ventana antes")
     ap.add_argument("--tecla", action="append", dest="pasos", type=lambda v: ("tecla", v),
                     help="CODIGO,CALIFICADORES,SEGUNDOS: una tecla en bruto (0x14 la T; 2 Ctrl + 4 Alt...)")
     ap.add_argument("--barra", default="CIUDAD=Mijas", help="argumentos de la barra")
@@ -81,7 +86,7 @@ def main():
         compilar("ventanitas", "tools/ventanitas.dash")
     pasos = []
     for tipo, v in a.pasos:
-        if tipo in ("clic", "mover", "aqui"):
+        if tipo in ("clic", "mover", "aqui", "pulsar"):
             x, y, seg = v.split(",")
             pasos.append((tipo, int(x), int(y), float(seg)))
         elif tipo == "tecla":

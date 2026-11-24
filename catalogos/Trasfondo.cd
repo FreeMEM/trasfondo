@@ -828,3 +828,12 @@ Saved and applied
 ; MSG_APLICADO
 MSG_514 (514//)
 Applied until you restart
+; MSG_COMO_PILA
+MSG_515 (515//)
+Show as a stack
+; MSG_COMO_CAJON
+MSG_516 (516//)
+Open as a drawer
+; MSG_ABRIR_CAJON
+MSG_517 (517//)
+Open the drawer

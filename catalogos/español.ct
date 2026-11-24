@@ -1,4 +1,4 @@
-## version $VER: Trasfondo.catalog 1.0 (21.11.2026)
+## version $VER: Trasfondo.catalog 1.0 (24.11.2026)
 ## language español
 ## codeset 0
 ;
@@ -830,3 +830,12 @@ Guardado y aplicado
 MSG_514
 Aplicado hasta reiniciar
 ; Applied until you restart
+MSG_515
+Mostrar como pila
+; Show as a stack
+MSG_516
+Abrir como cajón
+; Open as a drawer
+MSG_517
+Abrir el cajón
+; Open the drawer

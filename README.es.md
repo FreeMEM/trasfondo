@@ -68,6 +68,9 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   ratón allí. Sus programas se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
   (con el selector de ficheros), Quitar, Subir y Bajar. En la misma sección, el hueco entre los iconos y el fondo:
   el del tema, transparente (se ve el escritorio y quedan solo las placas de los iconos) o de un color R,G,B.
+  Un cajón fijado puede ir **en pila**, como los subdocks de AmiDock (lo pidieron Ernesto Laura de la Fuente y
+  Ferrán García): con el botón mantenido, "Mostrar como pila"; al pulsarlo despliega lo que tiene, con su icono y
+  su nombre, y abajo "Abrir el cajón". En la lista va como `ruta|PILA`.
 - **TrasfondoVentanas**: las ventanas de cualquier programa como en un escritorio de ahora, sin parchear el
   sistema. Soltar una ventana arrastrada contra un borde la encaja: a la izquierda o a la derecha, la mitad; en una
   esquina, ese cuarto; arriba, la pantalla entera. Al alejarla del borde recupera su tamaño. Un doble clic en la

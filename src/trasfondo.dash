@@ -1169,9 +1169,27 @@ func caja_dock() -> [Int]
     if str_upper(conf("DOCK_ESCONDER", "NO")) == "SI"
         return caja
     end
+    # el dock abre más ventanas (el nombre del icono, su menú, una pila): la suya es la más pegada a su borde
+    lado = str_upper(conf("DOCK_POSICION", "ABAJO"))
+    mejor = 0
     for i in (0..wm_read() - 1)
-        if tarea_sin_ruta(i) == "TrasfondoDock" and caja.length == 0
-            caja = [wm_box(i, 0), wm_box(i, 1), wm_box(i, 2), wm_box(i, 3)]
+        if tarea_sin_ruta(i) == "TrasfondoDock"
+            x = wm_box(i, 0)
+            y = wm_box(i, 1)
+            w = wm_box(i, 2)
+            h = wm_box(i, 3)
+            v = y + h                                  # abajo: la de más abajo
+            if lado == "ARRIBA"
+                v = -y
+            elif lado == "IZQUIERDA"
+                v = -x
+            elif lado == "DERECHA"
+                v = x + w
+            end
+            if caja.length == 0 or v > mejor
+                caja = [x, y, w, h]
+                mejor = v
+            end
         end
     end
     return caja

@@ -69,7 +69,9 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   comes back when the mouse gets there. Its programs are edited in TrasfondoPrefs, Dock section, "Launchers...":
   a list with Add (with the file requester), Remove, Up and Down. In the same section, the gap between the icons
   and the background: the theme's, see-through (the desktop shows and only the icons' plates are left) or an
-  R,G,B colour.
+  R,G,B colour. A pinned drawer can be a **stack**, like AmiDock's subdocks (asked for by Ernesto Laura de la
+  Fuente and Ferrán García): hold the button down and choose "Show as a stack"; clicking it then unfolds what it
+  holds, with icons and names, and "Open the drawer" at the bottom. In the list it is written `path|PILA`.
 - **TrasfondoVentanas**: any program's windows as on a modern desktop, without patching the system. Dropping a
   dragged window against an edge snaps it: left or right, that half; a corner, that quarter; the top, the whole
   screen. Dragging it away from the edge brings its size back. A double click on the title bar maximizes it and

@@ -375,3 +375,7 @@ const MSG_CERRAR = 512
 # TrasfondoPrefs: lo hecho al pulsar Guardar o Usar, en la línea de abajo
 const MSG_GUARDADO = 513
 const MSG_APLICADO = 514
+# TrasfondoDock: un cajón fijado en pila (subdock) o como cajón, y la última fila de la pila
+const MSG_COMO_PILA = 515
+const MSG_COMO_CAJON = 516
+const MSG_ABRIR_CAJON = 517

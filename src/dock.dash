@@ -53,6 +53,7 @@ var C_MENU_SEL: Int = 0x3c4350
 const OP_FIJAR = 1
 const OP_QUITAR = 2
 const OP_ABRIR = 3
+const OP_PILA = 4            # un cajón fijado: en pila (subdock) o como cajón del Workbench
 
 struct Item
     ruta: String = ""        # la ruta real (file_real_path, como la da wm_path)
@@ -61,6 +62,7 @@ struct Item
     win: Int = 0             # su ventana de delante (wm_id), 0 si no está abierto
     imagen: String = ""      # una imagen PNG para el dock (ruta|imagen en la lista, o la de WBDock), "" sin ella
     img: Int = 0             # esa imagen ya a la medida de la casilla (image_from_decoded_size), 0 sin ella
+    pila: Bool = false       # un cajón que al pulsarlo despliega sus programas (ruta|PILA en la lista)
 end
 
 var items: [Item] = []
@@ -136,15 +138,24 @@ func leer_fijos()
         l = str_trim(l)
         if l != "" and not str_starts(l, ";")
             im = ""
-            barra = str_find(l, "|")             # ruta|imagen: una imagen PNG propia para el dock
+            en_pila = false
+            barra = str_find(l, "|")             # ruta|imagen: una imagen PNG propia para el dock; |PILA, en pila
             if barra > 0
-                im = str_trim(l[barra + 1:l.length])
+                for o in str_split(l[barra + 1:l.length], "|")
+                    o = str_trim(o)
+                    if str_upper(o) == "PILA"
+                        en_pila = true
+                    elif o != ""
+                        im = o
+                    end
+                end
                 l = str_trim(l[0:barra])
             end
             r = real(l)
             if buscar(r) < 0
                 it = Item(r, icon_load(r), true, 0)
                 it.imagen = im
+                it.pila = en_pila
                 if im == ""
                     it.imagen = imagen_wbdock(r)
                 end
@@ -264,6 +275,9 @@ func guardar()
             texto = texto + it.ruta
             if it.imagen != "" and it.imagen != imagen_wbdock(it.ruta)
                 texto = texto + "|" + it.imagen
+            end
+            if it.pila
+                texto = texto + "|PILA"
             end
             texto = texto + "\n"
         end
@@ -634,6 +648,31 @@ func punto(i: Int)
     end
 end
 
+# un icono, más grande o más pequeño hasta llenar lado por su lado más largo, sin deformarlo, en medio de la celda
+func dibujar_icono(icono: Int, x: Int, y: Int, cw: Int, ch: Int, lado_i: Int)
+    w = icon_width(icono)
+    h = icon_height(icono)
+    if w * 2 >= h * 3                   # uno de 1.3 o 3.x, dibujado para los píxeles de dos de alto de
+        h = h * 2                         # 640x256: en una pantalla de píxeles cuadrados sale aplastado
+    end
+    if w > 0 and h > 0
+        if w >= h
+            h = h * lado_i / w
+            w = lado_i
+        else
+            w = w * lado_i / h
+            h = lado_i
+        end
+    end
+    if h < 1
+        h = 1
+    end
+    if w < 1
+        w = 1
+    end
+    icon_draw_size(icono, x + (cw - w) / 2, y + (ch - h) / 2, w, h)
+end
+
 func pintar_icono(i: Int)
     it = items[i]
     x = icono_x(i)
@@ -651,28 +690,7 @@ func pintar_icono(i: Int)
         h = image_height(it.img)
         image_draw(it.img, x + (cw - w) / 2, y + (ch - h) / 2)
     elif it.icono != 0
-        # el icono, más grande o más pequeño hasta llenar su sitio por el lado más largo, sin deformarlo
-        w = icon_width(it.icono)
-        h = icon_height(it.icono)
-        if w * 2 >= h * 3                   # uno de 1.3 o 3.x, dibujado para los píxeles de dos de alto de
-            h = h * 2                         # 640x256: en una pantalla de píxeles cuadrados sale aplastado
-        end
-        if w > 0 and h > 0
-            if w >= h
-                h = h * lado_min / w
-                w = lado_min
-            else
-                w = w * lado_min / h
-                h = lado_min
-            end
-        end
-        if h < 1
-            h = 1
-        end
-        if w < 1
-            w = 1
-        end
-        icon_draw_size(it.icono, x + (cw - w) / 2, y + (ch - h) / 2, w, h)
+        dibujar_icono(it.icono, x, y, cw, ch, lado_min)
     else
         font_use(f_inicial)                 # sin icono: su inicial, sobre la misma placa
         font_style(2)
@@ -948,7 +966,12 @@ func pulsar(i: Int)
     if it.win == 0
         p = pieza_en_marcha(it.ruta)
     end
-    if it.win != 0 and wm_front(it.win)
+    if it.pila
+        # (si se acaba de cerrar al pulsar su icono, que se quede cerrada: pulsarlo otra vez la cierra)
+        if not (pila_cerrada_de == i and time_ms() - pila_cerrada_en < 1000)
+            pila_abrir(i)
+        end
+    elif it.win != 0 and wm_front(it.win)
         ok = wm_activate(it.win)
     elif p != ""
         ok = cx_send(p, 19)                 # (CXCMD_APPEAR)
@@ -1137,6 +1160,14 @@ func menu_abrir(i: Int)
         menu_ops.push(OP_ABRIR)
         menu_textos.push(tr(MSG_ABRIR, "Open another"))
     end
+    if it.fijo and dir_read(it.ruta) >= 0
+        menu_ops.push(OP_PILA)
+        if it.pila
+            menu_textos.push(tr(MSG_COMO_CAJON, "Open as a drawer"))
+        else
+            menu_textos.push(tr(MSG_COMO_PILA, "Show as a stack"))
+        end
+    end
     usar_letra()
     menu_alto = font_height() + 8
     w = menu_ancho()
@@ -1193,6 +1224,228 @@ func menu_elegir(y: Int)
         end
     elif op == OP_ABRIR
         lanzar(items[i].ruta)
+    elif op == OP_PILA
+        items[i].pila = not items[i].pila
+        guardar()
+    end
+end
+
+# ---- la pila: un cajón del dock que despliega sus programas (los subdocks de AmiDock; lo pidieron Ernesto Laura
+# de la Fuente y Ferrán García) ----
+# Una ventanita junto a su icono, hacia dentro de la pantalla: una fila por cada cosa del cajón con icono (su icono y
+# su nombre) y, al final, una para abrir el cajón entero. Pulsar una la abre (como en el dock) y cierra la pila;
+# pulsar fuera, o su icono otra vez, la cierra
+
+const PILA_MAX = 12          # filas como mucho (el resto, con "Abrir el cajón")
+const PILA_ICONO = 32        # el lado de sus iconos
+
+var pila: Int = 0            # su ventana, 0 si no está
+var pila_de: Int = -1        # de qué icono del dock
+var pila_rutas: [String] = []
+var pila_nombres: [String] = []
+var pila_iconos: [Int] = []
+var pila_fila: Int = 0       # el alto de una fila
+var pila_ancho: Int = 0
+var pila_x: Int = 0          # su sitio en la pantalla
+var pila_y: Int = 0
+var pila_sel: Int = -1       # la fila con el ratón encima
+var pila_cerrada_de: Int = -1   # la que se cerró hace nada (ver pulsar)
+var pila_cerrada_en: Int = 0
+
+func unir(a: String, b: String) -> String
+    if str_ends(a, ":") or str_ends(a, "/")
+        return a + b
+    end
+    return a + "/" + b
+end
+
+func pila_cerrar()
+    if pila != 0
+        window_close(pila)
+        pila = 0
+        pila_cerrada_de = pila_de
+        pila_cerrada_en = time_ms()
+        ok = window_use(0)
+    end
+    for ic in pila_iconos
+        icon_free(ic)
+    end
+    pila_iconos = []
+    pila_rutas = []
+    pila_nombres = []
+    pila_sel = -1
+end
+
+func pila_pintar()
+    if pila == 0 or not window_use(pila)
+        return
+    end
+    n = pila_rutas.length + 1
+    h = n * pila_fila + 8
+    pluma(C_BORDE)
+    gfx_rect(0, 0, pila_ancho - 1, h - 1)
+    pluma(C_MENU)
+    gfx_rect(1, 1, pila_ancho - 2, h - 2)
+    usar_letra()
+    for k in (0..n - 1)
+        y = 4 + k * pila_fila
+        if k == pila_sel
+            pluma(C_MENU_SEL)
+            gfx_rect(3, y, pila_ancho - 4, y + pila_fila - 1)
+        end
+        texto = tr(MSG_ABRIR_CAJON, "Open the drawer")
+        if k < pila_rutas.length
+            texto = pila_nombres[k]
+            if pila_iconos[k] != 0
+                dibujar_icono(pila_iconos[k], 8, y, PILA_ICONO, pila_fila, PILA_ICONO)
+            end
+        end
+        pluma(C_TEXTO)
+        gfx_text_at(16 + PILA_ICONO, y + (pila_fila - font_height()) / 2 + font_baseline(), texto)
+    end
+    ok = window_use(0)
+end
+
+func pila_abrir(i: Int)
+    pila_cerrar()
+    menu_cerrar()
+    etiqueta_quitar()
+    it = items[i]
+    n = dir_read(it.ruta)
+    if n < 0                              # ya no es un cajón: como antes
+        lanzar(it.ruta)
+        return
+    end
+    # lo que tiene icono, por su nombre (dir_read ya los da en orden)
+    var nombres: [String] = []
+    for k in (0..n - 1)
+        nm = dir_entry_name(k)
+        if str_ends(str_lower(nm), ".info") and str_lower(nm) != "disk.info" and nm.length > 5
+            nombres.push(nm[0:nm.length - 5])
+        end
+    end
+    usar_letra()
+    pila_fila = PILA_ICONO + 8
+    if font_height() + 8 > pila_fila
+        pila_fila = font_height() + 8
+    end
+    # cuántas filas caben entre el dock y el otro borde (o en el alto de la pantalla, de lado)
+    sitio = sh - ALTO_BARRA - 16
+    if posicion == "ABAJO"
+        sitio = dy - ALTO_BARRA - 12
+    elif posicion == "ARRIBA"
+        sitio = sh - (dy + alto) - 12
+    end
+    caben = (sitio - 8) / pila_fila - 1
+    if caben > PILA_MAX
+        caben = PILA_MAX
+    end
+    for nm in nombres
+        if pila_rutas.length < caben
+            pila_rutas.push(unir(it.ruta, nm))
+            pila_nombres.push(nm)
+        end
+    end
+    w = 140
+    for nm in pila_nombres
+        if font_text_width(nm) + PILA_ICONO + 28 > w
+            w = font_text_width(nm) + PILA_ICONO + 28
+        end
+    end
+    if font_text_width(tr(MSG_ABRIR_CAJON, "Open the drawer")) + PILA_ICONO + 28 > w
+        w = font_text_width(tr(MSG_ABRIR_CAJON, "Open the drawer")) + PILA_ICONO + 28
+    end
+    if w > sw / 2
+        w = sw / 2
+    end
+    pila_ancho = w
+    h = (pila_rutas.length + 1) * pila_fila + 8
+    # junto al icono, hacia dentro de la pantalla (como el menú)
+    x = dx + icono_x(i) + celda_w(i) / 2 - w / 2
+    y = dy - h - 4
+    if posicion == "ARRIBA"
+        y = dy + alto + 4
+    elif posicion == "IZQUIERDA"
+        x = dx + ancho + 4
+        y = dy + icono_y(i) + celda_h(i) / 2 - h / 2
+    elif posicion == "DERECHA"
+        x = dx - w - 4
+        y = dy + icono_y(i) + celda_h(i) / 2 - h / 2
+    end
+    if x + w > sw
+        x = sw - w
+    end
+    if x < 0
+        x = 0
+    end
+    if y + h > sh
+        y = sh - h
+    end
+    if y < ALTO_BARRA
+        y = ALTO_BARRA
+    end
+    pila_de = i
+    pila_sel = -1
+    pila_x = x
+    pila_y = y
+    pila = window_create("", x, y, w, h, 2 + 4 + 8)
+    if pila == 0
+        pila_rutas = []
+        pila_nombres = []
+        return
+    end
+    window_activate(pila)
+    gfx_mode(0)                          # (el texto, sin fondo)
+    for r in pila_rutas                  # (con la ventana ya abierta: los iconos, para su pantalla)
+        pila_iconos.push(icon_load(r))
+    end
+    pila_pintar()
+end
+
+# la fila de la pila en y (de su ventana); -1 ninguna
+func pila_fila_en(y: Int) -> Int
+    if pila_fila <= 0
+        return -1
+    end
+    k = (y - 4) / pila_fila
+    if y < 4 or k < 0 or k > pila_rutas.length
+        return -1
+    end
+    return k
+end
+
+func pila_elegir(y: Int)
+    k = pila_fila_en(y)
+    if k < 0
+        return
+    end
+    r = items[pila_de].ruta
+    if k < pila_rutas.length
+        r = pila_rutas[k]
+    end
+    pila_cerrar()
+    if k == pila_rutas.length
+        if not wb_open(r)               # el cajón entero, en el Workbench
+            lanzar(r)
+        end
+    else
+        lanzar(r)
+    end
+end
+
+# el ratón sobre la pila: su fila, resaltada
+func pila_mirar()
+    if pila == 0
+        return
+    end
+    mx = wm_pointer_x() - pila_x
+    k = pila_fila_en(wm_pointer_y() - pila_y)
+    if mx < 0 or mx >= pila_ancho
+        k = -1
+    end
+    if k != pila_sel
+        pila_sel = k
+        pila_pintar()
     end
 end
 
@@ -1272,7 +1525,7 @@ end
 
 func mirar_encima()
     i = -1
-    if menu == 0
+    if menu == 0 and pila == 0
         i = icono_del_raton()
     end
     if i != encima
@@ -1330,6 +1583,7 @@ end
 
 func esconder_ya()
     menu_cerrar()
+    pila_cerrar()
     etiqueta_quitar()
     encima = -1
     rayita()
@@ -1382,7 +1636,8 @@ func vigilar()
         return
     end
     mirar_encima()
-    if esconder and menu == 0
+    pila_mirar()
+    if esconder and menu == 0 and pila == 0
         if raton_lejos()
             if lejos_desde == 0
                 lejos_desde = time_ms()
@@ -1545,8 +1800,11 @@ Main
             On Click
                 if menu != 0 and event_window() == menu
                     menu_elegir(click_y())
+                elif pila != 0 and event_window() == pila
+                    pila_elegir(click_y())
                 elif event_window() == 0
                     menu_cerrar()
+                    pila_cerrar()
                     i = icono_en(click_x(), click_y())
                     if i >= 0
                         a = arrastrar(i)
@@ -1562,6 +1820,7 @@ Main
             end
             On RightClick
                 if event_window() == 0
+                    pila_cerrar()
                     i = icono_en(click_x(), click_y())
                     if i >= 0
                         menu_abrir(i)
@@ -1579,6 +1838,14 @@ Main
                     end
                     time_delay(3)
                     menu_cerrar()
+                elif pila != 0 and event_window() == pila
+                    k = 0                    # (lo mismo que el menú)
+                    while mouse_button(0) and k < 100
+                        time_delay(1)
+                        k = k + 1
+                    end
+                    time_delay(3)
+                    pila_cerrar()
                 end
             end
             On Close
