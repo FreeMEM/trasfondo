@@ -1,9 +1,10 @@
 # TrasfondoDock: el dock, en un borde de la pantalla, horizontal o vertical. Lleva los programas fijados (ENV: y
 # ENVARC:Trasfondo.dock, uno por línea) y, detrás, los que tienen una ventana abierta en el Workbench, cada uno con
 # su icono (.info, como lo pinta el Workbench) y un punto si está abierto. Pulsar uno trae su ventana delante o, si
-# no está abierto, lo lanza (C:WBRun de 3.2, o como un doble clic). Con el botón derecho, un menú: fijarlo, quitarlo
-# o abrir otro. Un icono soltado encima desde el Workbench se fija donde cae; arrastrando un icono fijado se cambia
-# de sitio, y sacándolo del dock se quita. Las esquinas dejan ver lo que hay detrás. Solo con RTG.
+# no está abierto, lo lanza (C:WBRun de 3.2, o como un doble clic). Con el botón derecho o manteniéndolo pulsado, un
+# menú: abrir, abrir otro, en pila o como icono (un cajón), fijarlo o quitarlo. Un icono soltado encima desde el
+# Workbench se fija donde cae (escondido, en la franja del borde); arrastrando un icono fijado se cambia de sitio, y
+# sacándolo del dock se quita. Las esquinas dejan ver lo que hay detrás. Solo con RTG.
 #
 # Ajustes (TrasfondoPrefs, o los tooltypes): POSICION (ABAJO, ARRIBA, IZQUIERDA, DERECHA; ABAJO si no), ICONO (el
 # lado mínimo de un icono, 40), HUECO (entre dos iconos, 4), FONDO (TEMA, TRANSPARENTE o COLOR) y COLOR (R,G,B).

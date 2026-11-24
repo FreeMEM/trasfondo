@@ -62,15 +62,23 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   nombre (`Trasfondo-20261109-192634.png`). Van a `RAM:` si no se elige otra carpeta; la tecla y la carpeta están
   en TrasfondoPrefs, sección Barra. Un aviso dice dónde quedó la imagen.
 - **TrasfondoDock**: un dock con los programas abiertos y los que fijes, cada uno en una casilla igual, con su
-  icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa. Se fija un programa
-  soltando su icono encima; se cambia de sitio arrastrándolo, y se quita o se fija manteniendo pulsado el botón.
-  Si se pide (TrasfondoPrefs, o `ESCONDER=SI`), se esconde solo y deja una rayita en el borde: sale al llevar el
-  ratón allí. Sus programas se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
+  icono a la medida. Al pasar el ratón, la casilla se resalta y sale el nombre del programa.
+  - **Añadir**: arrastra el icono de un programa, un cajón o un proyecto desde el Workbench y suéltalo en el dock,
+    en el sitio donde lo quieras.
+  - **Menú del icono**: botón derecho sobre un icono (o mantenerlo pulsado): Abrir, Abrir otro, Mostrar como pila
+    o como icono (los cajones) y Fijar en el dock o Quitar del dock.
+  - **Cambiar de sitio**: arrástralo dentro del dock; sacándolo fuera, se quita.
+  - **Escondido** (TrasfondoPrefs, o `ESCONDER=SI`): deja una rayita en el borde y sale al llevar el ratón allí.
+    Para añadir con el dock escondido, arrastra el icono hasta el borde, sobre la rayita (se ilumina a lo largo) y
+    suéltalo: el dock sale con el icono en ese sitio.
+
+  El menú con el botón derecho y soltar con el dock escondido los pidió el usuario. Sus programas también se editan en TrasfondoPrefs, sección Dock, "Lanzadores...": una lista con Añadir
   (con el selector de ficheros), Quitar, Subir y Bajar. En la misma sección, el hueco entre los iconos y el fondo:
   el del tema, transparente (se ve el escritorio y quedan solo las placas de los iconos) o de un color R,G,B.
   Un cajón fijado puede ir **en pila**, como los subdocks de AmiDock (lo pidieron Ernesto Laura de la Fuente y
-  Ferrán García): con el botón mantenido, "Mostrar como pila"; al pulsarlo despliega lo que tiene, con su icono y
-  su nombre, y abajo "Abrir el cajón". En la lista va como `ruta|PILA`.
+  Ferrán García): en su menú, "Mostrar como pila"; al pulsarlo despliega lo que tiene, con su icono y su nombre, y
+  abajo "Abrir el cajón". Lo que sale en la pila es lo que hay en el cajón: para añadir algo, ponlo en el cajón. En
+  la lista va como `ruta|PILA`.
 - **TrasfondoVentanas**: las ventanas de cualquier programa como en un escritorio de ahora, sin parchear el
   sistema. Soltar una ventana arrastrada contra un borde la encaja: a la izquierda o a la derecha, la mitad; en una
   esquina, ese cuarto; arriba, la pantalla entera. Al alejarla del borde recupera su tamaño. Un doble clic en la

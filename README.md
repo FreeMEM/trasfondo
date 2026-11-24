@@ -63,15 +63,23 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   (`Trasfondo-20261109-192634.png`). They go to `RAM:` unless another folder is set; the key and the folder are
   in TrasfondoPrefs, Bar section. A notification says where the picture went.
 - **TrasfondoDock**: a dock with the open programs and the ones you pin, each in an equal box with its icon
-  fitted to it. When the mouse is over one, its box lights up and the program's name shows. You pin a program by
-  dropping its icon on it; you move one by dragging it, and you unpin or pin one by holding the button down. If
-  you ask for it (TrasfondoPrefs, or `ESCONDER=SI`), it hides by itself and leaves a thin line at the edge: it
-  comes back when the mouse gets there. Its programs are edited in TrasfondoPrefs, Dock section, "Launchers...":
+  fitted to it. When the mouse is over one, its box lights up and the program's name shows.
+  - **Adding**: drag the icon of a program, a drawer or a project from the Workbench and drop it on the dock, where
+    you want it.
+  - **Icon menu**: right button on an icon (or hold it down): Open, Open another, Show as a stack or as an icon
+    (drawers) and Keep in dock or Remove from dock.
+  - **Moving**: drag it inside the dock; dragged out of it, it is removed.
+  - **Hidden** (TrasfondoPrefs, or `ESCONDER=SI`): it leaves a thin line at the edge and comes back when the mouse
+    gets there. To add something while it is hidden, drag the icon to the edge, over the line (it lights up along
+    the dock) and drop it: the dock comes out with the icon in that place.
+
+  The right-button menu and dropping on the hidden dock were asked for by the user. Its programs can also be edited in TrasfondoPrefs, Dock section, "Launchers...":
   a list with Add (with the file requester), Remove, Up and Down. In the same section, the gap between the icons
   and the background: the theme's, see-through (the desktop shows and only the icons' plates are left) or an
   R,G,B colour. A pinned drawer can be a **stack**, like AmiDock's subdocks (asked for by Ernesto Laura de la
-  Fuente and Ferrán García): hold the button down and choose "Show as a stack"; clicking it then unfolds what it
-  holds, with icons and names, and "Open the drawer" at the bottom. In the list it is written `path|PILA`.
+  Fuente and Ferrán García): choose "Show as a stack" in its menu; clicking it then unfolds what it holds, with
+  icons and names, and "Open the drawer" at the bottom. The stack shows what is in the drawer: to add something,
+  put it in the drawer. In the list it is written `path|PILA`.
 - **TrasfondoVentanas**: any program's windows as on a modern desktop, without patching the system. Dropping a
   dragged window against an edge snaps it: left or right, that half; a corner, that quarter; the top, the whole
   screen. Dragging it away from the edge brings its size back. A double click on the title bar maximizes it and
