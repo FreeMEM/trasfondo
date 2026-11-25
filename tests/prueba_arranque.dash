@@ -1,0 +1,232 @@
+# El icono de arranque sin la ruta de la herramienta (lo contó Ernesto Laura de la Fuente): el cajón Trasfondo
+# copiado tal cual del .lha (como lo dejaba Hangar, sin pasar por Instalar) lleva en Arranque/ iconos de proyecto
+# cuya herramienta es solo "Trasfondo", y TrasfondoPrefs los copiaba así a SYS:WBStartup: al arrancar, el Workbench
+# no encontraba la herramienta. Aquí SYS:WBStartup/Trasfondo.info se pone así de mal; se escribe como lo hace TrasfondoPrefs al Usar
+# (icono_arranque, copiada aquí: la ventana no se deja pulsar en el emulador) y se mira que la herramienta es la ruta entera y que, abriéndolo como el Workbench, Trasfondo arranca.
+#
+#     python3 tests/prueba_arranque.py   (pone el cajón del .lha de build/ en DH0:T2)
+
+@header "#include <devices/input.h>"
+@header "#include <workbench/workbench.h>"
+@header "#include <proto/icon.h>"
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());     /* con 0, abriría su propia consola encima de todo */
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+# un evento a input.device
+@native func evento(clase: Int, codigo: Int, cual: Int, x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    if (io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        ie.ie_Class = clase;
+        ie.ie_Code = codigo;
+        ie.ie_Qualifier = cual;
+        ie.ie_X = x;
+        ie.ie_Y = y;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# lleva el puntero a ese píxel de la pantalla del Workbench (IECLASS_NEWPOINTERPOS, IESUBCLASS_PIXEL)
+@native func puntero(x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    struct IEPointerPixel pp;
+    struct Screen *s = LockPubScreen(NULL);
+    if (s && io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        pp.iepp_Screen = s;
+        pp.iepp_Position.X = x;
+        pp.iepp_Position.Y = y;
+        ie.ie_Class = IECLASS_NEWPOINTERPOS;
+        ie.ie_SubClass = IESUBCLASS_PIXEL;
+        ie.ie_Code = IECODE_NOBUTTON;
+        ie.ie_EventAddress = &pp;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (s) UnlockPubScreen(NULL, s);
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# el centro (en la pantalla) del gadget con ese texto en la ventana de ese título: x * 10000 + y; -1 si no está.
+# Los botones de GadTools no guardan su texto en el gadget: detrás de "Look for new versions on GitHub" van
+# la línea de la versión, "Update", "Save", "Use" y "Cancel", en ese orden. (Los textos, en inglés: el
+# sistema del emulador no tiene el catálogo en castellano.)
+@native func centro(titulo: String, texto: String) -> Int
+"""
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    struct Gadget *g;
+    LONG r = -1, boton = -1, k = -1;
+    if (!strcmp((char *)texto, "Update")) boton = 2;
+    else if (!strcmp((char *)texto, "Save")) boton = 3;
+    else if (!strcmp((char *)texto, "Use")) boton = 4;
+    else if (!strcmp((char *)texto, "Cancel")) boton = 5;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
+    if (w)
+        for (g = w->FirstGadget; g; g = g->NextGadget) {
+            if (k >= 0) k++;
+            if (g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, "Look for new versions on GitHub")) k = 0;
+            if (boton > 0 ? k == boton : g->GadgetText && g->GadgetText->IText && !strcmp((char *)g->GadgetText->IText, (char *)texto)) {
+                /* la ventana es GimmeZeroZero: los gadgets cuentan desde dentro del borde */
+                LONG bx = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderLeft : 0;
+                LONG by = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderTop : 0;
+                r = (w->LeftEdge + bx + g->LeftEdge + g->Width / 2) * 10000 + w->TopEdge + by + g->TopEdge + g->Height / 2;
+                break;
+            }
+        }
+    UnlockIBase(lock);
+    return r;
+"""
+end
+
+# las casillas (1 marcada) en el orden de la ventana
+@native func estados() -> String
+"""
+    static char b[40];
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    struct Gadget *g;
+    LONG n = 0;
+    b[0] = 0;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, "Trasfondo Preferences")) break;
+    if (w) for (g = w->FirstGadget; g && n < 30; g = g->NextGadget)
+        if (g->GadgetText && g->GadgetText->IText && !strncmp((char *)g->GadgetText->IText, "Show ", 5)) b[n++] = (g->Flags & GFLG_SELECTED) ? '1' : '0';
+    b[n] = 0;
+    UnlockIBase(lock);
+    return _dash_str_dup((STRPTR)b, TRUE);
+"""
+end
+
+# el alto del panel de Trasfondo: filas seguidas, desde arriba, distintas del fondo en una columna del panel
+@native func alto_panel() -> Int
+"""
+    struct Screen *s = LockPubScreen(NULL);
+    LONG y, n = 0;
+    if (!s) return -1;
+    for (y = s->BarHeight + 6; y < s->Height; y++) {
+        if (ReadPixel(&s->RastPort, s->Width - 8, y) == 0) { if (n) break; } else n++;
+    }
+    UnlockPubScreen(NULL, s);
+    return n;
+"""
+end
+
+const IECLASS_RAWMOUSE = 2
+const IECODE_LBUTTON = 0x68
+const IECODE_UP_PREFIX = 0x80
+const IEQUALIFIER_RELATIVEMOUSE = 0x8000
+
+func pulsar(texto: String) -> Bool
+    c = centro("Trasfondo Preferences", texto)
+    if c < 0
+        Print "no encuentro: " + texto
+        return false
+    end
+    x = c / 10000
+    y = c % 10000
+    puntero(x, y)
+    esperar(5)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON, IEQUALIFIER_RELATIVEMOUSE, 0, 0)     # sin moverse: relativo 0,0
+    esperar(3)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON + IECODE_UP_PREFIX, IEQUALIFIER_RELATIVEMOUSE, 0, 0)
+    esperar(10)
+    Print "  " + texto + " en #{c / 10000},#{c % 10000}: " + estados()
+    return true
+end
+
+func fichero(nombre: String) -> String
+    t = file_read_text(nombre)
+    if t == nil
+        return "(no está)"
+    end
+    return str_replace(t, "\n", " | ")
+end
+
+@native func herramienta(ruta: String) -> String
+"""
+    struct Library *IconBase = OpenLibrary((CONST_STRPTR)"icon.library", 36);
+    struct DiskObject *d;
+    static char b[256];
+    strcpy(b, "(sin icono)");
+    if (IconBase) {
+        d = GetDiskObject((CONST_STRPTR)ruta);
+        if (d) {
+            strncpy(b, d->do_DefaultTool ? (char *)d->do_DefaultTool : "(ninguna)", 255);
+            b[255] = 0;
+            FreeDiskObject(d);
+        }
+        CloseLibrary(IconBase);
+    }
+    return _dash_str_dup((STRPTR)b, TRUE);
+"""
+end
+
+func en_marcha(nombre: String) -> Bool
+    n = ports_read()
+    i = 0
+    while i < n
+        if port_name(i) == nombre
+            return true
+        end
+        i = i + 1
+    end
+    return false
+end
+
+
+var cajon: String = "DH0:T2/"
+
+# la de src/trasfondoprefs.dash, igual
+func icono_arranque(p: String)
+    base = cajon + "Arranque/" + p
+    if not file_exists(base + ".info")
+        base = ""                               # el de proyecto del sistema
+    end
+    if not icon_save("SYS:WBStartup/" + p, base, 4, cajon + p, "DONOTWAIT")
+        file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+    end
+end
+
+Main
+    esperar(500)                              # (que el Workbench haya terminado con WBStartup)
+    lanzar("C:MakeDir SYS:WBStartup")
+    lanzar("C:Copy DH0:Malo.info SYS:WBStartup/Trasfondo.info")
+    Print "antes: " + herramienta("SYS:WBStartup/Trasfondo")
+    icono_arranque("Trasfondo")
+    Print "después: " + herramienta("SYS:WBStartup/Trasfondo")
+    Print "en marcha antes de abrirlo: #{en_marcha(\"Trasfondo\")}"
+    Print "wb_open: #{wb_open(\"SYS:WBStartup/Trasfondo\")}"
+    esperar(300)
+    Print "arranca desde WBStartup: #{en_marcha(\"Trasfondo\")}"
+    lanzar("DH0:T2/Trasfondo >NIL:")          # lo para
+end

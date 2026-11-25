@@ -813,6 +813,19 @@ func cambio(prefijo: String) -> Bool
     return false
 end
 
+# El icono de proyecto de una pieza en SYS:WBStartup, con su herramienta por la ruta entera. El de Arranque/ del cajón
+# solo la lleva si lo puso el instalador o el actualizador: copiado de otra forma (Hangar no pasaba por Instalar)
+# llevaba solo el nombre y el Workbench no encontraba la herramienta al arrancar (lo contó Ernesto Laura de la Fuente)
+func icono_arranque(p: String)
+    base = cajon + "Arranque/" + p
+    if not file_exists(base + ".info")
+        base = ""                               # el de proyecto del sistema
+    end
+    if not icon_save("SYS:WBStartup/" + p, base, 4, cajon + p, "DONOTWAIT")
+        file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+    end
+end
+
 # los iconos de SYS:WBStartup como dice la sección Arranque (una pieza que se marca, además, arranca ya)
 func poner_arranque()
     if cajon == ""
@@ -821,13 +834,17 @@ func poner_arranque()
     var piezas: [String] = str_split(PIEZAS, "|")
     for p in piezas
         quiere = valores["ARR_" + p] == "SI"
+        # el que ya está se escribe otra vez, con la ruta buena: arregla los que se pusieron sin ella
+        if quiere and en_arranque(p) and file_exists(cajon + p) and not es_wbstartup(cajon)   # (ahí es su icono de herramienta)
+            icono_arranque(p)
+        end
         # solo las que se cambiaron: una pieza arrancada después de abrir las Prefs no se para por estar sin marcar
         if valores["ARR_" + p] == arr_antes["ARR_" + p]
             continue
         end
         if quiere
             if not en_arranque(p)
-                file_copy(cajon + "Arranque/" + p + ".info", "SYS:WBStartup/" + p + ".info")
+                icono_arranque(p)
             end
             if not corriendo(p)
                 arrancar(p)                  # y ya, sin esperar a reiniciar
