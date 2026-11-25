@@ -6,6 +6,10 @@
 #   lugar=Málaga
 #   ahora=173,0,1          temperatura, código WMO, 1 de día / 0 de noche
 #   dia=20261031,0,215,121 fecha, código, máxima, mínima (uno por día, hoy el primero)
+#
+# Si no sale, por qué, en ENV:Trasfondo.tiempo_error (TrasfondoPrefs lo enseña en la sección Barra). Si fue el
+# certificado del servidor, su aviso en ENV:Trasfondo.cert_tiempo (certificados.dash): cuando TrasfondoPrefs lo
+# acepta, borra ese fichero y el tiempo se pide otra vez en un momento.
 
 import "https.dash"
 
@@ -13,6 +17,7 @@ const T_CADA = 1800000             # ms entre dos consultas
 const T_REINTENTO = 300000         # si falló, se vuelve a probar a los 5 minutos
 const T_TOPE = 32768
 const T_FICHERO = "ENV:Trasfondo.tiempo"
+const T_ERROR = "ENV:Trasfondo.tiempo_error"
 
 var t_ciudad: String = ""
 var t_lat: String = ""             # tal cual van en la URL ("36.72")
@@ -25,6 +30,16 @@ var t_codigo: Int = -1
 var t_de_dia: Bool = true
 var t_cambio: Bool = false         # llegó un tiempo nuevo: hay que repintar
 var t_error: String = ""
+var t_cert: Bool = false           # falló por el certificado: se mira si TrasfondoPrefs lo aceptó (borra el aviso)
+var t_mirado: Int = 0              # time_ms de la última vez que se miró
+var t_geo: String = "geocoding-api.open-meteo.com"
+var t_api: String = "api.open-meteo.com"
+
+# no salió: por qué, para TrasfondoPrefs
+func tiempo_fallo(texto: String)
+    t_error = texto
+    file_write_text(T_ERROR, texto + "\n")
+end
 
 # un número de un JSON ("temperature_2m":17.3) en décimas; -9999 si no está
 func json_decimas(j: String, clave: String, desde: Int) -> Int
@@ -108,6 +123,20 @@ func tiempo_iniciar(ciudad: String, lat: String, lon: String)
     t_lugar = ciudad
     t_proxima = time_ms() + 3000           # que la barra salga antes
     s_agente = "TrasfondoBarra"
+    s_cert_fichero = CERT_TIEMPO
+    cert_cargar()                          # los certificados aceptados (también antes de cada conexión)
+    # para las pruebas: otro servidor para todo ("127.0.0.1:44301")
+    otro = file_read_text("ENV:Trasfondo.tiempo_servidor")
+    if otro != nil and str_trim(otro) != ""
+        otro = str_trim(str_replace(otro, "\n", ""))
+        dos = str_find(otro, ":")
+        if dos > 0
+            s_puerto = Int(otro[dos + 1:otro.length])
+            otro = otro[0:dos]
+        end
+        t_geo = otro
+        t_api = otro
+    end
 end
 
 func tiempo_hay() -> Bool
@@ -138,17 +167,17 @@ func tiempo_pedir()
         if ciudad_pista() != ""
             cuantos = "10"
         end
-        https_empezar("geocoding-api.open-meteo.com", "/v1/search?count=" + cuantos + "&format=json&name=" + url(ciudad_nombre()), T_TOPE)
+        https_empezar(t_geo, "/v1/search?count=" + cuantos + "&format=json&name=" + url(ciudad_nombre()), T_TOPE)
     else
         t_fase = 2
-        https_empezar("api.open-meteo.com", "/v1/forecast?latitude=" + t_lat + "&longitude=" + t_lon + "&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5", T_TOPE)
+        https_empezar(t_api, "/v1/forecast?latitude=" + t_lat + "&longitude=" + t_lon + "&current=temperature_2m,weather_code,is_day&daily=weather_code,temperature_2m_max,temperature_2m_min&timezone=auto&forecast_days=5", T_TOPE)
     end
 end
 
 func tiempo_guardar(j: String)
     c = str_find(j, "\"current\":{")
     if c < 0
-        t_error = "no current weather"
+        tiempo_fallo("no current weather")
         return
     end
     t_temp = json_decimas(j, "temperature_2m", c)
@@ -156,6 +185,7 @@ func tiempo_guardar(j: String)
     t_de_dia = json_decimas(j, "is_day", c) != 0
     t_cambio = true
     t_error = ""
+    file_delete(T_ERROR)
     texto = "lugar=" + t_lugar + "\nahora=#{t_temp},#{t_codigo},"
     if t_de_dia
         texto = texto + "1\n"
@@ -188,6 +218,14 @@ func tiempo_paso()
         return
     end
     if t_fase == 0
+        # falló por el certificado: si TrasfondoPrefs lo aceptó (borró el aviso), se pide otra vez ya
+        if t_cert and time_ms() - t_mirado > 2000
+            t_mirado = time_ms()
+            if not file_exists(CERT_TIEMPO)
+                t_cert = false
+                t_proxima = time_ms()
+            end
+        end
         if time_ms() >= t_proxima
             # sin pila TCP/IP en marcha no se abre la red: se cargaría bsdsocket.library de LIBS:, y MiamiDx, que
             # pone la suya, tendría que quitarla antes de conectar (Ferrán García). Se mira otra vez en un minuto
@@ -202,7 +240,8 @@ func tiempo_paso()
     https_paso()
     e = https_estado()
     if e == HTTPS_FALLO
-        t_error = s_error
+        tiempo_fallo(s_error)
+        t_cert = s_cert
         https_soltar()
         net_release()                          # bsdsocket.library suelta hasta la próxima consulta
         t_fase = 0
@@ -236,7 +275,7 @@ func tiempo_paso()
                 end
             end
             if r < 0
-                t_error = "place not found: " + t_ciudad
+                tiempo_fallo("place not found: " + t_ciudad)
                 t_ciudad = ""                  # no se insiste
                 net_release()
                 t_fase = 0

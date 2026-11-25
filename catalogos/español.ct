@@ -234,8 +234,8 @@ MSG_111
 Sección
 ; Section
 MSG_112
-Fondo|Barra|Dock|Ventanas|Colores|Arranque|Archivos
-; Background|Bar|Dock|Windows|Colours|Startup|Files
+Fondo|Barra|Dock|Ventanas|Colores|Arranque|Archivos|Certificados
+; Background|Bar|Dock|Windows|Colours|Startup|Files|Certificates
 MSG_113
 Ciudad
 ; City
@@ -842,3 +842,42 @@ Abrir el cajón
 MSG_518
 Abrir
 ; Open
+MSG_519
+Certificado...
+; Certificate...
+MSG_520
+Certificado
+; Certificate
+MSG_521
+No se puede comprobar que el servidor %1 sea quien dice ser: %2. Si lo aceptas y alguien se está haciendo pasar por él, podría ver o cambiar lo que se envía.
+; Cannot check that the server %1 is who it says it is: %2. If you accept it and someone is pretending to be it, they could see or change what is sent.
+MSG_522
+Las actualizaciones siguen comprobando la firma de FreeMEM de cada fichero: aceptar este certificado no deja colar programas falsos.
+; Updates still check the FreeMEM signature of every file: accepting this certificate does not let fake programs in.
+MSG_523
+Servidor|Para|Emitido por|Desde|Hasta|Huella SHA-256|Motivo
+; Server|Issued to|Issued by|Valid from|Valid until|SHA-256 fingerprint|Reason
+MSG_524
+Aceptar este certificado
+; Accept this certificate
+MSG_525
+Certificados aceptados: pulsa uno para elegirlo
+; Accepted certificates: click one to choose it
+MSG_526
+No has aceptado ningún certificado
+; You have not accepted any certificate
+MSG_527
+Olvidar
+; Forget
+MSG_528
+Olvidar todos
+; Forget all
+MSG_529
+Se aceptan cuando no se puede comprobar un servidor: si olvidas uno, vuelve a avisar
+; They are accepted when a server cannot be checked: forgetting one warns again
+MSG_530
+Tiempo: %s
+; Weather: %s
+MSG_532
+%1, aceptado el %2
+; %1, accepted on %2

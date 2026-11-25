@@ -5,6 +5,10 @@
 # - Dock: en qué borde, el tamaño de los iconos y sus lanzadores (ENVARC:Trasfondo.dock, en Ed).
 # - Ventanas: el hueco entre ventanas, el mosaico automático y las teclas.
 # - Arranque: qué piezas arrancan con el Workbench (sus iconos de proyecto en SYS:WBStartup).
+# - Certificados: los que se aceptaron tras avisar (ENV: y ENVARC:Trasfondo.certificados), para olvidarlos.
+# Si el fondo (GitHub) o la barra (el tiempo) no pudieron comprobar el certificado de un servidor, dejan su aviso en
+# ENV:Trasfondo.cert_fondo o cert_tiempo (src/certificados.dash): sale junto a su error, con un botón que lo enseña
+# y deja aceptarlo (lo pidió el usuario).
 # Usar las deja en ENV:Trasfondo.prefs (hasta reiniciar); Guardar, también en ENVARC:. El fondo las nota en un
 # segundo; la barra, el dock y las ventanas, si están en marcha y cambió lo suyo, se vuelven a arrancar.
 # Lo que no está en ese fichero lo siguen diciendo los tooltypes del icono de cada pieza.
@@ -70,6 +74,16 @@ var g_lanzadores: Int = -1
 var g_mover: Int = -1                   # sección Arranque: pasar Trasfondo de WBStartup a un cajón propio
 var mover_hecho: String = ""            # lo que dijo al pasarlo
 var seccion: Int = 0
+var g_cert: Int = -1                    # Fondo y Barra: el botón que enseña el aviso del certificado
+var g_c_filas: [Int] = []               # Certificados: una fila por certificado aceptado
+var g_c_olvidar: Int = -1
+var g_c_todos: Int = -1
+var c_sel: Int = 0                      # el certificado elegido
+var c_arriba: Int = 0                   # el primero que se ve
+var c_repetir: String = ""              # lo que se pidió repetir al fondo tras aceptar ("actualizar", "buscar" o "")
+var v_prefs: Int = 0                    # la ventana (window_create), su sitio
+var v_izq: Int = 0
+var v_arr: Int = 0
 var y_muestras: Int = 0                # dónde van las muestras de los colores (página 4)
 
 # un ajuste de las preferencias (NOMBRE=valor), o el defecto
@@ -445,9 +459,13 @@ func pagina(n: Int, linea_version: String)
     g_estado = -1
     g_lanzadores = -1
     g_mover = -1
+    g_cert = -1
+    g_c_filas = []
+    g_c_olvidar = -1
+    g_c_todos = -1
     seccion = n
     y = m
-    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup|Files"))
+    g_seccion = gt_cycle(x_campo, y, ancho - x_campo - m, f + 6, tr(MSG_SECCION, "Section"), tr(MSG_SECCIONES, "Background|Bar|Dock|Windows|Colours|Startup|Files|Certificates"))
     y = y + fila + hueco
     x = m
     ancho_n = screen_font_text_width("000") + 24
@@ -496,7 +514,18 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         t_actualizar = tr(MSG_ACTUALIZAR, "Update")
         ancho_act = screen_font_text_width(t_actualizar) + 24
-        g_estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8, alto_boton, "", linea_version)
+        # GitHub dio un certificado que no se puede comprobar: su error en la línea y el botón que enseña el aviso
+        error_c = cert_error(C_FONDO)
+        linea = linea_version
+        ancho_c = 0
+        if error_c != ""
+            linea = error_c
+            ancho_c = screen_font_text_width(tr(MSG_C_VER, "Certificate...")) + 24 + 8
+        end
+        g_estado = gt_text(x, y, ancho - m * 2 - ancho_act - 8 - ancho_c, alto_boton, "", linea)
+        if error_c != ""
+            g_cert = gt_button(ancho - m - ancho_act - ancho_c, y, ancho_c - 8, alto_boton, tr(MSG_C_VER, "Certificate..."))
+        end
         g_actualizar = gt_button(ancho - m - ancho_act, y, ancho_act, alto_boton, t_actualizar)
     elif n == 1
         ciclo(y, tr(MSG_ESTILO, "Style"), "BARRA_ESTILO", tr(MSG_ESTILOS, "Whole bar|In the title bar"), "COMPLETA|TITULO")
@@ -522,6 +551,24 @@ func pagina(n: Int, linea_version: String)
         y = y + fila + 2
         gt_text(x, y, ancho - m * 2, f + 6, "", tr(MSG_CIUDAD_AYUDA, "Weather: a city in English (Valencia, or Valencia, ES), or lat. and long."))
         y = y + fila + 2
+        # el tiempo no sale: por qué (lo deja la barra); si es el certificado, con el botón que enseña el aviso
+        error_t = cert_error(C_TIEMPO)
+        hay_c = error_t != ""
+        if not hay_c
+            t_err = file_read_text("ENV:Trasfondo.tiempo_error")
+            if t_err != nil
+                error_t = str_trim(str_replace(t_err, "\n", " "))
+            end
+        end
+        if error_t != ""
+            ancho_c = 0
+            if hay_c
+                ancho_c = screen_font_text_width(tr(MSG_C_VER, "Certificate...")) + 24 + 8
+                g_cert = gt_button(ancho - m - ancho_c + 8, y, ancho_c - 8, alto_boton, tr(MSG_C_VER, "Certificate..."))
+            end
+            gt_text(x, y, ancho - m * 2 - ancho_c, alto_boton, "", con(tr(MSG_TIEMPO_FALLO, "Weather: %s"), error_t))
+            y = y + fila + 2
+        end
         # las capturas de la pantalla (JaviTecH): la tecla y dónde van; también desde los ajustes rápidos
         campo(y, tr(MSG_CAPTURA_TECLA, "Screenshot key"), "CAPTURA_TECLA")
         y = y + fila + 2
@@ -602,6 +649,8 @@ func pagina(n: Int, linea_version: String)
         ciclo(y, tr(MSG_A_BOTONERA, "Button style"), "ARCHIVOS_BOTONERA", tr(MSG_A_BOTONERAS, "A row with keys (Opus 5)|Big buttons (Opus 4)"), "OPUS5|OPUS4")
         y = y + fila + 2
         campo(y, tr(MSG_A_INICIO, "Opens at"), "ARCHIVOS_INICIO")
+    elif n == 7
+        pagina_certificados(y)
     else
         var piezas: [String] = str_split(PIEZAS, "|")
         var textos_a: [String] = [tr(MSG_ARR_FONDO, "The background: on, and with the Workbench"), tr(MSG_ARR_BARRA, "The bar: on, and with the Workbench"), tr(MSG_ARR_DOCK, "The dock: on, and with the Workbench"), tr(MSG_ARR_VENTANAS, "The window keys: on, and with the Workbench")]
@@ -685,7 +734,7 @@ func alto_ventana() -> Int
     if ventanas > fondo
         fondo = ventanas
     end
-    barra = m + fila + hueco + 13 * (fila + 2)
+    barra = m + fila + hueco + 14 * (fila + 2)
     if barra > fondo
         fondo = barra
     end
@@ -931,6 +980,360 @@ func editar_lanzadores()
     end
 end
 
+# ---- los certificados que no se pueden comprobar (lo pidió el usuario) ----
+# El fondo y la barra dejan el aviso (servidor, huella, lo que se repite y los datos del certificado, en líneas;
+# src/certificados.dash). Aceptarlo apunta "<huella> <servidor> <fecha>" en ENV: y ENVARC:Trasfondo.certificados,
+# que ellos leen antes de cada conexión, y borra el aviso.
+const C_LISTA = "ENV:Trasfondo.certificados"
+const C_LISTA_ARC = "ENVARC:Trasfondo.certificados"
+const C_FONDO = "ENV:Trasfondo.cert_fondo"
+const C_TIEMPO = "ENV:Trasfondo.cert_tiempo"
+const FILAS_C = 6
+
+# las líneas del aviso de fichero; vacía si no hay
+func aviso_de(fichero: String) -> [String]
+    var r: [String] = []
+    t = file_read_text(fichero)
+    if t == nil
+        return r
+    end
+    for l in str_split(str_replace(t, "\r", ""), "\n")
+        r.push(l)
+    end
+    if r.length < 4 or r[0] == "" or r[1] == ""
+        var nada: [String] = []
+        return nada
+    end
+    return r
+end
+
+# los valores de los datos del certificado del aviso (servidor, para, emitido por, desde, hasta, huella, motivo)
+func datos_aviso(l: [String]) -> [String]
+    var r: [String] = []
+    i = 3
+    while i < l.length
+        if str_trim(l[i]) != ""
+            d = str_find(l[i], ": ")
+            if d > 0
+                r.push(l[i][d + 2:l[i].length])
+            else
+                r.push(l[i])
+            end
+        end
+        i = i + 1
+    end
+    return r
+end
+
+# el error de la conexión del aviso, como lo dice el fondo ("" si no hay aviso)
+func cert_error(fichero: String) -> String
+    var l: [String] = aviso_de(fichero)
+    if l.length == 0
+        return ""
+    end
+    var d: [String] = datos_aviso(l)
+    motivo = "?"
+    if d.length >= 7
+        motivo = d[6]
+    end
+    return con2(tr(MSG_TLS_FALLO, "TLS failed: %2 (%1)"), l[0], motivo)
+end
+
+# los aceptados, una línea cada uno
+func lista_cert() -> [String]
+    var r: [String] = []
+    t = file_read_text(C_LISTA)
+    if t == nil
+        t = file_read_text(C_LISTA_ARC)
+    end
+    if t == nil
+        return r
+    end
+    for l in str_split(str_replace(t, "\r", ""), "\n")
+        if str_trim(l) != ""
+            r.push(str_trim(l))
+        end
+    end
+    return r
+end
+
+func guardar_cert(lista: [String])
+    if lista.length == 0
+        file_delete(C_LISTA)
+        file_delete(C_LISTA_ARC)
+        return
+    end
+    texto = ""
+    for l in lista
+        texto = texto + l + "\n"
+    end
+    file_write_text(C_LISTA_ARC, texto)
+    file_write_text(C_LISTA, texto)
+end
+
+# acepta el certificado del aviso: a la lista, fuera el aviso y, del fondo, que repita lo que hacía. Lo repetido
+# ("actualizar", "buscar" o "")
+func aceptar_cert(fichero: String) -> String
+    var l: [String] = aviso_de(fichero)
+    if l.length == 0
+        return ""
+    end
+    var lista: [String] = lista_cert()
+    ya = false
+    for c in lista
+        if str_starts(str_upper(c), str_upper(l[1]) + " ")
+            ya = true
+        end
+    end
+    if not ya
+        lista.push(l[1] + " " + l[0] + " " + date_text("%Y-%m-%d"))
+        guardar_cert(lista)
+    end
+    file_delete(fichero)                     # (la barra lo ve y pide el tiempo otra vez)
+    c_repetir = ""
+    if fichero == C_FONDO and l[2] != ""
+        c_repetir = l[2]
+        file_delete("ENV:Trasfondo.estado")  # (antes de la orden: lo que diga el fondo después es lo nuevo)
+        file_write_text("ENV:Trasfondo.orden", l[2] + "\n")
+    end
+    return l[2]
+end
+
+# un texto en líneas que caben en ancho_px (con la fuente de la pantalla, la de los gadgets)
+func envolver(texto: String, ancho_px: Int) -> [String]
+    var r: [String] = []
+    linea = ""
+    for p in str_split(texto, " ")
+        prueba = p
+        if linea != ""
+            prueba = linea + " " + p
+        end
+        if linea != "" and screen_font_text_width(prueba) > ancho_px
+            r.push(linea)
+            linea = p
+        else
+            linea = prueba
+        end
+    end
+    if linea != ""
+        r.push(linea)
+    end
+    return r
+end
+
+# El aviso, en una ventana: qué pasa, los datos del certificado y dos botones, Aceptar este certificado y Cancelar.
+# Por defecto, Cancelar: ni Return ni Esc lo aceptan (no hacen nada), y el botón de cerrar es Cancelar. true si se
+# aceptó. Después, la ventana actual vuelve a ser la de las preferencias, sin gadgets: pagina() los pone otra vez
+func ventana_cert(fichero: String) -> Bool
+    var l: [String] = aviso_de(fichero)
+    if l.length == 0
+        return false
+    end
+    var d: [String] = datos_aviso(l)
+    while d.length < 7
+        d.push("?")
+    end
+    var nombres: [String] = str_split(tr(MSG_C_CAMPOS, "Server|Issued to|Issued by|Valid from|Valid until|SHA-256 fingerprint|Reason"), "|")
+    while nombres.length < 7
+        nombres.push("")
+    end
+    huella = d[5]
+    # de ancho, el de las preferencias, o lo que pida media huella
+    w = ancho
+    if huella.length < 95                    # (no es una huella "AB:CD:...": entera)
+        huella = huella + "                                                "
+    end
+    medio = screen_font_text_width("  " + huella[0:48]) + m * 2
+    if w < medio
+        w = medio
+    end
+    if w > rtg_get_width() - 8
+        w = rtg_get_width() - 8
+    end
+    dentro = w - m * 2
+    var lineas: [String] = envolver(con2(tr(MSG_C_AVISO, "Cannot check that the server %1 is who it says it is: %2. If you accept it and someone is pretending to be it, they could see or change what is sent."), l[0], d[6]), dentro)
+    lineas.push("")
+    if fichero == C_FONDO                    # GitHub: la actualización comprueba la firma de cada fichero
+        for t in envolver(tr(MSG_C_FIRMA, "Updates still check the FreeMEM signature of every file: accepting this certificate does not let fake programs in."), dentro)
+            lineas.push(t)
+        end
+        lineas.push("")
+    end
+    k = 0
+    while k < 7
+        if k == 5                            # la huella, partida en dos
+            lineas.push(nombres[k] + ":")
+            lineas.push("  " + huella[0:48])
+            lineas.push("  " + huella[48:huella.length])
+        else
+            for t in envolver(nombres[k] + ": " + d[k], dentro)
+                lineas.push(t)
+            end
+        end
+        k = k + 1
+    end
+    lh = f + 3
+    h = m + lineas.length * lh + hueco * 2 + alto_boton + m
+    x0 = v_izq + (ancho - w) / 2
+    if x0 + w + 8 > rtg_get_width()
+        x0 = rtg_get_width() - w - 8
+    end
+    if x0 < 0
+        x0 = 0
+    end
+    y0 = v_arr + 20
+    if y0 + h + f + 7 > rtg_get_height()
+        y0 = rtg_get_height() - h - f - 7
+    end
+    if y0 < 0
+        y0 = 0
+    end
+    v = window_create(tr(MSG_C_TITULO, "Certificate"), x0, y0, w, h, 8)
+    if v == 0
+        window_use(v_prefs)
+        return false
+    end
+    gt_init()
+    y = m
+    for t in lineas
+        if t != ""
+            gt_text(m, y, dentro, lh, "", t)
+        end
+        y = y + lh
+    end
+    y = h - m - alto_boton
+    t_si = tr(MSG_C_ACEPTAR, "Accept this certificate")
+    t_no = tr(MSG_CANCELAR, "Cancel")
+    b_si = screen_font_text_width(t_si) + 24
+    b_no = screen_font_text_width(t_no) + 24
+    if b_no < b_si
+        b_no = b_si
+    end
+    g_si = gt_button(m, y, b_si, alto_boton, t_si)
+    g_no = gt_button(w - m - b_no, y, b_no, alto_boton, t_no)
+    gt_attach()
+    aceptado = false
+    while true
+        e = gt_event()
+        if e == -1
+            time_delay(5)
+        elif e == g_si
+            aceptado = true
+            break
+        elif e == -2 or e == g_no
+            break
+        end
+    end
+    gt_cleanup()
+    window_close(v)
+    window_use(v_prefs)
+    if aceptado
+        aceptar_cert(fichero)
+    end
+    return aceptado
+end
+
+# la sección Certificados: los aceptados (pulsar uno lo elige), el elegido y Olvidar u Olvidar todos
+func pagina_certificados(y0: Int)
+    var lista: [String] = lista_cert()
+    y = y0
+    if lista.length == 0
+        gt_text(m, y, ancho - m * 2, f + 6, "", tr(MSG_C_NINGUNO, "You have not accepted any certificate"))
+        y = y + fila + 2
+        ayuda_cert(y)
+        return
+    end
+    if c_sel >= lista.length
+        c_sel = lista.length - 1
+    end
+    if c_sel < c_arriba
+        c_arriba = c_sel
+    elif c_sel >= c_arriba + FILAS_C
+        c_arriba = c_sel - FILAS_C + 1
+    end
+    gt_text(m, y, ancho - m * 2, f + 6, "", tr(MSG_C_LISTA, "Accepted certificates: click one to choose it"))
+    y = y + fila + 2
+    alto_f = f + 4
+    i = 0
+    while i < FILAS_C
+        k = c_arriba + i
+        texto = ""
+        if k < lista.length
+            var p: [String] = str_split(lista[k], " ")
+            texto = lista[k]
+            if p.length >= 2
+                texto = p[1]
+                if p.length >= 3
+                    texto = texto + "  (" + p[2] + ")"
+                end
+            end
+            if k == c_sel
+                texto = "> " + texto + " <"
+            end
+        end
+        g_c_filas.push(gt_button(m, y, ancho - m * 2, alto_f, texto))
+        y = y + alto_f + 1
+        i = i + 1
+    end
+    y = y + 4
+    # el elegido: su servidor, cuándo se aceptó y su huella, partida en dos
+    var e: [String] = str_split(lista[c_sel], " ")
+    huella = e[0]
+    servidor = "?"
+    cuando = "?"
+    if e.length >= 2
+        servidor = e[1]
+    end
+    if e.length >= 3
+        cuando = e[2]
+    end
+    gt_text(m, y, ancho - m * 2, f + 3, "", con2(tr(MSG_C_ELEGIDO, "%1, accepted on %2"), servidor, cuando))
+    y = y + f + 3
+    if huella.length > 48
+        gt_text(m, y, ancho - m * 2, f + 3, "", huella[0:48])
+        y = y + f + 3
+        gt_text(m, y, ancho - m * 2, f + 3, "", huella[48:huella.length])
+    else
+        gt_text(m, y, ancho - m * 2, f + 3, "", huella)
+    end
+    y = y + f + 3 + 6
+    b2 = (ancho - m * 2 - 8) / 2
+    g_c_olvidar = gt_button(m, y, b2, alto_boton, tr(MSG_C_OLVIDAR, "Forget"))
+    g_c_todos = gt_button(m + b2 + 8, y, b2, alto_boton, tr(MSG_C_OLVIDAR_TODOS, "Forget all"))
+    y = y + alto_boton + 6
+    ayuda_cert(y)
+end
+
+# la ayuda de la sección Certificados, en las líneas que hagan falta
+func ayuda_cert(y0: Int)
+    y = y0
+    for t in envolver(tr(MSG_C_AYUDA, "They are accepted when a server cannot be checked: forgetting one warns again"), ancho - m * 2 - 8)
+        gt_text(m, y, ancho - m * 2, f + 3, "", t)
+        y = y + f + 3
+    end
+end
+
+# aceptado el del fondo (aceptar_cert ya dejó la orden): el time_ms para seguir su estado si repite actualizar; 0 si
+# solo busca (sin pedirlo, el fondo no escribe su estado)
+func cert_aceptado(linea_version: String) -> Int
+    if c_repetir == "actualizar"
+        return time_ms()
+    end
+    return 0
+end
+
+# una fila de la sección Certificados: su número en la lista, o -1
+func fila_cert(e: Int) -> Int
+    i = 0
+    while i < g_c_filas.length
+        if g_c_filas[i] == e
+            return c_arriba + i
+        end
+        i = i + 1
+    end
+    return -1
+end
+
 Main
     cajon = ""
     t_cajon = file_read_text("ENV:Trasfondo.cajon")
@@ -1154,7 +1557,10 @@ Main
         linea_version = con(tr(MSG_HAY_NUEVA, "There is a new version: %s"), str_trim(hay_nueva))
     end
     # flag 8: ancho y alto son el interior, que es desde donde cuentan los gadgets (la ventana es GimmeZeroZero)
-    if window_create(tr(MSG_TITULO, "Trasfondo Preferences"), izquierda, arriba, ancho, alto, 8) == 0
+    v_izq = izquierda
+    v_arr = arriba
+    v_prefs = window_create(tr(MSG_TITULO, "Trasfondo Preferences"), izquierda, arriba, ancho, alto, 8)
+    if v_prefs == 0
         Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
         return
     end
@@ -1174,6 +1580,7 @@ Main
 
     ultimo = ""
     pedido = 0                               # time_ms de cuando se pidió actualizar (0: no se ha pedido)
+    cert_visto = false                       # el aviso del certificado ya salió tras pedir actualizar
     file_delete("ENV:Trasfondo.instalada")
     while true
         e = gt_event()
@@ -1185,6 +1592,25 @@ Main
                     ultimo = str_trim(est)
                     gt_set_text(g_estado, ultimo)
                     pedido = time_ms()
+                    # falló por el certificado de GitHub: el aviso, ya (se pidió actualizar ahora mismo)
+                    if not cert_visto and file_exists(C_FONDO)
+                        cert_visto = true
+                        recoger()
+                        pagina(seccion, linea_version)
+                        aceptado = ventana_cert(C_FONDO)
+                        if aceptado
+                            pedido = cert_aceptado(linea_version)
+                            ultimo = ""
+                        end
+                        pagina(seccion, linea_version)
+                        if aceptado and g_estado >= 0
+                            if pedido != 0
+                                gt_set_text(g_estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
+                            else
+                                gt_set_text(g_estado, linea_version)
+                            end
+                        end
+                    end
                 elif ultimo == "" and time_ms() - pedido > 8000
                     ultimo = tr(MSG_NO_ESTA, "Trasfondo is not running: start it and try again")
                     gt_set_text(g_estado, ultimo)
@@ -1204,7 +1630,47 @@ Main
                 recoger()
                 pagina(nueva, linea_version)
             end
+        elif e == g_cert and g_cert >= 0
+            # el aviso del certificado: del fondo (sección Fondo) o de la barra (sección Barra)
+            fichero = C_FONDO
+            if seccion == 1
+                fichero = C_TIEMPO
+            end
+            recoger()
+            aceptado = ventana_cert(fichero)
+            if aceptado and fichero == C_FONDO
+                pedido = cert_aceptado(linea_version)
+                ultimo = ""
+                cert_visto = true
+            end
+            pagina(seccion, linea_version)
+            if aceptado and g_estado >= 0
+                if pedido != 0
+                    gt_set_text(g_estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))
+                else
+                    gt_set_text(g_estado, linea_version)
+                end
+            end
+        elif e == g_c_olvidar and g_c_olvidar >= 0
+            var lista_o: [String] = lista_cert()
+            if c_sel < lista_o.length
+                lista_o.remove(c_sel)
+                guardar_cert(lista_o)
+            end
+            pagina(seccion, linea_version)
+        elif e == g_c_todos and g_c_todos >= 0
+            var nada_o: [String] = []
+            guardar_cert(nada_o)
+            c_sel = 0
+            c_arriba = 0
+            pagina(seccion, linea_version)
+        elif seccion == 7 and fila_cert(e) >= 0
+            if fila_cert(e) < lista_cert().length
+                c_sel = fila_cert(e)
+                pagina(seccion, linea_version)
+            end
         elif e == g_actualizar and g_actualizar >= 0
+            cert_visto = false
             file_delete("ENV:Trasfondo.estado")
             file_write_text("ENV:Trasfondo.orden", "actualizar\n")
             gt_set_text(g_estado, tr(MSG_PEDIDO, "Asked Trasfondo..."))

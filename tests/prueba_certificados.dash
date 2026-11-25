@@ -1,0 +1,312 @@
+# Aceptar un certificado que no se puede comprobar, de punta a punta (lo pidió el usuario). Este programa hace de
+# usuario en el emulador, con dos servidores TLS de prueba con certificados autofirmados en el PC (los levanta
+# tests/prueba_certificados.py): 127.0.0.1:44301 hace de GitHub (ENV:Trasfondo.api) y 127.0.0.1:44302 de Open-Meteo
+# (ENV:Trasfondo.tiempo_servidor).
+#
+# 1. La barra pide el tiempo: falla con el motivo de verdad y deja su aviso (ENV:Trasfondo.cert_tiempo).
+# 2. TrasfondoPrefs, Actualizar: el fondo falla y sale la ventana del aviso. Return y Esc no la aceptan; Aceptar
+#    apunta la huella y el fondo pregunta otra vez, ya bien.
+# 3. Sección Barra: el error del tiempo con su botón; Cancelar no acepta nada; Aceptar, y la barra trae el tiempo.
+# 4. Se paran y arrancan el fondo y la barra: siguen aceptados, sin avisos.
+# 5. Sección Certificados: olvidar el de GitHub vuelve a avisar al Actualizar; Olvidar todos los quita.
+#
+# Las capturas, con screen_save_png, a DH0:capturas/.
+#
+#     python3 tests/prueba_certificados.py
+
+@header "#include <devices/input.h>"
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+@native func evento(clase: Int, codigo: Int, cual: Int, x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    if (io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        ie.ie_Class = clase;
+        ie.ie_Code = codigo;
+        ie.ie_Qualifier = cual;
+        ie.ie_X = x;
+        ie.ie_Y = y;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+@native func puntero(x: Int, y: Int)
+"""
+    struct MsgPort *port = CreateMsgPort();
+    struct IOStdReq *io = port ? (struct IOStdReq *)CreateIORequest(port, sizeof(struct IOStdReq)) : NULL;
+    struct InputEvent ie;
+    struct IEPointerPixel pp;
+    struct Screen *s = LockPubScreen(NULL);
+    if (s && io && OpenDevice((CONST_STRPTR)"input.device", 0, (struct IORequest *)io, 0) == 0) {
+        memset(&ie, 0, sizeof(ie));
+        pp.iepp_Screen = s;
+        pp.iepp_Position.X = x;
+        pp.iepp_Position.Y = y;
+        ie.ie_Class = IECLASS_NEWPOINTERPOS;
+        ie.ie_SubClass = IESUBCLASS_PIXEL;
+        ie.ie_Code = IECODE_NOBUTTON;
+        ie.ie_EventAddress = &pp;
+        io->io_Command = IND_WRITEEVENT;
+        io->io_Data = &ie;
+        io->io_Length = sizeof(ie);
+        DoIO((struct IORequest *)io);
+        CloseDevice((struct IORequest *)io);
+    }
+    if (s) UnlockPubScreen(NULL, s);
+    if (io) DeleteIORequest((struct IORequest *)io);
+    if (port) DeleteMsgPort(port);
+"""
+end
+
+# El centro (en la pantalla) del gadget de la ventana de ese título cuyo número de GadTools (el de Dash: el orden en
+# que se creó) es id; con id negativo, contando desde el último (-1 el último). x * 10000 + y, o -1
+@native func centro(titulo: String, id: Int) -> Int
+"""
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    struct Gadget *g, *h = NULL;
+    LONG r = -1, mayor = -1, busca = id;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
+    if (w) {
+        for (g = w->FirstGadget; g; g = g->NextGadget)
+            if (!(g->GadgetType & GTYP_SYSGADGET) && (LONG)g->GadgetID > mayor) mayor = g->GadgetID;
+        if (busca < 0) busca = mayor + busca + 1;
+        for (g = w->FirstGadget; g; g = g->NextGadget)
+            if (!(g->GadgetType & GTYP_SYSGADGET) && (LONG)g->GadgetID == busca) h = g;
+        if (h) {
+            LONG bx = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderLeft : 0;
+            LONG by = (w->Flags & WFLG_GIMMEZEROZERO) ? w->BorderTop : 0;
+            r = (w->LeftEdge + bx + h->LeftEdge + h->Width / 2) * 10000 + w->TopEdge + by + h->TopEdge + h->Height / 2;
+        }
+    }
+    UnlockIBase(lock);
+    return r;
+"""
+end
+
+@native func hay_ventana(titulo: String) -> Bool
+"""
+    ULONG lock = LockIBase(0);
+    struct Window *w;
+    for (w = IntuitionBase->FirstScreen ? IntuitionBase->FirstScreen->FirstWindow : NULL; w; w = w->NextWindow)
+        if (w->Title && !strcmp((char *)w->Title, (char *)titulo)) break;
+    UnlockIBase(lock);
+    return w != NULL;
+"""
+end
+
+const IECLASS_RAWKEY = 1
+const IECLASS_RAWMOUSE = 2
+const IECODE_LBUTTON = 0x68
+const IECODE_UP_PREFIX = 0x80
+const IEQUALIFIER_RELATIVEMOUSE = 0x8000
+const PREFS = "Trasfondo Preferences"
+const AVISO = "Certificate"
+
+func pulsar(titulo: String, id: Int, que: String) -> Bool
+    c = centro(titulo, id)
+    if c < 0
+        Print "  no encuentro " + que
+        return false
+    end
+    puntero(c / 10000, c % 10000)
+    esperar(5)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON, IEQUALIFIER_RELATIVEMOUSE, 0, 0)
+    esperar(3)
+    evento(IECLASS_RAWMOUSE, IECODE_LBUTTON + IECODE_UP_PREFIX, IEQUALIFIER_RELATIVEMOUSE, 0, 0)
+    esperar(10)
+    Print "  pulsado: " + que
+    return true
+end
+
+func tecla(codigo: Int)
+    evento(IECLASS_RAWKEY, codigo, 0, 0, 0)
+    esperar(2)
+    evento(IECLASS_RAWKEY, codigo + IECODE_UP_PREFIX, 0, 0, 0)
+    esperar(10)
+end
+
+func fichero(nombre: String) -> String
+    t = file_read_text(nombre)
+    if t == nil
+        return "(no está)"
+    end
+    return str_trim(str_replace(t, "\n", " | "))
+end
+
+# espera hasta segundos a que exista (o no) un fichero
+func esperar_fichero(nombre: String, existe: Bool, segundos: Int) -> Bool
+    t = 0
+    while t < segundos * 5
+        if file_exists(nombre) == existe
+            return true
+        end
+        esperar(10)
+        t = t + 1
+    end
+    return false
+end
+
+func esperar_ventana(titulo: String, segundos: Int) -> Bool
+    t = 0
+    while t < segundos * 5
+        if hay_ventana(titulo)
+            return true
+        end
+        esperar(10)
+        t = t + 1
+    end
+    return false
+end
+
+# espera a que ENV:Trasfondo.estado lleve ese texto
+func esperar_estado(texto: String, segundos: Int) -> String
+    t = 0
+    e = ""
+    while t < segundos * 5
+        e = fichero("ENV:Trasfondo.estado")
+        if str_contains(e, texto)
+            return e
+        end
+        esperar(10)
+        t = t + 1
+    end
+    return "(no llegó: " + e + ")"
+end
+
+func captura(nombre: String)
+    esperar(50)                              # (que acabe de pintarse)
+    ok = screen_save_png("DH0:capturas/" + nombre + ".png")
+    Print "  captura " + nombre + ": #{ok}"
+end
+
+func abrir_prefs(seccion: Int)
+    if seccion > 0
+        file_write_text("ENV:Trasfondo.prefs_seccion", "#{seccion}\n")
+    end
+    lanzar("Run >NIL: DH0:trasfondoprefs")
+    Print "  prefs abiertas: #{esperar_ventana(PREFS, 20)}"
+    esperar(50)
+end
+
+func cerrar_prefs()
+    ok = pulsar(PREFS, -1, "Cerrar")
+    esperar(50)
+end
+
+Main
+    lanzar("C:MakeDir RAM:EnvArc")           # el sistema del emulador no tiene ENVARC:
+    lanzar("C:Assign ENVARC: RAM:EnvArc")
+    lanzar("C:MakeDir DH0:capturas")
+    file_write_text("ENV:Trasfondo.api", "https://127.0.0.1:44301/repos/FreeMEM/trasfondo/releases/latest\n")
+    file_write_text("ENV:Trasfondo.tiempo_servidor", "127.0.0.1:44302\n")
+    file_write_text("ENV:Trasfondo.cajon", "DH0:\n")
+    file_delete("ENV:Trasfondo.certificados")
+
+    Print "== 1: la barra pide el tiempo"
+    lanzar("Run >NIL: DH0:trasfondo")
+    lanzar("Run >NIL: DH0:TrasfondoBarra LAT=36.72 LON=-4.42")
+    Print "  aviso del tiempo: #{esperar_fichero(\"ENV:Trasfondo.cert_tiempo\", true, 40)}"
+    Print "  error del tiempo: " + fichero("ENV:Trasfondo.tiempo_error")
+    Print "  aviso: " + fichero("ENV:Trasfondo.cert_tiempo")
+
+    Print "== 2: Actualizar, con el certificado de GitHub que no se puede comprobar"
+    abrir_prefs(0)
+    ok = pulsar(PREFS, -4, "Actualizar")
+    Print "  ventana del aviso: #{esperar_ventana(AVISO, 60)}"
+    Print "  estado: " + fichero("ENV:Trasfondo.estado")
+    Print "  aviso: " + fichero("ENV:Trasfondo.cert_fondo")
+    captura("1-aviso-actualizar")
+    tecla(0x44)                              # Return
+    tecla(0x45)                              # Esc
+    esperar(50)
+    Print "  tras Return y Esc, la ventana sigue: #{hay_ventana(AVISO)}; aceptados: " + fichero("ENV:Trasfondo.certificados")
+    ok = pulsar(AVISO, -2, "Aceptar este certificado")
+    Print "  ventana cerrada: #{not hay_ventana(AVISO)}"
+    Print "  aceptados ENV: " + fichero("ENV:Trasfondo.certificados")
+    Print "  aceptados ENVARC: " + fichero("ENVARC:Trasfondo.certificados")
+    Print "  aviso borrado: #{not file_exists(\"ENV:Trasfondo.cert_fondo\")}"
+    Print "  estado: " + esperar_estado("You have", 60)
+    captura("2-aceptado")
+    cerrar_prefs()
+
+    Print "== 3: el tiempo, en la sección Barra"
+    abrir_prefs(1)
+    captura("3-barra-error")
+    ok = pulsar(PREFS, 13, "Certificado...")
+    Print "  ventana del aviso: #{esperar_ventana(AVISO, 10)}"
+    captura("4-aviso-tiempo")
+    ok = pulsar(AVISO, -1, "Cancelar")
+    Print "  Cancelar: ventana cerrada #{not hay_ventana(AVISO)}, aviso sigue #{file_exists(\"ENV:Trasfondo.cert_tiempo\")}, aceptados " + fichero("ENV:Trasfondo.certificados")
+    ok = pulsar(PREFS, 13, "Certificado...")
+    Print "  ventana del aviso: #{esperar_ventana(AVISO, 10)}"
+    ok = pulsar(AVISO, -2, "Aceptar este certificado")
+    Print "  aceptados: " + fichero("ENV:Trasfondo.certificados")
+    Print "  el tiempo llega: #{esperar_fichero(\"ENV:Trasfondo.tiempo_error\", false, 60)}"
+    Print "  tiempo: " + fichero("ENV:Trasfondo.tiempo")
+    Print "  aviso del tiempo: " + fichero("ENV:Trasfondo.cert_tiempo")
+    cerrar_prefs()
+
+    Print "== 4: se paran y arrancan otra vez"
+    lanzar("DH0:trasfondo >NIL:")            # (lanzarlo otra vez lo para)
+    lanzar("DH0:TrasfondoBarra >NIL:")
+    esperar(150)
+    file_delete("ENV:Trasfondo.tiempo")
+    lanzar("Run >NIL: DH0:trasfondo")
+    lanzar("Run >NIL: DH0:TrasfondoBarra LAT=36.72 LON=-4.42")
+    Print "  el tiempo llega: #{esperar_fichero(\"ENV:Trasfondo.tiempo\", true, 60)}"
+    Print "  sin aviso del tiempo: #{not file_exists(\"ENV:Trasfondo.cert_tiempo\")}; error: " + fichero("ENV:Trasfondo.tiempo_error")
+    abrir_prefs(0)
+    ok = pulsar(PREFS, -4, "Actualizar")
+    Print "  estado: " + esperar_estado("You have", 60)
+    Print "  sin ventana del aviso: #{not hay_ventana(AVISO)}; aviso: " + fichero("ENV:Trasfondo.cert_fondo")
+    cerrar_prefs()
+
+    Print "== 5: olvidar"
+    abrir_prefs(7)
+    captura("5-certificados")
+    ok = pulsar(PREFS, 11, "Olvidar")       # el elegido: el primero, el de GitHub
+    Print "  aceptados: " + fichero("ENV:Trasfondo.certificados")
+    Print "  ENVARC: " + fichero("ENVARC:Trasfondo.certificados")
+    captura("6-olvidado")
+    cerrar_prefs()
+    abrir_prefs(0)
+    ok = pulsar(PREFS, -4, "Actualizar")
+    Print "  vuelve a avisar: #{esperar_ventana(AVISO, 60)}"
+    Print "  estado: " + fichero("ENV:Trasfondo.estado")
+    ok = pulsar(AVISO, -1, "Cancelar")
+    esperar(50)
+    captura("7-cancelado")
+    Print "  aceptados: " + fichero("ENV:Trasfondo.certificados")
+    cerrar_prefs()
+    abrir_prefs(7)
+    ok = pulsar(PREFS, 12, "Olvidar todos")
+    Print "  aceptados ENV: " + fichero("ENV:Trasfondo.certificados") + "; ENVARC: " + fichero("ENVARC:Trasfondo.certificados")
+    cerrar_prefs()
+
+    lanzar("DH0:trasfondo >NIL:")
+    lanzar("DH0:TrasfondoBarra >NIL:")
+    Print "fin"
+end

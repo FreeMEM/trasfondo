@@ -383,3 +383,28 @@ const MSG_COMO_CAJON = 516
 const MSG_ABRIR_CAJON = 517
 # TrasfondoDock: abrir lo de un icono desde su menú
 const MSG_LANZAR = 518
+# Certificados que no se pueden comprobar (lo pidió el usuario). TrasfondoPrefs: el botón que enseña el aviso
+const MSG_C_VER = 519
+# el título de la ventana del aviso
+const MSG_C_TITULO = 520
+# el aviso: %1 el servidor, %2 el motivo (net_error, en inglés)
+const MSG_C_AVISO = 521
+# en el aviso de la actualización: aceptar el certificado de GitHub no deja colar ejecutables falsos
+const MSG_C_FIRMA = 522
+# los nombres de los datos del certificado, en este orden, separados por |
+const MSG_C_CAMPOS = 523
+# el botón que lo acepta
+const MSG_C_ACEPTAR = 524
+# la sección Certificados: el título de la lista
+const MSG_C_LISTA = 525
+# la lista vacía
+const MSG_C_NINGUNO = 526
+# los botones de la sección
+const MSG_C_OLVIDAR = 527
+const MSG_C_OLVIDAR_TODOS = 528
+# la ayuda de la sección
+const MSG_C_AYUDA = 529
+# la sección Barra: el tiempo no sale (%s: por qué)
+const MSG_TIEMPO_FALLO = 530
+# la sección Certificados: el certificado elegido (%1 el servidor, %2 cuándo se aceptó)
+const MSG_C_ELEGIDO = 532

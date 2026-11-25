@@ -1,4 +1,4 @@
-; Texts of /home/freemem/Projects/trasfondo/src/trasfondo.dash, /home/freemem/Projects/trasfondo/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/src/dock.dash, /home/freemem/Projects/trasfondo/src/ventanas.dash, /home/freemem/Projects/trasfondo/src/archivos.dash, /home/freemem/Projects/trasfondo/src/panel.dash (tools/catalogo.py)
+; Texts of /home/freemem/Projects/trasfondo/.worktrees/certificados/src/trasfondo.dash, /home/freemem/Projects/trasfondo/.worktrees/certificados/src/trasfondoprefs.dash, /home/freemem/Projects/trasfondo/.worktrees/certificados/src/dock.dash, /home/freemem/Projects/trasfondo/.worktrees/certificados/src/ventanas.dash, /home/freemem/Projects/trasfondo/.worktrees/certificados/src/archivos.dash, /home/freemem/Projects/trasfondo/.worktrees/certificados/src/panel.dash (tools/catalogo.py)
 ;
 ; MSG_COMA
 MSG_1 (1//)
@@ -233,7 +233,7 @@ MSG_111 (111//)
 Section
 ; MSG_SECCIONES
 MSG_112 (112//)
-Background|Bar|Dock|Windows|Colours|Startup|Files
+Background|Bar|Dock|Windows|Colours|Startup|Files|Certificates
 ; MSG_CIUDAD
 MSG_113 (113//)
 City
@@ -840,3 +840,42 @@ Open the drawer
 ; MSG_LANZAR
 MSG_518 (518//)
 Open
+; MSG_C_VER
+MSG_519 (519//)
+Certificate...
+; MSG_C_TITULO
+MSG_520 (520//)
+Certificate
+; MSG_C_AVISO
+MSG_521 (521//)
+Cannot check that the server %1 is who it says it is: %2. If you accept it and someone is pretending to be it, they could see or change what is sent.
+; MSG_C_FIRMA
+MSG_522 (522//)
+Updates still check the FreeMEM signature of every file: accepting this certificate does not let fake programs in.
+; MSG_C_CAMPOS
+MSG_523 (523//)
+Server|Issued to|Issued by|Valid from|Valid until|SHA-256 fingerprint|Reason
+; MSG_C_ACEPTAR
+MSG_524 (524//)
+Accept this certificate
+; MSG_C_LISTA
+MSG_525 (525//)
+Accepted certificates: click one to choose it
+; MSG_C_NINGUNO
+MSG_526 (526//)
+You have not accepted any certificate
+; MSG_C_OLVIDAR
+MSG_527 (527//)
+Forget
+; MSG_C_OLVIDAR_TODOS
+MSG_528 (528//)
+Forget all
+; MSG_C_AYUDA
+MSG_529 (529//)
+They are accepted when a server cannot be checked: forgetting one warns again
+; MSG_TIEMPO_FALLO
+MSG_530 (530//)
+Weather: %s
+; MSG_C_ELEGIDO
+MSG_532 (532//)
+%1, accepted on %2

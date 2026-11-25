@@ -1,0 +1,82 @@
+# Los certificados que el usuario aceptó tras avisarle (lo pidió el usuario): los de un servidor que no se puede
+# comprobar (autofirmado, de un emisor desconocido, caducado...). Lo usan los procesos que se conectan: el fondo
+# (actualizar.dash: GitHub) y la barra (https.dash: el tiempo, de Open-Meteo).
+#
+# - ENV:Trasfondo.certificados (y ENVARC:, que lo escribe TrasfondoPrefs): una línea por certificado aceptado,
+#   "<huella SHA-256> <servidor> <fecha>". Cada proceso lo lee antes de cada conexión y llama a tls_trust con cada
+#   huella (si cambió: tras olvidar uno, ya no se acepta).
+# - Si una conexión falla por el certificado, el proceso deja en su fichero de aviso (ENV:Trasfondo.cert_fondo,
+#   ENV:Trasfondo.cert_tiempo) el servidor, la huella, lo que hay que repetir si se acepta y los datos del
+#   certificado (tls_last_cert). TrasfondoPrefs lo enseña y, si se acepta, apunta la huella y borra el aviso. Si
+#   la conexión al mismo servidor sale bien, el proceso borra el aviso.
+
+const CERT_LISTA = "ENV:Trasfondo.certificados"
+const CERT_LISTA_ARC = "ENVARC:Trasfondo.certificados"
+const CERT_FONDO = "ENV:Trasfondo.cert_fondo"      # el aviso del fondo (buscar versiones, actualizar)
+const CERT_TIEMPO = "ENV:Trasfondo.cert_tiempo"    # el de la barra (el tiempo)
+
+var cert_leida: String = "-"       # la lista tal como se leyó la última vez ("-": aún no)
+
+# la lista: de ENV:, o de ENVARC: si en ENV: no está (al arrancar sin haber copiado ENVARC:)
+func cert_texto() -> String
+    t = file_read_text(CERT_LISTA)
+    if t == nil
+        t = file_read_text(CERT_LISTA_ARC)
+    end
+    if t == nil
+        return ""
+    end
+    return t
+end
+
+# lee la lista y, si cambió, acepta sus huellas (y solo esas). Al arrancar y antes de cada conexión
+func cert_cargar()
+    t = cert_texto()
+    if t == cert_leida
+        return
+    end
+    cert_leida = t
+    tls_trust_clear()
+    for l in str_split(str_replace(t, "\r", ""), "\n")
+        h = str_trim(l)
+        e = str_find(h, " ")
+        if e > 0
+            h = h[0:e]
+        end
+        if h != ""
+            ok = tls_trust(h)
+        end
+    end
+end
+
+# ¿está aceptada esa huella?
+func cert_aceptada(huella: String) -> Bool
+    for l in str_split(str_replace(cert_texto(), "\r", ""), "\n")
+        if str_starts(str_upper(str_trim(l)), str_upper(huella))
+            return true
+        end
+    end
+    return false
+end
+
+# falló la TLS con host por motivo (net_error): si fue por su certificado, deja el aviso en fichero, con repetir (la
+# orden que se repite si se acepta: "actualizar", "buscar" o ""). true si lo dejó
+func cert_fallo(fichero: String, host: String, motivo: String, repetir: String) -> Bool
+    datos = tls_last_cert(host)
+    huella = tls_last_fingerprint(host)
+    # (tls_last_cert guarda el último que falló con ese servidor, aunque ahora haya fallado por otra cosa: vale si
+    # el motivo es el suyo)
+    if datos == "" or huella == "" or not str_contains(datos, "\n" + "Motivo: " + motivo) or cert_aceptada(huella)
+        return false
+    end
+    file_write_text(fichero, host + "\n" + huella + "\n" + repetir + "\n" + datos + "\n")
+    return true
+end
+
+# la conexión con host salió bien: su aviso, si lo había, ya no hace falta
+func cert_bien(fichero: String, host: String)
+    t = file_read_text(fichero)
+    if t != nil and str_starts(t, host + "\n")
+        file_delete(fichero)
+    end
+end

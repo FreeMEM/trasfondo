@@ -1,6 +1,10 @@
 # Una petición HTTPS (GET, HTTP/1.0) paso a paso, sin esperar nunca: https_empezar() y luego https_paso()
 # desde el bucle del programa hasta que https_estado() sea HTTPS_HECHO o HTTPS_FALLO. Sigue las
 # redirecciones. Una sola petición a la vez. La misma idea que la de actualizar.dash, sin sus textos.
+# Con s_cert_fichero, un certificado que no se puede comprobar deja ahí su aviso para TrasfondoPrefs
+# (certificados.dash; lo pidió el usuario) y s_cert queda en true.
+
+import "certificados.dash"
 
 const HTTPS_NADA = 0
 const HTTPS_EN_CURSO = 1
@@ -11,6 +15,9 @@ const S_ESPERA = 30000             # lo más que se espera a cada paso de la red
 const S_MUESTRA = 8192             # lo que se recibe de una vez
 
 var s_host: String = ""
+var s_puerto: Int = 443            # (otro solo en las pruebas)
+var s_cert_fichero: String = ""    # dónde va el aviso de un certificado que no se puede comprobar ("" ninguno)
+var s_cert: Bool = false           # el último fallo fue por el certificado y su aviso está en s_cert_fichero
 var s_sock: Int = -1
 var s_tls: Int = -1
 var s_paso: Int = 0                # 0 nada, 1 conectando, 2 TLS, 3 recibiendo, 4 hecho, 5 error
@@ -56,11 +63,13 @@ func https_empezar(host: String, ruta: String, tope: Int)
     s_n = 0
     s_buf = buffer_alloc(tope)
     s_red = true
+    s_cert = false
     if s_buf == 0 or s_tmp == 0
         https_fallo("out of memory")
         return
     end
-    s_sock = net_connect_start(host, 443, S_ESPERA)
+    cert_cargar()                          # los certificados aceptados, al día (TrasfondoPrefs pudo cambiarlos)
+    s_sock = net_connect_start(host, s_puerto, S_ESPERA)
     if s_sock < 0
         https_fallo("no network")
         return
@@ -138,6 +147,9 @@ func https_paso()
     elif s_paso == 2
         r = tls_connect_poll(s_tls)
         if r == 1
+            if s_cert_fichero != ""
+                cert_bien(s_cert_fichero, s_host)
+            end
             if tls_send(s_tls, s_peticion) < 0
                 https_fallo("cannot send the request")
             else
@@ -146,7 +158,11 @@ func https_paso()
             end
         elif r < 0
             s_tls = -1                         # ya está liberada
-            https_fallo("TLS failed: " + net_error() + " (" + s_host + ")")
+            motivo = net_error()
+            https_fallo("TLS failed: " + motivo + " (" + s_host + ")")
+            if s_cert_fichero != ""
+                s_cert = cert_fallo(s_cert_fichero, s_host, motivo, "")
+            end
         end
     elif s_paso == 3
         vueltas = 0                            # lo que haya ya, sin esperar

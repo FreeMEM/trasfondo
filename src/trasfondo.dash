@@ -1413,6 +1413,9 @@ Main
                         if pedido != nil and str_trim(pedido) == "actualizar"
                             file_delete("ENV:Trasfondo.orden")
                             act_actualizar()
+                        elif pedido != nil and str_trim(pedido) == "buscar"   # (se aceptó un certificado)
+                            file_delete("ENV:Trasfondo.orden")
+                            act_buscar_ahora()
                         end
                     end
                 elif orden > 0

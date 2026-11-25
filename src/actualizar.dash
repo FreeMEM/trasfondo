@@ -8,6 +8,11 @@
 # en un sistema en castellano (pasa al venir de la 0.8, que no lo bajaba), lo baja solo y lo usa al momento.
 # Todo va paso a paso desde el bucle del panel, sin esperar nunca: act_paso() avanza lo que se pueda.
 # Lo que va pasando, en ENV:Trasfondo.estado; la versión nueva que hay, en ENV:Trasfondo.nueva.
+# Si GitHub da un certificado que no se puede comprobar, el aviso para TrasfondoPrefs, en ENV:Trasfondo.cert_fondo
+# (certificados.dash; lo pidió el usuario). Aceptarlo no deja colar ejecutables falsos: cada fichero bajado tiene que
+# dar el SHA-256 de las notas firmadas con Ed25519 (act_leer_firmas).
+
+import "certificados.dash"
 
 const API_HOST = "api.github.com"
 const API_RUTA = "/repos/FreeMEM/trasfondo/releases/latest"
@@ -49,6 +54,7 @@ var a_firma_vista: String = ""     # la última firma que valió: la consulta de
 
 # la conexión en curso: HTTPS, HTTP/1.0 (sin trozos), siguiendo las redirecciones
 var h_host: String = ""
+var h_puerto: Int = 443            # (otro solo en las pruebas: ENV:Trasfondo.api con "https://servidor:puerto/ruta")
 var h_sock: Int = -1
 var h_tls: Int = -1
 var h_paso: Int = 0                # 0 nada, 1 conectando, 2 TLS, 3 recibiendo, 4 hecho, 5 error
@@ -95,6 +101,7 @@ func act_iniciar(version: String, buscar: Bool)
     a_buscar = buscar
     a_proxima = time_ms() + PRIMERA
     file_delete("ENV:Trasfondo.orden")
+    cert_cargar()                          # los certificados aceptados (también antes de cada conexión)
     act_icono_archivos()
     tr(MSG_COMA, ".")                     # el primer tr abre el catálogo: antes, catalog_language() no sabe
     a_falta_cat = catalog_language() == "" and act_en_castellano()
@@ -204,7 +211,8 @@ func http_empezar(host: String, ruta: String, tope: Int)
         http_fallo(tr(MSG_SIN_MEMORIA, "out of memory"))
         return
     end
-    h_sock = net_connect_start(host, 443, ESPERA_RED)
+    cert_cargar()                         # los certificados aceptados, al día (TrasfondoPrefs pudo cambiarlos)
+    h_sock = net_connect_start(host, h_puerto, ESPERA_RED)
     if h_sock < 0
         http_fallo(tr(MSG_SIN_RED, "no network"))
         return
@@ -231,6 +239,7 @@ func http_paso()
     elif h_paso == 2
         r = tls_connect_poll(h_tls)
         if r == 1
+            cert_bien(CERT_FONDO, h_host)
             if tls_send(h_tls, h_peticion) < 0
                 http_fallo(tr(MSG_NO_PIDE, "cannot send the request"))
             else
@@ -243,6 +252,12 @@ func http_paso()
             # (antes decía siempre "el certificado no vale"; lo contó Ferrán García)
             motivo = net_error()
             http_fallo(con2(tr(MSG_TLS_FALLO, "TLS failed: %2 (%1)"), h_host, motivo))
+            # si fue el certificado, el aviso para TrasfondoPrefs, y lo que se repite si se acepta
+            repetir = "buscar"
+            if a_quiere
+                repetir = "actualizar"
+            end
+            ok = cert_fallo(CERT_FONDO, h_host, motivo, repetir)
         end
     elif h_paso == 3
         vueltas = 0                            # lo que haya ya, sin esperar (y sin quedarse toda la tarde)
@@ -311,6 +326,7 @@ func http_terminada() -> Bool
                 barra = str_find(resto, "/")
                 if barra > 0
                     h_saltos = h_saltos + 1
+                    h_puerto = 443
                     http_empezar(resto[0:barra], resto[barra:resto.length], h_tope)
                     return false
                 end
@@ -357,11 +373,26 @@ func act_consultar()
     a_fase = 1
     h_saltos = 0
     ruta = API_RUTA
+    host = API_HOST
+    h_puerto = 443
     otra = file_read_text("ENV:Trasfondo.api")       # para las pruebas: otra release ("/repos/.../tags/v2.1")
     if otra != nil and str_trim(otra) != ""
         ruta = str_trim(str_replace(otra, "\n", ""))
+        if str_starts(ruta, "https://")              # y otro servidor: "https://127.0.0.1:44301/repos/..."
+            resto = ruta[8:ruta.length]
+            barra = str_find(resto, "/")
+            if barra > 0
+                host = resto[0:barra]
+                ruta = resto[barra:resto.length]
+                dos = str_find(host, ":")
+                if dos > 0
+                    h_puerto = Int(host[dos + 1:host.length])
+                    host = host[0:dos]
+                end
+            end
+        end
     end
-    http_empezar(API_HOST, ruta, TOPE_API)
+    http_empezar(host, ruta, TOPE_API)
 end
 
 func act_consulta_hecha()
@@ -455,6 +486,7 @@ func act_bajar(cual: Int)
     a_fase = 2
     a_cual = cual
     h_saltos = 0
+    h_puerto = 443
     resto = a_url[cual][8:a_url[cual].length]      # sin "https://"
     barra = str_find(resto, "/")
     http_empezar(resto[0:barra], resto[barra:resto.length], a_tam[cual] + 16384)
@@ -796,6 +828,13 @@ func act_actualizar()
     else
         act_estado(con(tr(MSG_BAJANDO, "Downloading %s..."), "trasfondo"))
         act_bajar(0)
+    end
+end
+
+# TrasfondoPrefs aceptó el certificado tras un fallo de la consulta de cada hora: se pregunta otra vez ya
+func act_buscar_ahora()
+    if a_fase == 0 and a_buscar and not a_listo
+        a_proxima = time_ms()
     end
 end
 
