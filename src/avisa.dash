@@ -5,7 +5,7 @@
 #
 # Desde ARexx: ADDRESS COMMAND 'Avisa TITULO="..." TEXTO="..."'.
 
-@version "Avisa 2.10.1"
+@version "Avisa 2.11.0"
 
 import "avisos.dash"
 
