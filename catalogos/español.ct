@@ -881,3 +881,9 @@ Tiempo: %s
 MSG_532
 %1, aceptado el %2
 ; %1, accepted on %2
+MSG_533
+No se puede abrir %s
+; Cannot open %s
+MSG_534
+Este Workbench (anterior a AmigaOS 3.5) no deja que otro programa abra un cajón. Ábrelo con doble clic en su icono, o instala MUI para abrirlo en TrasfondoArchivos.
+; This Workbench (before AmigaOS 3.5) does not let other programs open a drawer. Double-click its icon, or install MUI to open it in TrasfondoArchivos.

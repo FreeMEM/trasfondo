@@ -79,6 +79,10 @@ La 2.0 añade piezas para la pantalla del Workbench, cada una un programa aparte
   Ferrán García): en su menú, "Mostrar como pila"; al pulsarlo despliega lo que tiene, con su icono y su nombre, y
   abajo "Abrir el cajón". Lo que sale en la pila es lo que hay en el cajón: para añadir algo, ponlo en el cajón. En
   la lista va como `ruta|PILA`.
+  Un cajón (o un disco) se abre en el Workbench; si ya está abierto, su ventana viene delante y el icono lleva su
+  punto (lo contó Ferrán García). En AmigaOS 3.0 y 3.1 el Workbench no deja que otro programa le abra un cajón: se
+  abre en TrasfondoArchivos si hay MUI y, si no, sale un aviso que lo explica (lo contó Santi). Lo mismo con el
+  botón de Prefs y los cajones de los ajustes rápidos.
 - **TrasfondoVentanas**: las ventanas de cualquier programa como en un escritorio de ahora, sin parchear el
   sistema. Soltar una ventana arrastrada contra un borde la encaja: a la izquierda o a la derecha, la mitad; en una
   esquina, ese cuarto; arriba, la pantalla entera. Al alejarla del borde recupera su tamaño. Un doble clic en la

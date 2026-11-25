@@ -1,0 +1,75 @@
+# Prueba: abrir un cajón desde el dock o el panel rápido (src/cajones.dash). Si ya está abierto, su ventana viene
+# delante y no se abre otra (lo contó Ferrán García); un volumen se reconoce por su título ("Ram Disk  ...").
+# En 3.0 y 3.1 (sin wb_open) va a TrasfondoArchivos o a un aviso: eso, con tools/vista.py y un Kickstart 3.1.
+#   DASH=~/Projects/FreeMEMLang python3 $DASH/tools/emu_run.py --kickstart <rom 3.2> --system ~/.cache/dash-emu/sys32 \
+#       --workbench tests/prueba_cajones.dash
+# expect: es_cajon: cajon=si volumen=si programa=no
+# expect: antes: cajon=no volumen=no
+# expect: abiertos: cajon=si volumen=si
+# expect: delante: el volumen
+# expect: tras cajon_abrir: delante el cajon, ventanas del cajon=1
+# expect: tras cajon_abrir del volumen: delante el volumen, ventanas del volumen=1
+
+import "../src/cajones.dash"
+
+func si_no(b: Bool) -> String
+    if b
+        return "si"
+    end
+    return "no"
+end
+
+# cuántas ventanas enseñan r, y si la de delante (de las que no son de fondo) es una de ellas
+func cuantas(r: String) -> Int
+    n = wm_read()
+    c = 0
+    for i in (0..n - 1)
+        if cajon_en_ventana(i, r)
+            c = c + 1
+        end
+    end
+    return c
+end
+
+func delante(r: String) -> Bool
+    n = wm_read()
+    for i in (0..n - 1)
+        if (wm_flags(i) & 34) == 0
+            return cajon_en_ventana(i, r)
+        end
+    end
+    return false
+end
+
+Main
+    time_delay(100)
+    dir_create("RAM:Cajon")
+    cajon = file_real_path("RAM:Cajon")
+    volumen = file_real_path("RAM:")
+    Print "es_cajon: cajon=" + si_no(es_cajon(cajon)) + " volumen=" + si_no(es_cajon(volumen)) + " programa=" + si_no(es_cajon("C:LoadWB"))
+    Print "antes: cajon=" + si_no(cajon_ventana(cajon) != 0) + " volumen=" + si_no(cajon_ventana(volumen) != 0)
+    ok = wb_open(cajon)
+    time_delay(100)
+    ok = wb_open(volumen)
+    time_delay(100)
+    Print "abiertos: cajon=" + si_no(cajon_ventana(cajon) != 0) + " volumen=" + si_no(cajon_ventana(volumen) != 0)
+    if delante(volumen)
+        Print "delante: el volumen"
+    else
+        Print "delante: otra"
+    end
+    cajon_abrir("RAM:Cajon", "prueba")
+    time_delay(100)
+    d = "otra"
+    if delante(cajon)
+        d = "el cajon"
+    end
+    Print "tras cajon_abrir: delante " + d + ", ventanas del cajon=#{cuantas(cajon)}"
+    cajon_abrir("RAM:", "prueba")
+    time_delay(100)
+    d = "otra"
+    if delante(volumen)
+        d = "el volumen"
+    end
+    Print "tras cajon_abrir del volumen: delante " + d + ", ventanas del volumen=#{cuantas(volumen)}"
+end

@@ -879,3 +879,9 @@ Weather: %s
 ; MSG_C_ELEGIDO
 MSG_532 (532//)
 %1, accepted on %2
+; MSG_CAJON_NO_ABRE
+MSG_533 (533//)
+Cannot open %s
+; MSG_CAJON_SIN_WB
+MSG_534 (534//)
+This Workbench (before AmigaOS 3.5) does not let other programs open a drawer. Double-click its icon, or install MUI to open it in TrasfondoArchivos.

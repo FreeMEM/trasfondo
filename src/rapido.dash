@@ -4,11 +4,13 @@
 
 @workbench_output "NIL:"
 @version "TrasfondoRapido 2.11.0"
+@catalog "Trasfondo.catalog" 1       # (el aviso de un cajón que no se puede abrir; lo demás, en inglés)
 
 import "dibujo.dash"
 import "tema.dash"
 import "captura.dash"
 import "ajustes.dash"
+import "cajones.dash"
 
 const ANCHO = 400
 var alto: Int = 300          # = PREFS_Y + las filas de la rejilla + el margen
@@ -158,12 +160,10 @@ func leer_botones()
 end
 
 # un botón de la rejilla: un cajón se abre en el Workbench; un programa se arranca. El cajón, como un doble clic
-# (wb_open) antes que con C:WBRun: el WBRun 2.2 de Aminet solo carga programas, y sin WBRun no se abría (como en el
-# dock, lo contó Ferrán García)
+# (wb_open) y no con C:WBRun: el WBRun 2.2 de Aminet solo carga programas (como en el dock, lo contó Ferrán García).
+# Si ya está abierto, su ventana viene delante; en 3.0 y 3.1, en TrasfondoArchivos o un aviso (cajones.dash)
 func abrir_cajon(r: String)
-    if not wb_open(r)
-        run_program("C:WBRun \"" + r + "\"")
-    end
+    cajon_abrir(r, "TrasfondoRapido")
 end
 
 func lanzar(r: String)
