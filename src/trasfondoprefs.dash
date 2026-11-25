@@ -835,7 +835,7 @@ func poner_arranque()
     for p in piezas
         quiere = valores["ARR_" + p] == "SI"
         # el que ya está se escribe otra vez, con la ruta buena: arregla los que se pusieron sin ella
-        if quiere and en_arranque(p) and file_exists(cajon + p)
+        if quiere and en_arranque(p) and file_exists(cajon + p) and not es_wbstartup(cajon)   # (ahí es su icono de herramienta)
             icono_arranque(p)
         end
         # solo las que se cambiaron: una pieza arrancada después de abrir las Prefs no se para por estar sin marcar

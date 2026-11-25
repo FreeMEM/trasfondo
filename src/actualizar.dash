@@ -751,6 +751,13 @@ func act_poner_piezas()
             if not file_exists(icono)
                 act_poner_arranque(icono, cajon + con_icono[i])
             end
+            # el de SYS:WBStartup, otra vez con la ruta entera: los copiados del cajón de un .lha sin pasar por
+            # Instalar (Hangar) llevaban solo el nombre y el Workbench no encontraba la herramienta al arrancar
+            # (lo contó Ernesto Laura de la Fuente). Si las piezas están en WBStartup, ese es su icono de herramienta: no
+            en_wb = "SYS:WBStartup/" + con_icono[i] + ".info"
+            if not act_es_wbstartup(cajon) and file_exists(en_wb) and file_exists(cajon + con_icono[i])
+                act_poner_arranque(en_wb, cajon + con_icono[i])
+            end
         end
     end
     if nuevo
