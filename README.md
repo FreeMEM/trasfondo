@@ -80,6 +80,10 @@ updates itself with one click, TrasfondoPrefs and Exchange. On [YouTube](https:/
   Fuente and Ferrán García): choose "Show as a stack" in its menu; clicking it then unfolds what it holds, with
   icons and names, and "Open the drawer" at the bottom. The stack shows what is in the drawer: to add something,
   put it in the drawer. In the list it is written `path|PILA`.
+  A drawer (or a disk) opens on the Workbench; if it is already open, its window comes to the front and the icon
+  gets its dot (reported by Ferrán García). On AmigaOS 3.0 and 3.1 the Workbench does not let another program open
+  a drawer: it opens in TrasfondoArchivos if MUI is there and, if not, a notification explains it (reported by
+  Santi). The same goes for the Prefs button and the drawers of the quick settings.
 - **TrasfondoVentanas**: any program's windows as on a modern desktop, without patching the system. Dropping a
   dragged window against an edge snaps it: left or right, that half; a corner, that quarter; the top, the whole
   screen. Dragging it away from the edge brings its size back. A double click on the title bar maximizes it and

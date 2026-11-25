@@ -18,6 +18,7 @@ import "dibujo.dash"
 import "ajustes.dash"
 import "textos.dash"
 import "tema.dash"
+import "cajones.dash"
 
 const LISTA = "ENV:Trasfondo.dock"
 const LISTA_ARC = "ENVARC:Trasfondo.dock"
@@ -96,6 +97,7 @@ struct Item
     imagen: String = ""      # una imagen PNG para el dock (ruta|imagen en la lista, o la de WBDock), "" sin ella
     img: Int = 0             # esa imagen ya a la medida de la casilla (image_from_decoded_size), 0 sin ella
     pila: Bool = false       # un cajón que al pulsarlo despliega sus programas (ruta|PILA en la lista)
+    cajon: Bool = false      # un cajón o un volumen: abierto, si su ventana está en el Workbench
 end
 
 var items: [Item] = []
@@ -189,6 +191,7 @@ func leer_fijos()
                 it = Item(r, icon_load(r), true, 0)
                 it.imagen = im
                 it.pila = en_pila
+                it.cajon = es_cajon(r)
                 if im == ""
                     it.imagen = imagen_wbdock(r)
                 end
@@ -939,6 +942,13 @@ func refrescar() -> Int
                 w = ids[k]
             end
         end
+        if w == 0 and it.cajon                # un cajón: su ventana del Workbench (lo contó Ferrán García)
+            for i in (0..n - 1)
+                if w == 0 and cajon_en_ventana(i, it.ruta)
+                    w = wm_id(i)
+                end
+            end
+        end
         if it.fijo or w != 0
             if (w != 0) != (it.win != 0) and estado == 0
                 estado = 1
@@ -965,10 +975,12 @@ end
 
 # ---- lo que se hace ----
 
-# Un cajón (o un volumen) se abre en el Workbench, como con un doble clic, antes que con C:WBRun: el WBRun 2.2 de
-# Aminet (el de CaffeineOS, con parm.library) solo carga programas y el cajón no se abría (lo contó Ferrán García)
+# Un cajón (o un volumen) se abre en el Workbench, como con un doble clic, y no con C:WBRun: el WBRun 2.2 de Aminet
+# (el de CaffeineOS, con parm.library) solo carga programas y el cajón no se abría (lo contó Ferrán García). Si ya
+# está abierto, viene delante su ventana; en 3.0 y 3.1, en TrasfondoArchivos o un aviso (cajones.dash)
 func lanzar(r: String)
-    if dir_read(r) >= 0 and wb_open(r)
+    if es_cajon(r)
+        cajon_abrir(r, "TrasfondoDock")
         return
     end
     if wbrun
@@ -1077,6 +1089,7 @@ func soltado(r0: String, x: Int, y: Int)
     if i < 0
         suelto = Item(r, icon_load(r), true, 0)
         suelto.imagen = imagen_wbdock(r)
+        suelto.cajon = es_cajon(r)
         cargar_imagen(suelto)
         items.push(suelto)
         i = items.length - 1
@@ -1259,7 +1272,7 @@ func menu_abrir(i: Int)
     # lo mismo con el botón derecho que manteniendo pulsado: abrir, otro más, pila o icono, fijar o quitar
     menu_ops.push(OP_LANZAR)
     menu_textos.push(tr(MSG_LANZAR, "Open"))
-    if it.win != 0
+    if it.win != 0 and not it.cajon          # (un cajón tiene una ventana en el Workbench)
         menu_ops.push(OP_ABRIR)
         menu_textos.push(tr(MSG_ABRIR, "Open another"))
     end
@@ -1336,9 +1349,7 @@ func menu_elegir(y: Int)
         lanzar(items[i].ruta)
     elif op == OP_LANZAR
         if items[i].pila
-            if not wb_open(items[i].ruta)
-                lanzar(items[i].ruta)
-            end
+            cajon_abrir(items[i].ruta, "TrasfondoDock")
         else
             pulsar(i)
         end
@@ -1544,9 +1555,7 @@ func pila_elegir(y: Int)
     end
     pila_cerrar()
     if k == pila_rutas.length
-        if not wb_open(r)               # el cajón entero, en el Workbench
-            lanzar(r)
-        end
+        cajon_abrir(r, "TrasfondoDock")    # el cajón entero, en el Workbench
     else
         lanzar(r)
     end

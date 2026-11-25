@@ -1,0 +1,125 @@
+# Abrir un cajón (o un volumen) desde el dock y el panel rápido, como un doble clic en su icono.
+#
+# Si ya está abierto, su ventana viene delante en vez de abrir otra (lo contó Ferrán García). El Workbench de
+# AmigaOS 3.0 y 3.1 no deja que otro programa le abra un cajón: OpenWorkbenchObject (wb_open) es de la 3.5, y
+# allí no hay C:WBRun ni puerto ARexx del Workbench. Pulsar Prefs no hacía nada (lo contó Santi). Ahí se abre en
+# TrasfondoArchivos, si hay MUI; si no, se avisa.
+
+import "avisos.dash"
+import "textos.dash"
+
+var cj_archivos: String = ""   # TrasfondoArchivos, si se puede usar (está y hay MUI)
+var cj_archivos_visto: Bool = false
+
+func cj_sin_barra(r: String) -> String
+    if str_ends(r, "/")
+        return r[0:r.length - 1]
+    end
+    return r
+end
+
+# lo último de la ruta: "Prefs" de "System:Prefs"; "System" de "System:"
+func cj_nombre(r: String) -> String
+    r = cj_sin_barra(r)
+    if str_ends(r, ":")
+        return r[0:r.length - 1]
+    end
+    i = r.length - 1
+    while i >= 0 and r[i:i + 1] != "/" and r[i:i + 1] != ":"
+        i = i - 1
+    end
+    return r[i + 1:r.length]
+end
+
+# un cajón o un volumen (lee el cajón: no entre un dir_read y sus dir_entry_*)
+func es_cajon(r: String) -> Bool
+    return str_ends(r, ":") or dir_read(r) >= 0
+end
+
+# si la ventana i del último wm_read enseña el cajón r (su ruta real, la de file_real_path). Una del Workbench
+# lleva de título el nombre del cajón ("Prefs") o, la de un volumen, su nombre y lo que ocupa ("System  14% full,
+# ..."). Otra (la de un explorador) vale si su título es la ruta entera o acaba en ": " y la ruta (la de
+# TrasfondoArchivos, "Archivos: System:Prefs", que es donde se abre en 3.0 y 3.1)
+func cajon_en_ventana(i: Int, r: String) -> Bool
+    f = wm_flags(i)
+    t = wm_title(i)
+    if (f & 34) != 0 or t == ""            # la de fondo del Workbench, o una propia
+        return false
+    end
+    r = cj_sin_barra(r)
+    lr = str_lower(r)
+    lt = str_lower(cj_sin_barra(t))
+    if lt == lr or str_ends(lt, ": " + lr)
+        return true
+    end
+    if (f & 64) == 0                        # no es un cajón del Workbench
+        return false
+    end
+    n = str_lower(cj_nombre(r))
+    if str_ends(r, ":")
+        return lt == n or str_starts(lt, n + " ")
+    end
+    return lt == n
+end
+
+# la ventana abierta del cajón r: su wm_id, 0 si no está abierto
+func cajon_ventana(r: String) -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if cajon_en_ventana(i, r)
+            return wm_id(i)
+        end
+    end
+    return 0
+end
+
+# TrasfondoArchivos, en el cajón de esta pieza o en el de Trasfondo, si hay MUI para él; "" si no
+func cj_explorador() -> String
+    if cj_archivos_visto
+        return cj_archivos
+    end
+    cj_archivos_visto = true
+    a = file_real_path("PROGDIR:TrasfondoArchivos")
+    if a == ""
+        t = file_read_text("ENV:Trasfondo.cajon")
+        if t != nil
+            c = str_trim(str_replace(t, "\n", ""))
+            if c != "" and not str_ends(c, ":") and not str_ends(c, "/")
+                c = c + "/"
+            end
+            if c != ""
+                a = file_real_path(c + "TrasfondoArchivos")
+            end
+        end
+    end
+    if a != "" and library_version("muimaster.library") >= 19
+        cj_archivos = a
+    end
+    return cj_archivos
+end
+
+# abre el cajón r o trae delante su ventana; de: quién avisa si no se puede ("Dock")
+func cajon_abrir(r: String, de: String)
+    x = file_real_path(r)                   # (SYS: es el nombre de su volumen en el título)
+    if x != ""
+        r = x
+    end
+    id = cajon_ventana(r)
+    if id != 0 and wm_front(id)
+        ok = wm_activate(id)
+        return
+    end
+    if wb_open(r)
+        return
+    end
+    a = cj_explorador()
+    if a != ""
+        ok = run_program("\"" + a + "\" \"" + r + "\"")
+        return
+    end
+    if file_exists("C:WBRun") and library_version("workbench.library") >= 44
+        ok = run_program("C:WBRun \"" + r + "\"")     # (el de 3.1 de Aminet solo carga programas)
+        return
+    end
+    avisos_nuevo(de, con(tr(MSG_CAJON_NO_ABRE, "Cannot open %s"), r), tr(MSG_CAJON_SIN_WB, "This Workbench (before AmigaOS 3.5) does not let other programs open a drawer. Double-click its icon, or install MUI to open it in TrasfondoArchivos."))
+end
