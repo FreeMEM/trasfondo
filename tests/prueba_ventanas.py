@@ -4,7 +4,8 @@
     DASH=~/Projects/FreeMEMLang python3 tests/prueba_ventanas.py [captura.png]
 
 Pide $DASH (una copia de Dash) y $DASH_KICKSTART_32 (la ROM de 3.2.3); el sistema, ~/.cache/dash-emu/sys32.
-Compila antes src/ventanas.dash con ese Dash.
+Compila antes src/ventanas.dash con ese Dash. GUION=otra.dash lanza otra prueba de tests/; WORKBENCH=NO, sin el
+Workbench (sin su ventana de fondo, como con DOpus de escritorio).
 """
 
 import os
@@ -28,7 +29,8 @@ def preparar(hd):
 
 
 capturas = [(40, sys.argv[1])] if len(sys.argv) > 1 else None
-r = run_programs([raiz / "tests" / os.environ.get("GUION", "prueba_ventanas.dash")], timeout=900, workbench=True,
+con_wb = os.environ.get("WORKBENCH", "SI") != "NO"
+r = run_programs([raiz / "tests" / os.environ.get("GUION", "prueba_ventanas.dash")], timeout=900, workbench=con_wb,
                  kickstart=os.environ["DASH_KICKSTART_32"], system=str(Path.home() / ".cache/dash-emu/sys32"),
                  screenshot=capturas, on_disk=preparar)
 print(r[0].output if hasattr(r[0], "output") else r[0])
