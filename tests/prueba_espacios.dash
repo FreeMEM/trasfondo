@@ -2,6 +2,8 @@
 # con DH0:ventanas; AmigaOS 3.2, que puede esconder ventanas). Ctrl Alt 2 va al espacio 2 (las del 1 se esconden),
 # Ctrl Alt 1 vuelve; Ctrl Alt Mayús 2 lleva la ventana activa al 2; Ctrl Alt Mayús arriba sube un espacio. Al parar
 # TrasfondoVentanas, todas vuelven a la vista. Si se activa una ventana escondida, se va a su espacio. Las teclas van por input.device, como las de una persona.
+# Al final, un espacio que se queda vacío: al volver a él se queda en él, sin activar una ventana de otro espacio (lo
+# contó Ferrán García). Su secuencia entera, la que lo hacía fallar, está en prueba_espacios_vacios.dash.
 
 func idx(t: String) -> Int
     n = wm_read()
@@ -25,7 +27,11 @@ func estado(t: String) -> String
 end
 
 func ver(que: String)
-    Print que + " uno " + estado("Uno") + " dos " + estado("Dos") + " tres " + estado("Tres") + " activa " + input_active_title()
+    e = file_read_text("ENV:TrasfondoEspacio")
+    if e == nil
+        e = "?"
+    end
+    Print que + " [" + str_trim(e) + "] uno " + estado("Uno") + " dos " + estado("Dos") + " tres " + estado("Tres") + " activa " + input_active_title()
 end
 
 func tecla(codigo: Int, cual: Int)
@@ -61,11 +67,24 @@ Main
     ok = wm_activate(wm_id(idx("Uno")))   # activar una escondida del espacio 1 (como el Workbench con un cajón)
     time_delay(90)
     ver("activa una escondida")
+    # el 2 se queda vacío (se cierran Dos y Tres, escondidas allí) y en el 1 se activa otra: al volver al 2 se queda
+    # en el 2 con Uno escondida (Uno era la activa al salir del 2, pero es del 1: no se activa)
+    window_close(c)
+    window_close(b)
+    d = window_create("Cuatro", 300, 150, 200, 100, 1)
+    time_delay(90)
+    tecla(0x02, 6)
+    time_delay(100)
+    ver("al 2, vacío")
+    if estado("Uno") == "e" and file_read_text("ENV:TrasfondoEspacio") == "2/4"
+        Print "vacío bien"
+    else
+        Print "vacío MAL"
+    end
     run_program("DH0:ventanas")     # otra vez: se para y las enseña todas
     time_delay(60)
     ver("al parar")
-    window_close(c)
-    window_close(b)
+    window_close(d)
     window_close(a)
     Print "fin"
 end

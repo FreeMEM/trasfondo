@@ -447,17 +447,32 @@ func esp_mostrar(n: Int)
             hecha[mejor] = true
         end
     end
+    esp_foco(n)
+end
+
+# activa una ventana del espacio n: la última que lo estuvo, otra suya o, si no tiene, el fondo del escritorio (el del
+# Workbench o el de DOpus). Nunca una de otro espacio: si estaba escondida, esp_seguir se iba a su espacio, y con un
+# espacio vacío se saltaba él solo a otro (lo contó Ferrán García)
+func esp_foco(n: Int)
     a = esp_activa[n - 1]
-    if a != 0 and esp_buscar(a) >= 0 and esp_de[esp_buscar(a)] == n
-        wm_activate(a)
-    else
-        for k in (0..esp_id.length - 1)
-            if esp_de[k] == n
-                a = esp_id[k]
+    k = esp_buscar(a)
+    if a == 0 or k < 0 or esp_de[k] != n
+        a = 0
+        for j in (0..esp_id.length - 1)
+            if esp_de[j] == n
+                a = esp_id[j]
             end
         end
-        if a != 0
-            wm_activate(a)
+    end
+    if a != 0 and wm_activate(a)
+        return
+    end
+    m = wm_read()
+    for i in (0..m - 1)
+        f = wm_flags(i)
+        if f & 2 != 0 and f & (32 + 256) == 0 and not es_pieza(i)
+            ok = wm_activate(wm_id(i))
+            return
         end
     end
 end
@@ -467,7 +482,11 @@ func esp_ir(n: Int)
         return
     end
     esp_apuntar()
-    esp_activa[esp_actual - 1] = wm_active()
+    a = wm_active()                            # (solo si es de este espacio: puede ser una escondida de otro)
+    k = esp_buscar(a)
+    if k >= 0 and esp_de[k] == esp_actual
+        esp_activa[esp_actual - 1] = a
+    end
     for k in (0..esp_id.length - 1)
         if esp_de[k] == esp_actual
             ok = wm_hide(esp_id[k])
@@ -571,7 +590,10 @@ func esp_aviso()
 end
 
 # si se activa una ventana escondida en otro espacio (el Workbench, al abrir otra vez un cajón que está allí), se va
-# a ese espacio
+# a ese espacio. Pero no si la que estaba activa se cerró o se escondió: entonces la activa Intuition por su cuenta, y
+# sin la ventana de fondo del Workbench (con DOpus de escritorio) elige una escondida de otro espacio. Se iba a ese
+# espacio y, al volver, otra vez: cerrar o iconificar una ventana llevaba a otro espacio, y al pulsar uno se saltaba
+# él solo a otro (lo contó Ferrán García). Entonces se activa una de este espacio
 var esp_ultima_activa: Int = 0
 
 func esp_seguir()
@@ -579,13 +601,26 @@ func esp_seguir()
     if a == 0 or a == esp_ultima_activa
         return
     end
+    antes = esp_ultima_activa
     esp_ultima_activa = a
     k = esp_buscar(a)
-    if k >= 0 and esp_de[k] != esp_actual
-        i = buscar(a)
-        if i >= 0 and wm_flags(i) & 256 != 0
-            esp_ir(esp_de[k])
-        end
+    if k < 0 or esp_de[k] == esp_actual
+        return
+    end
+    i = buscar(a)
+    if i < 0 or wm_flags(i) & 256 == 0
+        return
+    end
+    destino = esp_de[k]
+    j = -1
+    if antes != 0
+        j = buscar(antes)
+    end
+    if antes == 0 or (j >= 0 and wm_flags(j) & 256 == 0)
+        esp_ir(destino)                        # la de antes sigue a la vista: la ha pedido alguien
+    else
+        esp_apuntar()                          # (olvida la que se cerró)
+        esp_foco(esp_actual)
     end
 end
 

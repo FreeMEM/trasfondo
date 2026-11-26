@@ -1,0 +1,114 @@
+# Espacios que se quedan vacíos (lo contó Ferrán García): con ventanas en los espacios 1, 2 y 3, se cierran las del 3,
+# se iconifica la del 2 (su programa la cierra) y se va al 4, vacío. Antes, sin la ventana de fondo del Workbench (con
+# DOpus de escritorio), Intuition activaba al cerrar una ventana escondida de otro espacio y TrasfondoVentanas se iba
+# a ese espacio: el 4 enseñaba las del 1 y al pulsar el 2 o el 3 se volvía él solo al 1. Cambia de espacio como la
+# barra al pulsar un punto (ENV:TrasfondoEspacio.ir). La lanza tests/prueba_ventanas.py con GUION=prueba_espacios_vacios.dash,
+# con el Workbench o sin él (WORKBENCH=NO, como con DOpus de escritorio). Dice "bien" o cada paso que falla.
+
+var fallos: Int = 0
+
+func idx(t: String) -> Int
+    n = wm_read()
+    for i in (0..n - 1)
+        if wm_title(i) == t and wm_flags(i) & 32 != 0
+            return i
+        end
+    end
+    return -1
+end
+
+# "v" a la vista, "e" escondida, "-" no está
+func estado(t: String) -> String
+    i = idx(t)
+    if i < 0
+        return "-"
+    elif wm_flags(i) & 256 != 0
+        return "e"
+    end
+    return "v"
+end
+
+# el espacio que dice TrasfondoVentanas y cómo están A, B, C (espacio 1), L (2) y D, E (3): "1/4 vvv---"
+func foto() -> String
+    e = file_read_text("ENV:TrasfondoEspacio")
+    if e == nil
+        e = "?"
+    end
+    return str_trim(e) + " " + estado("A") + estado("B") + estado("C") + estado("L") + estado("D") + estado("E")
+end
+
+func mirar(que: String, esperado: String)
+    f = foto()
+    if f == esperado
+        Print que + ": " + f
+    else
+        Print "MAL " + que + ": " + f + " (debía ser " + esperado + ")"
+        fallos = fallos + 1
+    end
+end
+
+# como pulsar un punto de la barra; espera a que TrasfondoVentanas mire la activa (lo hace cada segundo)
+func ir(n: Int)
+    ok = file_write_text("ENV:TrasfondoEspacio.ir", "#{n}")
+    time_delay(150)
+end
+
+Main
+    Print "puede esconder #{wm_can_hide()}"
+    run_program("DH0:ventanas")
+    time_delay(150)
+    a = window_create("A", 40, 40, 200, 100, 1)
+    b = window_create("B", 260, 60, 200, 100, 1)
+    c = window_create("C", 100, 120, 200, 100, 1)
+    time_delay(30)
+    mirar("espacio 1 con A B C", "1/4 vvv---")
+    ir(2)
+    l = window_create("L", 300, 150, 200, 100, 1)
+    time_delay(30)
+    mirar("espacio 2 con L", "2/4 eeev--")
+    ir(3)
+    d = window_create("D", 50, 200, 200, 100, 1)
+    e = window_create("E", 250, 220, 200, 100, 1)
+    time_delay(30)
+    mirar("espacio 3 con D E", "3/4 eeeevv")
+    ir(4)
+    mirar("al 4, vacío", "4/4 eeeeee")
+    ir(1)
+    mirar("al 1", "1/4 vvveee")
+    ir(3)
+    mirar("pulsa el 3", "3/4 eeeevv")
+    window_close(e)
+    window_close(d)
+    time_delay(150)
+    mirar("cierra D y E", "3/4 eeee--")
+    ir(2)
+    mirar("pasa al 2", "2/4 eeev--")
+    window_close(l)                 # iconificar: su programa la cierra
+    time_delay(150)
+    mirar("iconifica L", "2/4 eee---")
+    ir(4)
+    mirar("va al 4", "4/4 eee---")
+    l = window_create("L", 300, 150, 200, 100, 1)
+    time_delay(150)
+    mirar("abre L en el 4", "4/4 eeev--")
+    ir(1)
+    mirar("pulsa el 1", "1/4 vvve--")
+    ir(2)
+    mirar("pulsa el 2", "2/4 eeee--")
+    ir(3)
+    mirar("pulsa el 3", "3/4 eeee--")
+    ir(4)
+    mirar("pulsa el 4", "4/4 eeev--")
+    run_program("DH0:ventanas")     # otra vez: se para y las enseña todas
+    time_delay(60)
+    mirar("al parar", "? vvvv--")
+    window_close(l)
+    window_close(c)
+    window_close(b)
+    window_close(a)
+    if fallos == 0
+        Print "bien"
+    else
+        Print "fallos: #{fallos}"
+    end
+end
