@@ -17,7 +17,7 @@
 #   TrasfondoPrefs ARRANCAR    arranca (o vuelve a arrancar) las piezas que arrancan con el Workbench
 
 @workbench_output "NIL:"
-@version "TrasfondoPrefs 2.11.3"
+@version "TrasfondoPrefs 2.11.4"
 @catalog "Trasfondo.catalog" 1       # el mismo que Trasfondo: los textos, en inglés; el castellano, en el catálogo
 
 import "textos.dash"
@@ -1581,6 +1581,7 @@ Main
         Print tr(MSG_SIN_VENTANA, "TrasfondoPrefs: cannot open the window")
         return
     end
+    esperar_fondo = 0                        # time_ms de cuando se abrió tras instalar (0: no hay que esperar)
     # recién actualizado: esta es la versión nueva, que abrió la vieja; en la sección que tenía y con lo que pasó
     t_vuelta = file_read_text("ENV:Trasfondo.prefs_seccion")
     vuelta = t_vuelta != nil and str_trim(t_vuelta) != ""
@@ -1589,6 +1590,11 @@ Main
         est_antes = file_read_text("ENV:Trasfondo.estado")
         if est_antes != nil and str_trim(est_antes) != ""
             linea_version = str_trim(est_antes)
+            # instalada esta versión: el aviso de "vuelve a arrancar" hasta que Trasfondo esté en marcha otra vez,
+            # y luego que ya está al día (Ferrán García veía el aviso con todo ya arrancado)
+            if str_contains(est_antes, yo)
+                esperar_fondo = time_ms()
+            end
         end
         pagina(Int(str_trim(t_vuelta)), linea_version)
     else
@@ -1603,6 +1609,16 @@ Main
         e = gt_event()
         if e == -1                           # nada: mira cómo va lo que se pidió a Trasfondo
             time_delay(10)
+            # recién actualizado: Trasfondo ya arrancó con la versión nueva (el viejo deja su puerto al relanzarse)
+            if esperar_fondo != 0 and time_ms() - esperar_fondo > 1500 and corriendo("Trasfondo")
+                esperar_fondo = 0
+                linea_version = con(tr(MSG_YA_AL_DIA, "Trasfondo %s is installed and running"), yo)
+                if g_estado >= 0
+                    gt_set_text(g_estado, linea_version)
+                end
+            elif esperar_fondo != 0 and time_ms() - esperar_fondo > 20000
+                esperar_fondo = 0             # no arrancó: se queda el aviso de la instalación
+            end
             if pedido != 0 and g_estado >= 0
                 est = file_read_text("ENV:Trasfondo.estado")
                 if est != nil and str_trim(est) != "" and str_trim(est) != ultimo

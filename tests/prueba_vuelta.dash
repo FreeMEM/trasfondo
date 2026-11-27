@@ -1,0 +1,29 @@
+# TrasfondoPrefs abierta otra vez tras actualizar (lo que hace la vieja con program_relaunch): con Trasfondo
+# en marcha, el aviso de "vuelve a arrancar" pasa a "ya está instalado y en marcha" (lo contó Ferrán García).
+# Este programa deja en ENV: lo que dejaría la actualización, lanza DH0:trasfondo y DH0:trasfondoprefs y se
+# mira la captura.
+#
+#     python3 tests/prueba_vuelta.py captura.png 25
+
+@native func lanzar(orden: String)
+"""
+    Execute((CONST_STRPTR)orden, 0, Output());
+"""
+end
+
+@native func esperar(tics: Int)
+"""
+    Delay(tics);
+"""
+end
+
+Main
+    yo = str_trim(file_read_text("DH0:version_prueba"))      # la de TrasfondoPrefs (la deja tests/prueba_vuelta.py)
+    file_write_text("ENV:Trasfondo.prefs_seccion", "0\n")
+    file_write_text("ENV:Trasfondo.estado", "Instalada la " + yo + ": Trasfondo vuelve a arrancar\n")
+    lanzar("Run >NIL: DH0:trasfondoprefs")
+    esperar(150)
+    lanzar("Run >NIL: DH0:trasfondo")
+    esperar(1500)
+    Print "hecho"
+end

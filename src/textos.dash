@@ -412,3 +412,5 @@ const MSG_C_ELEGIDO = 532
 # El título (%s, la ruta) y el texto del aviso
 const MSG_CAJON_NO_ABRE = 533
 const MSG_CAJON_SIN_WB = 534
+# TrasfondoPrefs, abierta otra vez tras actualizar y con Trasfondo ya en marcha
+const MSG_YA_AL_DIA = 535
